@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GouldPRO Master - Gestão de Plantel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        
+        .tab-active { 
+            background-color: #064e3b !important; 
+            color: white !important; 
+            transform: translateY(-2px); 
+            box-shadow: 0 4px 12px rgba(6, 78, 59, 0.2);
+        }
+        
+        .custom-input { border: 2px solid #f1f5f9; padding: 0.8rem; border-radius: 0.8rem; width: 100%; font-weight: 700; outline: none; transition: all 0.2s; background: #fff; font-size: 14px; }
+        .custom-input:focus { border-color: #10b981; }
+        
+        .status-badge { font-size: 9px; font-weight: 900; padding: 4px 6px; border-radius: 6px; width: 100%; text-align: center; border: 1px solid transparent; }
+        .status-Pendente { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+        .status-Galo { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+        .status-Claro { background: #f8fafc; color: #64748b; border-color: #e2e8f0; }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+    <datalist id="dl-species">
+        <option value="Diamante de Gould">
+        <option value="Bavette">
+        <option value="Manon">
+        <option value="Sparrow">
+    </datalist>
+
+    <div id="app" class="min-h-screen flex flex-col">
+        
+        <!-- Cabeçalho -->
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-40 px-6 h-16 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="bg-emerald-600 w-10 h-10 rounded-xl text-white shadow-lg flex items-center justify-center">
+                    <i class="fas fa-kiwi-bird"></i>
+                </div>
+                <h1 class="text-lg font-black italic tracking-tighter uppercase leading-none">Gould<span class="text-emerald-600 not-italic">Master</span></h1>
+            </div>
+            <button onclick="setTab('config')" class="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center text-slate-400">
+                <i class="fas fa-cog text-sm"></i>
+            </button>
+        </header>
+
+        <!-- Navegação Principal -->
+        <nav class="bg-white border-b border-slate-100 p-2 sticky top-16 z-30">
+            <div class="flex max-w-5xl mx-auto gap-1 overflow-x-auto no-scrollbar" id="nav-tabs">
+                <button onclick="setTab('ninhos')" id="btn-ninhos" class="flex-1 py-3 px-3 rounded-xl text-[9px] font-black uppercase transition-all tab-active min-w-max">Ninhos</button>
+                <button onclick="setTab('aves')" id="btn-aves" class="flex-1 py-3 px-3 rounded-xl text-[9px] font-black uppercase transition-all text-slate-400 bg-slate-50 min-w-max">Plantel</button>
+                <button onclick="setTab('casais')" id="btn-casais" class="flex-1 py-3 px-3 rounded-xl text-[9px] font-black uppercase transition-all text-slate-400 bg-slate-50 min-w-max">Casais</button>
+                <button onclick="setTab('config')" id="btn-config" class="flex-1 py-3 px-3 rounded-xl text-[9px] font-black uppercase transition-all text-slate-400 bg-slate-50 min-w-max text-center">Config</button>
+            </div>
+        </nav>
+
+        <main class="flex-1 max-w-5xl mx-auto w-full p-4 pb-32">
+            
+            <!-- Ninhos -->
+            <section id="sec-ninhos" class="space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-black text-slate-800 tracking-tight uppercase italic">Ninhos Ativos</h2>
+                    <button onclick="openModal('ninho')" class="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] shadow-lg">NOVO NINHO</button>
+                </div>
+                <div id="grid-ninhos" class="space-y-6"></div>
+            </section>
+
+            <!-- Plantel -->
+            <section id="sec-aves" class="hidden space-y-4">
+                <div class="flex flex-col gap-4">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-xl font-black text-slate-800 tracking-tight uppercase italic">Plantel</h2>
+                        <button onclick="openModal('ave')" class="bg-slate-800 text-white px-5 py-2.5 rounded-xl font-black text-[10px]">ADICIONAR AVE</button>
+                    </div>
+                    <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            <input type="text" id="ave-search" oninput="renderAves()" placeholder="Buscar por nome ou anilha..." class="w-full bg-slate-50 border-none rounded-xl py-3 pl-10 pr-4 text-[11px] font-bold uppercase outline-none ring-1 ring-slate-100 focus:ring-emerald-500 transition-all">
+                        </div>
+                    </div>
+                </div>
+                <div id="grid-aves" class="space-y-2"></div>
+            </section>
+
+            <!-- Casais -->
+            <section id="sec-casais" class="hidden space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-black text-slate-800 tracking-tight uppercase italic">Casais</h2>
+                    <button onclick="openModal('casal')" class="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px]">UNIR PAR</button>
+                </div>
+                <div id="grid-casais" class="space-y-3"></div>
+            </section>
+
+            <!-- Configurações -->
+            <section id="sec-config" class="hidden space-y-6">
+                <h2 class="text-xl font-black text-slate-800 tracking-tight uppercase italic">Configurações</h2>
+                <div class="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                    <h3 class="text-[12px] font-black text-emerald-600 uppercase italic">Dados do Sistema</h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button onclick="exportBackup()" class="bg-slate-800 text-white p-4 rounded-2xl text-[10px] font-black uppercase">Exportar Backup</button>
+                        <label class="bg-emerald-600 text-white p-4 rounded-2xl text-[10px] font-black uppercase text-center cursor-pointer">Importar Backup<input type="file" accept=".json" onchange="importBackup(this)" class="hidden"></label>
+                    </div>
+                    <button onclick="clearEverything()" class="w-full bg-rose-50 text-rose-600 py-3 rounded-xl font-black text-[10px] uppercase">Apagar Tudo</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal Base -->
+    <div id="modal-overlay" class="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div id="modal-content" class="bg-white w-full max-w-2xl rounded-[32px] overflow-y-auto max-h-[90vh] shadow-2xl no-scrollbar"></div>
+    </div>
+
+    <!-- Zoom de Foto -->
+    <div id="photo-zoom-overlay" onclick="this.classList.add('hidden')" class="fixed inset-0 bg-black/95 z-[100] hidden flex items-center justify-center p-6">
+        <img id="photo-zoom-img" src="" class="max-w-full max-h-full rounded-2xl object-contain">
+    </div>
+
+    <script>
+        // Estado Global
+        let db = {
+            aves: JSON.parse(localStorage.getItem('gpro_v18_aves')) || [],
+            casais: JSON.parse(localStorage.getItem('gpro_v18_casais')) || [],
+            ninhos: JSON.parse(localStorage.getItem('gpro_v18_ninhos')) || []
+        };
+
+        function save() {
+            localStorage.setItem('gpro_v18_aves', JSON.stringify(db.aves));
+            localStorage.setItem('gpro_v18_casais', JSON.stringify(db.casais));
+            localStorage.setItem('gpro_v18_ninhos', JSON.stringify(db.ninhos));
+            render();
+        }
+
+        // Modais e Interface
+        function openModal(type, editId = null) {
+            const content = document.getElementById('modal-content');
+            document.getElementById('modal-overlay').classList.remove('hidden');
+            const currentYear = new Date().getFullYear();
+            
+            if (type === 'ave') {
+                const ave = editId ? db.aves.find(a => String(a.id) === String(editId)) : null;
+                content.innerHTML = `
+                    <div class="p-6 bg-slate-900 text-white flex justify-between items-center sticky top-0 z-10">
+                        <h2 class="font-black text-lg uppercase italic">${editId ? 'Editar' : 'Nova'} Ave</h2>
+                        <button onclick="closeModal()"><i class="fas fa-times"></i></button>
+                    </div>
+                    <form onsubmit="saveAve(event, ${editId ? `'${editId}'` : 'null'})" class="p-6 space-y-6">
+                        <div class="flex flex-col items-center gap-4">
+                            <div class="relative group">
+                                <img id="photo-preview" src="${ave?.photo || ''}" class="w-24 h-24 rounded-3xl bg-slate-100 object-cover ${!ave?.photo ? 'hidden' : ''}">
+                                <div id="photo-placeholder" class="w-24 h-24 rounded-3xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 ${ave?.photo ? 'hidden' : ''}"><i class="fas fa-camera text-xl"></i></div>
+                                <input type="file" accept="image/*" onchange="handlePhoto(this)" class="absolute inset-0 opacity-0 cursor-pointer">
+                                <input type="hidden" id="photo-data" value="${ave?.photo || ''}">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="col-span-2">
+                                <label class="text-[10px] font-black text-slate-400 uppercase">Espécie</label>
+                                <input name="species" list="dl-species" value="${ave?.species || 'Diamante de Gould'}" class="custom-input mt-1">
+                            </div>
+                            
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase">Anilha</label>
+                                <input name="ring" value="${ave?.ring || ''}" class="custom-input mt-1" placeholder="Ex: ABC-123">
+                            </div>
+                            
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase">Ano Anilha</label>
+                                <input type="number" name="ringYear" value="${ave?.ringYear || currentYear}" class="custom-input mt-1">
+                            </div>
+
+                            <div class="col-span-2">
+                                <label class="text-[10px] font-black text-slate-400 uppercase">Nome / Identificador</label>
+                                <input name="name" value="${ave?.name || ''}" class="custom-input mt-1" placeholder="Nome para fácil identificação">
+                            </div>
+
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase">Sexo</label>
+                                <select name="sex" class="custom-input mt-1">
+                                    <option ${ave?.sex==='Macho'?'selected':''}>Macho</option>
+                                    <option ${ave?.sex==='Fêmea'?'selected':''}>Fêmea</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase">Status</label>
+                                <select name="status" class="custom-input mt-1">
+                                    <option value="Ativo" ${ave?.status==='Ativo'?'selected':''}>Ativo</option>
+                                    <option value="Vendido" ${ave?.status==='Vendido'?'selected':''}>Vendido</option>
+                                    <option value="Óbito" ${ave?.status==='Óbito'?'selected':''}>Óbito</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase">Criador Origem</label>
+                                <input name="creator" value="${ave?.creator || 'Próprio'}" class="custom-input mt-1">
+                            </div>
+
+                            <div>
+                                <label class="text-[10px] font-black text-slate-400 uppercase">Ano Aquisição</label>
+                                <input type="number" name="acqYear" value="${ave?.acqYear || currentYear}" class="custom-input mt-1">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-xl">Salvar Cadastro</button>
+                    </form>`;
+            } else if (type === 'ninho') {
+                content.innerHTML = `
+                    <div class="p-6 bg-emerald-600 text-white flex justify-between items-center"><h2 class="font-black text-lg uppercase italic">Novo Ninho</h2><button onclick="closeModal()"><i class="fas fa-times"></i></button></div>
+                    <form onsubmit="saveNinho(event)" class="p-6 space-y-4">
+                        <input name="name" placeholder="ID Ninho (Ex: Ninho 01)" class="custom-input" required>
+                        <select name="casalId" class="custom-input">
+                            <option value="">Sem Casal Associado</option>
+                            ${db.casais.map(c => `<option value="${c.id}">${c.cage || 'Gaiola s/ nº'}</option>`).join('')}
+                        </select>
+                        <button class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black uppercase text-xs mt-4">Criar</button>
+                    </form>`;
+            } else if (type === 'casal') {
+                content.innerHTML = `
+                    <div class="p-6 bg-indigo-600 text-white flex justify-between items-center"><h2 class="font-black text-lg uppercase italic">Unir Par</h2><button onclick="closeModal()"><i class="fas fa-times"></i></button></div>
+                    <form onsubmit="saveCasal(event)" class="p-6 space-y-4">
+                        <select name="mId" class="custom-input" required><option value="">Macho...</option>${db.aves.filter(a=>a.sex==='Macho').map(m=>`<option value="${m.id}">${m.name} (${m.ring})</option>`).join('')}</select>
+                        <select name="fId" class="custom-input" required><option value="">Fêmea...</option>${db.aves.filter(a=>a.sex==='Fêmea').map(f=>`<option value="${f.id}">${f.name} (${f.ring})</option>`).join('')}</select>
+                        <input name="cage" placeholder="Número da Gaiola" class="custom-input">
+                        <button class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase text-xs mt-4">Formar Casal</button>
+                    </form>`;
+            }
+        }
+
+        // Manipulação de Dados
+        function handlePhoto(input) {
+            const file = input.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const preview = document.getElementById('photo-preview');
+                    const placeholder = document.getElementById('photo-placeholder');
+                    const dataInput = document.getElementById('photo-data');
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                    placeholder.classList.add('hidden');
+                    dataInput.value = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function saveAve(e, editId) {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const obj = Object.fromEntries(fd);
+            obj.photo = document.getElementById('photo-data').value;
+            if (editId) {
+                const idx = db.aves.findIndex(a => String(a.id) === String(editId));
+                db.aves[idx] = { ...db.aves[idx], ...obj };
+            } else {
+                db.aves.push({ id: Date.now().toString(), ...obj });
+            }
+            closeModal(); save();
+        }
+
+        function saveNinho(e) {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            db.ninhos.push({ id: Date.now().toString(), name: fd.get('name'), casalId: fd.get('casalId'), eggs: [] });
+            closeModal(); save();
+        }
+
+        function saveCasal(e) {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            db.casais.push({ id: Date.now().toString(), mId: fd.get('mId'), fId: fd.get('fId'), cage: fd.get('cage') });
+            closeModal(); save();
+        }
+
+        function deleteCasal(id) {
+            if(confirm("Deseja realmente desfazer este casal?")) {
+                db.casais = db.casais.filter(c => String(c.id) !== String(id));
+                db.ninhos.forEach(n => {
+                    if(String(n.casalId) === String(id)) n.casalId = "";
+                });
+                save();
+            }
+        }
+
+        // Renderização
+        function renderAves() {
+            const search = document.getElementById('ave-search')?.value.toLowerCase() || "";
+            const filtered = db.aves.filter(a => (a.name||"").toLowerCase().includes(search) || (a.ring||"").toLowerCase().includes(search));
+            
+            document.getElementById('grid-aves').innerHTML = filtered.map(a => `
+                <div class="bg-white rounded-xl border border-slate-100 p-2 flex items-center gap-3 shadow-sm" onclick="openModal('ave', '${a.id}')">
+                    <div class="shrink-0 relative">
+                        ${a.photo ? `<img src="${a.photo}" class="w-10 h-10 rounded-lg object-cover">` : `<div class="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-300"><i class="fas fa-kiwi-bird text-xs"></i></div>`}
+                        <div class="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${a.sex === 'Macho' ? 'bg-blue-500' : 'bg-pink-500'}"></div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-center"><h3 class="font-black text-[11px] text-slate-800 uppercase truncate">${a.name || 'S/ NOME'}</h3><span class="text-[7px] font-black px-1.5 py-0.5 rounded-md ${a.status==='Ativo'?'bg-emerald-50 text-emerald-600':'bg-rose-50 text-rose-600'} uppercase">${a.status}</span></div>
+                        <p class="text-[8px] font-bold text-slate-400 truncate mt-0.5">${a.species} • ${a.ring || 'S/A'} • ${a.ringYear || '--'}</p>
+                    </div>
+                </div>`).join('');
+        }
+
+        function renderCasais() {
+            document.getElementById('grid-casais').innerHTML = db.casais.map(c => {
+                const m = db.aves.find(a => String(a.id) === String(c.mId));
+                const f = db.aves.find(a => String(a.id) === String(c.fId));
+                return `
+                <div class="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-4 shadow-sm relative">
+                    <div class="flex-1 text-center min-w-0"><p class="text-[9px] font-black uppercase truncate">${m?.name||'Macho'}</p><p class="text-[7px] font-bold text-slate-400">${m?.ring||'---'}</p></div>
+                    <div class="text-rose-500 text-xs shrink-0"><i class="fas fa-heart"></i></div>
+                    <div class="flex-1 text-center min-w-0"><p class="text-[9px] font-black uppercase truncate">${f?.name||'Fêmea'}</p><p class="text-[7px] font-bold text-slate-400">${f?.ring||'---'}</p></div>
+                    <div class="shrink-0 text-[9px] font-black bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg">G: ${c.cage || '--'}</div>
+                    <button type="button" onclick="deleteCasal('${c.id}')" class="ml-2 w-8 h-8 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center active:bg-rose-200 transition-all">
+                        <i class="fas fa-trash-alt text-[10px]"></i>
+                    </button>
+                </div>`;
+            }).join('');
+        }
+
+        function renderNinhos() {
+            document.getElementById('grid-ninhos').innerHTML = db.ninhos.map(n => {
+                const c = db.casais.find(x => String(x.id) === String(n.casalId));
+                return `
+                <div class="bg-white rounded-[24px] border border-slate-200 overflow-hidden shadow-sm">
+                    <div class="bg-slate-50 p-4 flex justify-between items-center border-b border-slate-100">
+                        <div><h3 class="text-[11px] font-black uppercase text-slate-800">${n.name}</h3><p class="text-[9px] font-bold text-slate-400 mt-1">Gaiola: ${c?.cage || 'Não Vinculado'}</p></div>
+                        <button onclick="addEgg('${n.id}')" class="bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-black text-[8px] uppercase tracking-wider shadow-md">+ Ovo</button>
+                    </div>
+                    <div class="p-2 space-y-1">
+                        ${n.eggs.map((e, idx) => `
+                        <div class="flex items-center justify-between bg-white p-2 rounded-xl border border-slate-100">
+                            <input type="date" value="${e.postura}" onchange="updateEgg('${n.id}', ${idx}, 'postura', this.value)" class="text-[10px] font-bold text-slate-600 bg-transparent outline-none">
+                            <select onchange="updateEgg('${n.id}', ${idx}, 'status', this.value)" class="status-badge status-${e.status} outline-none">
+                                <option value="Pendente" ${e.status==='Pendente'?'selected':''}>Pendente</option>
+                                <option value="Galo" ${e.status==='Galo'?'selected':''}>Galo</option>
+                                <option value="Claro" ${e.status==='Claro'?'selected':''}>Claro</option>
+                            </select>
+                            <button onclick="removeEgg('${n.id}', ${idx})" class="w-6 h-6 text-slate-200"><i class="fas fa-times text-xs"></i></button>
+                        </div>`).join('')}
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function addEgg(nId) { db.ninhos.find(n=>n.id===nId).eggs.push({ postura: "", status: "Pendente" }); save(); }
+        function removeEgg(nId, idx) { db.ninhos.find(n=>n.id===nId).eggs.splice(idx, 1); save(); }
+        function updateEgg(nId, idx, f, v) { db.ninhos.find(n=>n.id===nId).eggs[idx][f] = v; save(); }
+
+        // Utilitários
+        function setTab(t) {
+            ['ninhos', 'aves', 'casais', 'config'].forEach(s => {
+                const sec = document.getElementById(`sec-${s}`);
+                if(sec) sec.classList.toggle('hidden', s !== t);
+                const btn = document.getElementById(`btn-${s}`);
+                if(btn) btn.classList.toggle('tab-active', s === t);
+            });
+            render();
+        }
+
+        function zoomPhoto(url) { if(!url) return; document.getElementById('photo-zoom-img').src = url; document.getElementById('photo-zoom-overlay').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
+
+        function exportBackup() {
+            const blob = new Blob([JSON.stringify(db)], {type: 'application/json'});
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `backup_gpro.json`; a.click();
+        }
+
+        function importBackup(input) {
+            const file = input.files[0]; if(!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => { 
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    db = { ...db, ...imported };
+                    save(); alert("Backup Importado com Sucesso!");
+                } catch(err) { alert("Erro ao importar arquivo."); }
+            };
+            reader.readAsText(file);
+        }
+
+        function clearEverything() {
+            if(confirm("ATENÇÃO: Isso apagará TODOS os seus dados salvos!")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        function render() { renderAves(); renderCasais(); renderNinhos(); }
+        window.onload = () => { render(); setTab('ninhos'); };
+    </script>
+</body>
+</html>
