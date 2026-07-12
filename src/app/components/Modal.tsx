@@ -374,17 +374,32 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                 className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm"
               />
               
-              <select
-                name="casalId"
-                className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm"
-              >
-                <option value="">Sem Casal Associado</option>
-                {casais.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.cage || 'Gaiola s/ nº'}
-                  </option>
-                ))}
-              </select>
+              <div>
+  <label className="text-[10px] font-black text-slate-400 uppercase mb-2 block">
+    Selecionar Casal
+  </label>
+
+  <select
+    name="casalId"
+    className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm"
+  >
+    <option value="">Sem Casal Associado</option>
+
+    {casais.map(c => {
+      const macho = aves.find(a => a.id === c.mId);
+      const femea = aves.find(a => a.id === c.fId);
+
+      return (
+        <option key={c.id} value={c.id}>
+          {macho?.ring || macho?.name || 'Macho'}
+          {" + "}
+          {femea?.ring || femea?.name || 'Fêmea'}
+          {c.cage ? ` - ${c.cage}` : ''}
+        </option>
+      );
+    })}
+  </select>
+</div>
               
               <div className="flex gap-3 pt-2">
                 <button 
