@@ -627,7 +627,27 @@ export function NinhosSection({
                                 <td className="py-1.5 px-1">
                                   <select
                                     value={egg.status}
-                                    onChange={(e) => onUpdateEgg(ninho.id, idx, 'status', e.target.value)}
+                                    onChange={(e) => {
+  const novoStatus = e.target.value;
+
+  if (novoStatus === 'Chocando') {
+    setChocaModal({
+      ninhoId: ninho.id,
+      eggIdx: idx
+    });
+
+    setChocaData({
+      tipo: 'pais',
+      dataInicio: new Date().toISOString().split('T')[0],
+      casalAmasId: '',
+      localChoca: ''
+    });
+
+    return;
+  }
+
+  onUpdateEgg(ninho.id, idx, 'status', novoStatus);
+}}
                                     className={`text-[9px] font-black px-1.5 py-0.5 rounded outline-none border ${getStatusColor(egg.status)}`}
                                   >
                                     <option value="Em Espera">Em Espera</option>
