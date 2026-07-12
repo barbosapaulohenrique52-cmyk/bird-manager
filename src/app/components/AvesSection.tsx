@@ -1,4 +1,3 @@
-```tsx
 import { useState } from 'react';
 import type { Ave, ModalType } from '../App';
 
@@ -21,7 +20,7 @@ export function AvesSection({
   const [searchTerm, setSearchTerm] = useState('');
   const [showOnlyActive, setShowOnlyActive] = useState(false);
 
-  const filteredAves = aves.filter(ave => {
+  const filteredAves = aves.filter((ave) => {
     const matchesSearch =
       (ave.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (ave.ring || '').toLowerCase().includes(searchTerm.toLowerCase());
@@ -59,20 +58,14 @@ export function AvesSection({
             Plantel
           </h2>
 
-
           <div className="flex gap-2">
 
             <button
               onClick={() => setShowOnlyActive(!showOnlyActive)}
-              className={
-                showOnlyActive
-                  ? "bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-black text-[10px]"
-                  : "bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-black text-[10px]"
-              }
+              className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-black text-[10px]"
             >
               {showOnlyActive ? 'ATIVAS' : 'TODAS'}
             </button>
-
 
             <button
               onClick={() => onOpenModal('ave')}
@@ -107,7 +100,6 @@ export function AvesSection({
       </div>
 
 
-
       <div className="space-y-2">
 
         {filteredAves.map((ave) => (
@@ -117,13 +109,13 @@ export function AvesSection({
             className="bg-white rounded-xl border border-slate-100 p-2 flex items-center gap-3 shadow-sm hover:border-emerald-200 transition-colors"
           >
 
-            <div className="shrink-0 relative">
+            <div className="shrink-0">
 
               {ave.photo ? (
 
                 <img
                   src={ave.photo}
-                  className="w-10 h-10 rounded-lg object-cover cursor-pointer hover:opacity-80"
+                  className="w-10 h-10 rounded-lg object-cover cursor-pointer"
                   alt={ave.name}
                   onClick={(e) => handlePhotoClick(e, ave.photo)}
                 />
@@ -145,47 +137,32 @@ export function AvesSection({
 
                 <button
                   onClick={() => onViewDetails && onViewDetails(ave.id)}
-                  className="font-black text-[11px] text-emerald-600 hover:text-emerald-800 uppercase truncate underline cursor-pointer"
+                  className="font-black text-[11px] text-emerald-600 uppercase truncate underline"
                 >
                   {ave.name || 'S/ NOME'}
                 </button>
 
 
-                <span
-                  className={
-                    ave.status === 'Ativo'
-                      ? "text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase bg-emerald-50 text-emerald-600"
-                      : "text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase bg-rose-50 text-rose-600"
-                  }
-                >
+                <span className="text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase bg-emerald-50 text-emerald-600">
                   {ave.status}
                 </span>
 
               </div>
 
 
-              <p className="text-[8px] font-bold text-slate-400 truncate mt-0.5">
+              <p className="text-[8px] font-bold text-slate-400 truncate">
 
-                {ave.species} • 
-
-                <button
-                  onClick={() => onViewDetails && onViewDetails(ave.id)}
-                  className="text-emerald-600 hover:text-emerald-800 underline cursor-pointer"
-                >
-                  {ave.ring || 'S/A'}
-                </button>
-
-                • {ave.ringYear || '--'}
+                {ave.species} • {ave.ring || 'S/A'} • {ave.ringYear || '--'}
 
               </p>
+
 
             </div>
 
 
             <button
               onClick={() => onOpenModal('ave', ave.id)}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg font-black text-[10px]"
-              title="Editar"
+              className="bg-slate-100 text-slate-700 px-2 py-1 rounded-lg text-[10px]"
             >
               <i className="fas fa-edit"></i>
             </button>
@@ -193,8 +170,7 @@ export function AvesSection({
 
             <button
               onClick={(e) => handleDelete(e, ave.id)}
-              className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-lg font-black text-[10px]"
-              title="Excluir"
+              className="bg-red-500 text-white px-2 py-1 rounded-lg text-[10px]"
             >
               <i className="fas fa-trash-alt"></i>
             </button>
