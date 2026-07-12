@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { CasalSelector } from './CasalSelector';
 import type { ModalType, Ave, Casal, Config } from '../App';
 
 interface ColorLists {
@@ -53,6 +54,7 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
   const [novoCasalFemea, setNovoCasalFemea] = useState('');
   const [novoCasalGaiola, setNovoCasalGaiola] = useState('');
   const [casalCriado, setCasalCriado] = useState<string | null>(null);
+  const [selectedCasalNinho, setSelectedCasalNinho] = useState('');
   
   // Estados para criar nova espécie
   const [criarEspecieModal, setCriarEspecieModal] = useState(false);
@@ -379,27 +381,20 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
     Selecionar Casal
   </label>
 
-  <select
-    name="casalId"
-    className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm"
-  >
-    <option value="">Sem Casal Associado</option>
+  <CasalSelector
+  casais={casais}
+  aves={aves}
+  value={selectedCasalNinho}
+  onChange={(casalId) => setSelectedCasalNinho(casalId)}
+  placeholder="Selecione o casal"
+/>
 
-    {casais.map(c => {
-      const macho = aves.find(a => a.id === c.mId);
-      const femea = aves.find(a => a.id === c.fId);
-
-      return (
-        <option key={c.id} value={c.id}>
-          {macho?.ring || macho?.name || 'Macho'}
-          {" + "}
-          {femea?.ring || femea?.name || 'Fêmea'}
-          {c.cage ? ` - ${c.cage}` : ''}
-        </option>
-      );
-    })}
-  </select>
-</div>
+<input
+  type="hidden"
+  name="casalId"
+  value={selectedCasalNinho}
+/>
+              </div>
               
               <div className="flex gap-3 pt-2">
                 <button 
