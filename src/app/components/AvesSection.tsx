@@ -48,11 +48,11 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
           <div className="flex gap-2">
             <button
               onClick={() => setShowOnlyActive(!showOnlyActive)}
-              className={`px-4 py-2.5 rounded-xl font-black text-[10px] transition-all ${
+              className={
                 showOnlyActive
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-slate-200 text-slate-700'
-              }`}
+                  ? "px-4 py-2.5 rounded-xl font-black text-[10px] transition-all bg-emerald-600 text-white"
+                  : "px-4 py-2.5 rounded-xl font-black text-[10px] transition-all bg-slate-200 text-slate-700"
+              }
             >
               {showOnlyActive ? 'ATIVAS' : 'TODAS'}
             </button>
@@ -65,10 +65,11 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
             </button>
           </div>
         </div>
-        
+
         <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
           <div className="relative">
             <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+
             <input
               type="text"
               value={searchTerm}
@@ -79,7 +80,7 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
           </div>
         </div>
       </div>
-      
+
       <div className="space-y-2">
         {filteredAves.map((ave) => (
           <div
@@ -90,7 +91,7 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
               {ave.photo ? (
                 <img
                   src={ave.photo}
-                  className="w-10 w-10 h-10 rounded-lg object-cover cursor-pointer hover:opacity-80"
+                  className="w-10 h-10 rounded-lg object-cover cursor-pointer hover:opacity-80"
                   alt={ave.name}
                   onClick={(e) => handlePhotoClick(e, ave.photo)}
                 />
@@ -100,9 +101,15 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
                 </div>
               )}
 
-              <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
-                ave.sex === 'Macho' ? 'bg-blue-500' : ave.sex === 'Fêmea' ? 'bg-pink-500' : 'bg-slate-400'
-              }`}></div>
+              <div
+                className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
+                  ave.sex === 'Macho'
+                    ? 'bg-blue-500'
+                    : ave.sex === 'Fêmea'
+                    ? 'bg-pink-500'
+                    : 'bg-slate-400'
+                }`}
+              ></div>
             </div>
 
             <div className="flex-1 min-w-0">
@@ -114,22 +121,26 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
                   {ave.name || 'S/ NOME'}
                 </button>
 
-                <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase ${
-                  ave.status === 'Ativo'
-                    ? 'bg-emerald-50 text-emerald-600'
-                    : 'bg-rose-50 text-rose-600'
-                }`}>
+                <span
+                  className={`text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase ${
+                    ave.status === 'Ativo'
+                      ? 'bg-emerald-50 text-emerald-600'
+                      : 'bg-rose-50 text-rose-600'
+                  }`}
+                >
                   {ave.status}
                 </span>
               </div>
 
               <p className="text-[8px] font-bold text-slate-400 truncate mt-0.5">
-                {ave.species} • <button
+                {ave.species} •{' '}
+                <button
                   onClick={() => onViewDetails && onViewDetails(ave.id)}
                   className="text-emerald-600 hover:text-emerald-800 underline cursor-pointer"
                 >
                   {ave.ring || 'S/A'}
-                </button> • {ave.ringYear || '--'}
+                </button>{' '}
+                • {ave.ringYear || '--'}
               </p>
             </div>
 
