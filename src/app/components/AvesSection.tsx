@@ -1,3 +1,4 @@
+```tsx
 import { useState } from 'react';
 import type { Ave, ModalType } from '../App';
 
@@ -11,19 +12,26 @@ interface AvesSectionProps {
 
 export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onViewDetails }: AvesSectionProps) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [showOnlyActive, setShowOnlyActive] = useState(false);
 
-  const filteredAves = aves.filter(ave => 
-    (ave.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (ave.ring || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredAves = aves.filter(ave => {
+    const matchesSearch =
+      (ave.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (ave.ring || '').toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus =
+      !showOnlyActive || ave.status === 'Ativo';
+
+    return matchesSearch && matchesStatus;
+  });
 
   const handleDelete = (e: React.MouseEvent, aveId: string) => {
-    e.stopPropagation(); // Evita abrir o modal ao clicar no botão delete
+    e.stopPropagation();
     onDeleteAve(aveId);
   };
 
   const handlePhotoClick = (e: React.MouseEvent, photoUrl: string) => {
-    e.stopPropagation(); // Evita abrir o modal ao clicar na foto
+    e.stopPropagation();
     if (onPhotoClick) {
       onPhotoClick(photoUrl);
     }
@@ -36,12 +44,26 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
           <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase italic">
             Plantel
           </h2>
-          <button
-            onClick={() => onOpenModal('ave')}
-            className="bg-slate-800 text-white px-5 py-2.5 rounded-xl font-black text-[10px]"
-          >
-            ADICIONAR AVE
-          </button>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowOnlyActive(!showOnlyActive)}
+              className={`px-4 py-2.5 rounded-xl font-black text-[10px] transition-all ${
+                showOnlyActive
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-slate-200 text-slate-700'
+              }`}
+            >
+              {showOnlyActive ? 'ATIVAS' : 'TODAS'}
+            </button>
+
+            <button
+              onClick={() => onOpenModal('ave')}
+              className="bg-slate-800 text-white px-5 py-2.5 rounded-xl font-black text-[10px]"
+            >
+              ADICIONAR AVE
+            </button>
+          </div>
         </div>
         
         <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
@@ -68,7 +90,7 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
               {ave.photo ? (
                 <img
                   src={ave.photo}
-                  className="w-10 h-10 rounded-lg object-cover cursor-pointer hover:opacity-80"
+                  className="w-10 w-10 h-10 rounded-lg object-cover cursor-pointer hover:opacity-80"
                   alt={ave.name}
                   onClick={(e) => handlePhotoClick(e, ave.photo)}
                 />
@@ -77,6 +99,7 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
                   <i className="fas fa-kiwi-bird text-xs"></i>
                 </div>
               )}
+
               <div className={`absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${
                 ave.sex === 'Macho' ? 'bg-blue-500' : ave.sex === 'Fêmea' ? 'bg-pink-500' : 'bg-slate-400'
               }`}></div>
@@ -90,6 +113,7 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
                 >
                   {ave.name || 'S/ NOME'}
                 </button>
+
                 <span className={`text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase ${
                   ave.status === 'Ativo'
                     ? 'bg-emerald-50 text-emerald-600'
@@ -98,6 +122,7 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
                   {ave.status}
                 </span>
               </div>
+
               <p className="text-[8px] font-bold text-slate-400 truncate mt-0.5">
                 {ave.species} • <button
                   onClick={() => onViewDetails && onViewDetails(ave.id)}
@@ -107,6 +132,7 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
                 </button> • {ave.ringYear || '--'}
               </p>
             </div>
+
             <button
               onClick={() => onOpenModal('ave', ave.id)}
               className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg font-black text-[10px] transition-all"
@@ -114,6 +140,7 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
             >
               <i className="fas fa-edit"></i>
             </button>
+
             <button
               onClick={(e) => handleDelete(e, ave.id)}
               className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-lg font-black text-[10px] transition-all"
@@ -127,3 +154,4 @@ export function AvesSection({ aves, onOpenModal, onDeleteAve, onPhotoClick, onVi
     </section>
   );
 }
+```
