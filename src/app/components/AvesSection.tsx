@@ -21,14 +21,13 @@ export function AvesSection({
   const [searchTerm, setSearchTerm] = useState('');
   const [showOnlyActive, setShowOnlyActive] = useState(false);
 
-  const filteredAves = aves.filter((ave) => {
-
+  const filteredAves = aves.filter(ave => {
     const matchesSearch =
       (ave.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (ave.ring || '').toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus =
-      showOnlyActive ? ave.status === 'Ativo' : true;
+      !showOnlyActive || ave.status === 'Ativo';
 
     return matchesSearch && matchesStatus;
   });
@@ -93,7 +92,6 @@ export function AvesSection({
 
             <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
 
-
             <input
               type="text"
               value={searchTerm}
@@ -119,9 +117,7 @@ export function AvesSection({
             className="bg-white rounded-xl border border-slate-100 p-2 flex items-center gap-3 shadow-sm hover:border-emerald-200 transition-colors"
           >
 
-
             <div className="shrink-0 relative">
-
 
               {ave.photo ? (
 
@@ -140,28 +136,12 @@ export function AvesSection({
 
               )}
 
-
-
-              <div
-                className={
-                  ave.sex === 'Macho'
-                    ? "absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white bg-blue-500"
-                    : ave.sex === 'Fêmea'
-                    ? "absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white bg-pink-500"
-                    : "absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white bg-slate-400"
-                }
-              ></div>
-
-
             </div>
-
-
 
 
             <div className="flex-1 min-w-0">
 
               <div className="flex justify-between items-center">
-
 
                 <button
                   onClick={() => onViewDetails && onViewDetails(ave.id)}
@@ -169,7 +149,6 @@ export function AvesSection({
                 >
                   {ave.name || 'S/ NOME'}
                 </button>
-
 
 
                 <span
@@ -182,15 +161,12 @@ export function AvesSection({
                   {ave.status}
                 </span>
 
-
               </div>
-
 
 
               <p className="text-[8px] font-bold text-slate-400 truncate mt-0.5">
 
-                {ave.species} •
-
+                {ave.species} • 
 
                 <button
                   onClick={() => onViewDetails && onViewDetails(ave.id)}
@@ -199,35 +175,29 @@ export function AvesSection({
                   {ave.ring || 'S/A'}
                 </button>
 
-
                 • {ave.ringYear || '--'}
 
               </p>
 
-
             </div>
-
-
 
 
             <button
               onClick={() => onOpenModal('ave', ave.id)}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg font-black text-[10px] transition-all"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1 rounded-lg font-black text-[10px]"
               title="Editar"
             >
               <i className="fas fa-edit"></i>
             </button>
 
 
-
             <button
               onClick={(e) => handleDelete(e, ave.id)}
-              className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-lg font-black text-[10px] transition-all"
+              className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-lg font-black text-[10px]"
               title="Excluir"
             >
               <i className="fas fa-trash-alt"></i>
             </button>
-
 
 
           </div>
@@ -235,7 +205,6 @@ export function AvesSection({
         ))}
 
       </div>
-
 
     </section>
   );
