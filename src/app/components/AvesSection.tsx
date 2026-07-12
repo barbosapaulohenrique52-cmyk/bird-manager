@@ -21,24 +21,31 @@ export function AvesSection({
   const [showOnlyActive, setShowOnlyActive] = useState(false);
 
   const filteredAves = aves.filter((ave) => {
-    const matchesSearch =
+
+    const searchMatch =
       (ave.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (ave.ring || '').toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus =
+    const statusMatch =
       !showOnlyActive || ave.status === 'Ativo';
 
-    return matchesSearch && matchesStatus;
+    return searchMatch && statusMatch;
   });
 
 
-  const handleDelete = (e: React.MouseEvent, aveId: string) => {
+  const handleDelete = (
+    e: React.MouseEvent,
+    aveId: string
+  ) => {
     e.stopPropagation();
     onDeleteAve(aveId);
   };
 
 
-  const handlePhotoClick = (e: React.MouseEvent, photoUrl: string) => {
+  const handlePhotoClick = (
+    e: React.MouseEvent,
+    photoUrl: string
+  ) => {
     e.stopPropagation();
 
     if (onPhotoClick) {
@@ -58,6 +65,7 @@ export function AvesSection({
             Plantel
           </h2>
 
+
           <div className="flex gap-2">
 
             <button
@@ -66,6 +74,7 @@ export function AvesSection({
             >
               {showOnlyActive ? 'ATIVAS' : 'TODAS'}
             </button>
+
 
             <button
               onClick={() => onOpenModal('ave')}
@@ -81,19 +90,13 @@ export function AvesSection({
 
         <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
 
-          <div className="relative">
-
-            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por nome ou anilha..."
-              className="w-full bg-slate-50 border-none rounded-xl py-3 pl-10 pr-4 text-[11px] font-bold uppercase outline-none ring-1 ring-slate-100 focus:ring-emerald-500 transition-all"
-            />
-
-          </div>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Buscar por nome ou anilha..."
+            className="w-full bg-slate-50 rounded-xl py-3 px-4 text-[11px] font-bold uppercase outline-none"
+          />
 
         </div>
 
@@ -106,24 +109,24 @@ export function AvesSection({
 
           <div
             key={ave.id}
-            className="bg-white rounded-xl border border-slate-100 p-2 flex items-center gap-3 shadow-sm hover:border-emerald-200 transition-colors"
+            className="bg-white rounded-xl border border-slate-100 p-2 flex items-center gap-3 shadow-sm"
           >
 
-            <div className="shrink-0">
+            <div>
 
               {ave.photo ? (
 
                 <img
                   src={ave.photo}
-                  className="w-10 h-10 rounded-lg object-cover cursor-pointer"
                   alt={ave.name}
+                  className="w-10 h-10 rounded-lg object-cover cursor-pointer"
                   onClick={(e) => handlePhotoClick(e, ave.photo)}
                 />
 
               ) : (
 
-                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center text-slate-300">
-                  <i className="fas fa-kiwi-bird text-xs"></i>
+                <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <i className="fas fa-kiwi-bird"></i>
                 </div>
 
               )}
@@ -133,36 +136,29 @@ export function AvesSection({
 
             <div className="flex-1 min-w-0">
 
-              <div className="flex justify-between items-center">
-
-                <button
-                  onClick={() => onViewDetails && onViewDetails(ave.id)}
-                  className="font-black text-[11px] text-emerald-600 uppercase truncate underline"
-                >
-                  {ave.name || 'S/ NOME'}
-                </button>
+              <button
+                onClick={() => onViewDetails && onViewDetails(ave.id)}
+                className="font-black text-[11px] text-emerald-600 uppercase underline"
+              >
+                {ave.name || 'S/NOME'}
+              </button>
 
 
-                <span className="text-[7px] font-black px-1.5 py-0.5 rounded-md uppercase bg-emerald-50 text-emerald-600">
-                  {ave.status}
-                </span>
-
-              </div>
-
-
-              <p className="text-[8px] font-bold text-slate-400 truncate">
-
+              <p className="text-[8px] text-slate-400 font-bold">
                 {ave.species} • {ave.ring || 'S/A'} • {ave.ringYear || '--'}
-
               </p>
 
+
+              <span className="text-[8px] font-black">
+                {ave.status}
+              </span>
 
             </div>
 
 
             <button
               onClick={() => onOpenModal('ave', ave.id)}
-              className="bg-slate-100 text-slate-700 px-2 py-1 rounded-lg text-[10px]"
+              className="bg-slate-100 px-2 py-1 rounded-lg"
             >
               <i className="fas fa-edit"></i>
             </button>
@@ -170,7 +166,7 @@ export function AvesSection({
 
             <button
               onClick={(e) => handleDelete(e, ave.id)}
-              className="bg-red-500 text-white px-2 py-1 rounded-lg text-[10px]"
+              className="bg-red-500 text-white px-2 py-1 rounded-lg"
             >
               <i className="fas fa-trash-alt"></i>
             </button>
@@ -185,4 +181,3 @@ export function AvesSection({
     </section>
   );
 }
-```
