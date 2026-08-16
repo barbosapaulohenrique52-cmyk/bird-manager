@@ -1,7 +1,64 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Ninho, Casal, Egg, ModalType, Config, Ave } from '../App';
 import { CasalSelector } from './CasalSelector';
 import { AveSelector } from './AveSelector';
+
+// Formata datas para a visualização compacta: DD/MM/AA.
+// Mantém sempre dois dígitos para dia e mês.
+const formatarDataCurta = (value?: string | null): string => {
+  if (!value) return '--';
+
+  const match = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (match) {
+    const [, ano, mes, dia] = match;
+    return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano.slice(-2)}`;
+  }
+
+  const data = new Date(value);
+  if (Number.isNaN(data.getTime())) return value;
+
+  const dia = String(data.getDate()).padStart(2, '0');
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const ano = String(data.getFullYear()).slice(-2);
+  return `${dia}/${mes}/${ano}`;
+};
+
+interface DataCompactaProps {
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+  ariaLabel?: string;
+}
+
+// Exibe DD/MM/AA, mas mantém o seletor nativo de calendário para edição.
+function DataCompacta({
+  value,
+  onChange,
+  className = '',
+  ariaLabel = 'Selecionar data'
+}: DataCompactaProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className={`relative ${className}`}>
+      <div className="flex items-center justify-between gap-1 w-full h-full">
+        <span className="truncate">
+          {formatarDataCurta(value)}
+        </span>
+        <i className="fas fa-calendar text-slate-400 text-[8px] shrink-0"></i>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="date"
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={ariaLabel}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+      />
+    </div>
+  );
+}
 
 interface NinhosSectionProps {
   ninhos: Ninho[];
@@ -520,11 +577,11 @@ export function NinhosSection({
                             <tr key={`${ninho.id}-${egg.id || eggIdx}`} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                               {/* Data Postura */}
                               <td className="py-1.5 px-1">
-                                <input
-                                  type="date"
+                                <DataCompacta
                                   value={egg.postura || ''}
-                                  onChange={(e) => onUpdateEgg(ninho.id, eggIdx, 'postura', e.target.value)}
-                                  className="text-[9px] font-bold text-slate-700 bg-transparent outline-none border border-slate-200 rounded px-1 py-0.5 w-28"
+                                  onChange={(value) => onUpdateEgg(ninho.id, eggIdx, 'postura', value)}
+                                  className="text-[9px] font-bold text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-1 w-24 h-7"
+                                  ariaLabel="Data da postura"
                                 />
                               </td>
 
@@ -801,11 +858,11 @@ export function NinhosSection({
                                   </button>
                                 ) : (
                                   <div className="flex flex-col gap-1">
-                                    <input
-                                      type="date"
+                                    <DataCompacta
                                       value={egg.inicioChoca || ''}
-                                      onChange={(e) => onUpdateEgg(ninho.id, eggIdx, 'inicioChoca', e.target.value)}
-                                      className="text-[10px] font-bold text-slate-700 bg-transparent outline-none border border-slate-200 rounded-lg px-2 py-1"
+                                      onChange={(value) => onUpdateEgg(ninho.id, eggIdx, 'inicioChoca', value)}
+                                      className="text-[10px] font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-1 w-24 h-7"
+                                      ariaLabel="Data de início da choca"
                                     />
                                     {egg.casalChocandoId && egg.casalChocandoId !== ninho.casalId && (
                                       <span className="text-[8px] font-black text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
@@ -830,7 +887,7 @@ export function NinhosSection({
                                         </span>
                                       )}
                                       <span className="text-[9px] font-bold text-slate-600">
-                                        {new Date(dataFertilidade).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                        {formatarDataCurta(dataFertilidade)}
                                       </span>
                                       {egg.status === 'Chocando' && (
                                         <div className="flex items-center gap-2">
@@ -897,8 +954,8 @@ export function NinhosSection({
                                       )}
                                       <span className="text-[10px] font-bold text-slate-600">
                                         {egg.status === 'Eclodido' && egg.dataEclosao
-                                          ? new Date(egg.dataEclosao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-                                          : new Date(dataEclosao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                                          ? formatarDataCurta(egg.dataEclosao)
+                                          : formatarDataCurta(dataEclosao)
                                         }
                                       </span>
                                       {(egg.status === 'Chocando' || egg.status === 'Fértil' || egg.status === 'Eclodido') && (
@@ -935,7 +992,7 @@ export function NinhosSection({
                               <td className="py-1.5 px-1">
                                 {dataAnilhamento ? (
                                   <div className="text-[10px] font-bold text-slate-600">
-                                    {new Date(dataAnilhamento).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                    {formatarDataCurta(dataAnilhamento)}
                                   </div>
                                 ) : (
                                   <span className="text-[10px] text-slate-400">--</span>
@@ -1019,11 +1076,11 @@ export function NinhosSection({
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                   Data de Eclosão
                 </label>
-                <input
-                  type="date"
+                <DataCompacta
                   value={dataEclosao}
-                  onChange={(e) => setDataEclosao(e.target.value)}
-                  className="w-full border-2 border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-emerald-500"
+                  onChange={setDataEclosao}
+                  className="w-full h-12 border-2 border-slate-200 p-3 rounded-xl text-sm font-bold bg-white outline-none focus-within:border-emerald-500"
+                  ariaLabel="Data de eclosão"
                 />
                 <p className="text-[9px] text-slate-400 mt-1">Padrão: dia vigente</p>
               </div>
@@ -1061,11 +1118,11 @@ export function NinhosSection({
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                   Data de Início
                 </label>
-                <input
-                  type="date"
+                <DataCompacta
                   value={chocaData.dataInicio}
-                  onChange={(e) => setChocaData({ ...chocaData, dataInicio: e.target.value })}
-                  className="w-full border-2 border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-indigo-500"
+                  onChange={(value) => setChocaData({ ...chocaData, dataInicio: value })}
+                  className="w-full h-12 border-2 border-slate-200 p-3 rounded-xl text-sm font-bold bg-white outline-none focus-within:border-indigo-500"
+                  ariaLabel="Data de início da choca"
                 />
                 <p className="text-[9px] text-slate-400 mt-1">Padrão: dia vigente</p>
               </div>
@@ -1352,11 +1409,11 @@ export function NinhosSection({
                     <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                       Nova Data
                     </label>
-                    <input
-                      type="date"
+                    <DataCompacta
                       value={loteData}
-                      onChange={(e) => setLoteData(e.target.value)}
-                      className="w-full border-2 border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-amber-500"
+                      onChange={setLoteData}
+                      className="w-full h-12 border-2 border-slate-200 p-3 rounded-xl text-sm font-bold bg-white outline-none focus-within:border-amber-500"
+                      ariaLabel="Nova data"
                     />
                   </div>
                 )}
