@@ -60,6 +60,131 @@ function DataCompacta({
   );
 }
 
+
+interface StatusSelectorProps {
+  status: Egg['status'];
+  onChange: (status: Egg['status']) => void;
+  onChocar: () => void;
+}
+
+function StatusIcon({ status }: { status: Egg['status'] }) {
+  if (status === 'Em Espera') {
+    return <span className="text-[14px] leading-none" title="Em Espera">⏳</span>;
+  }
+
+  if (status === 'Eclodido') {
+    return <span className="text-[16px] leading-none" title="Eclodido">🐣</span>;
+  }
+
+  if (status === 'Perdido') {
+    return <span className="text-[14px] leading-none" title="Perdido">⚠️</span>;
+  }
+
+  return (
+    <svg
+      width="22"
+      height="25"
+      viewBox="0 0 28 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label={status}
+      role="img"
+    >
+      {/* Ovo */}
+      <path
+        d="M14 2.5C9.1 2.5 4.5 11.5 4.5 19.3C4.5 25.5 8.5 29.5 14 29.5C19.5 29.5 23.5 25.5 23.5 19.3C23.5 11.5 18.9 2.5 14 2.5Z"
+        fill={status === 'Fértil' ? '#FFF7ED' : 'white'}
+        stroke={status === 'Chocando' ? '#C2410C' : status === 'Fértil' ? '#F59E0B' : '#64748B'}
+        strokeWidth="1.7"
+      />
+
+      {/* Gema do ovo fértil */}
+      {status === 'Fértil' && (
+        <circle
+          cx="14"
+          cy="19"
+          r="5"
+          fill="#F59E0B"
+          stroke="#D97706"
+          strokeWidth="1"
+        />
+      )}
+
+      {/* Ave sobre o ovo quando está chocando */}
+      {status === 'Chocando' && (
+        <>
+          <circle cx="14" cy="5.5" r="3.2" fill="#FBBF24" />
+          <ellipse cx="14" cy="9.2" rx="5.2" ry="3.1" fill="#FBBF24" />
+          <circle cx="15.1" cy="5" r="0.65" fill="#1E293B" />
+          <path d="M17.2 6L20 7.2L17.2 8Z" fill="#F97316" />
+          <path d="M10.5 8.2L7.5 6.7L8.4 9.6Z" fill="#F59E0B" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+function StatusSelector({ status, onChange, onChocar }: StatusSelectorProps) {
+  const [open, setOpen] = useState(false);
+
+  const opcoes: Array<{ value: Egg['status']; label: string }> = [
+    { value: 'Em Espera', label: 'Em Espera' },
+    { value: 'Chocando', label: 'Chocando' },
+    { value: 'Fértil', label: 'Fértil' },
+    { value: 'Infértil', label: 'Infértil' },
+    { value: 'Eclodido', label: 'Eclodido' },
+    { value: 'Perdido', label: 'Perdido' },
+  ];
+
+  const selecionar = (novoStatus: Egg['status']) => {
+    setOpen(false);
+
+    if (novoStatus === 'Chocando') {
+      onChocar();
+      return;
+    }
+
+    onChange(novoStatus);
+  };
+
+  return (
+    <div className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((valor) => !valor)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        className="w-9 h-9 flex items-center justify-center rounded border border-slate-200 bg-white hover:bg-slate-50 transition-colors"
+        title={status}
+        aria-label={`Status: ${status}`}
+      >
+        <StatusIcon status={status} />
+      </button>
+
+      {open && (
+        <div className="absolute z-40 top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-1 min-w-[125px]">
+          {opcoes.map((opcao) => (
+            <button
+              key={opcao.value}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => selecionar(opcao.value)}
+              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[9px] font-bold hover:bg-slate-50 ${
+                status === opcao.value ? 'bg-slate-100' : ''
+              }`}
+              title={opcao.label}
+            >
+              <span className="w-6 flex justify-center">
+                <StatusIcon status={opcao.value} />
+              </span>
+              <span>{opcao.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface NinhosSectionProps {
   ninhos: Ninho[];
   casais: Casal[];
@@ -805,38 +930,25 @@ export function NinhosSection({
 
                               {/* Status */}
                               <td className="py-1.5 px-1">
-                                <select
-                                  value={egg.status}
-                                  onChange={(e) => {
-                                    const novoStatus = e.target.value;
+                                <StatusSelector
+                                  status={egg.status}
+                                  onChange={(novoStatus) =>
+                                    onUpdateEgg(ninho.id, eggIdx, 'status', novoStatus)
+                                  }
+                                  onChocar={() => {
+                                    setChocaModal({
+                                      ninhoId: ninho.id,
+                                      eggIdx
+                                    });
 
-                                    if (novoStatus === 'Chocando') {
-                                      setChocaModal({
-                                        ninhoId: ninho.id,
-                                        eggIdx
-                                      });
-
-                                      setChocaData({
-                                        tipo: 'pais',
-                                        dataInicio: new Date().toISOString().split('T')[0],
-                                        casalAmasId: '',
-                                        localChoca: ''
-                                      });
-
-                                      return;
-                                    }
-
-                                    onUpdateEgg(ninho.id, eggIdx, 'status', novoStatus);
+                                    setChocaData({
+                                      tipo: 'pais',
+                                      dataInicio: new Date().toISOString().split('T')[0],
+                                      casalAmasId: '',
+                                      localChoca: ''
+                                    });
                                   }}
-                                  className={`text-[9px] font-black px-1.5 py-0.5 rounded outline-none border ${getStatusColor(egg.status)}`}
-                                >
-                                  <option value="Em Espera">Em Espera</option>
-                                  <option value="Chocando">Chocando</option>
-                                  <option value="Fértil">Fértil</option>
-                                  <option value="Infértil">Infértil</option>
-                                  <option value="Eclodido">Eclodido</option>
-                                  <option value="Perdido">Perdido</option>
-                                </select>
+                                />
                               </td>
 
                               {/* Início Choca */}
