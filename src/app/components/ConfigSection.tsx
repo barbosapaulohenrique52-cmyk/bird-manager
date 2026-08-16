@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { Config } from "../App";
 
 interface Props {
@@ -16,15 +16,13 @@ export function ConfigSection({
   onExport,
   onImport,
   onClear,
-  onRestoreBackup,
 }: Props) {
   const [novoLocal, setNovoLocal] = useState("");
   const [novoEspecie, setNovoEspecie] = useState("");
 
-  /*
-   * Garante que a lista exista mesmo se o usuário
-   * estiver trabalhando com uma configuração antiga.
-   */
+  // Referência para o campo de seleção de arquivo
+  const inputArquivoRef = useRef<HTMLInputElement>(null);
+
   const locaisOvos = Array.isArray(config.locaisOvos)
     ? config.locaisOvos
     : [];
@@ -36,10 +34,6 @@ export function ConfigSection({
       return;
     }
 
-    /*
-     * Evita cadastrar dois locais com o mesmo nome,
-     * ignorando diferenças entre maiúsculas e minúsculas.
-     */
     const jaExiste = locaisOvos.some(
       (item) => item.toLowerCase() === local.toLowerCase()
     );
@@ -72,6 +66,43 @@ export function ConfigSection({
         (local) => local !== localParaExcluir
       ),
     });
+  };
+
+  const selecionarArquivo = () => {
+    inputArquivoRef.current?.click();
+  };
+
+  const importarArquivo = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const arquivo = e.target.files?.[0];
+
+    if (!arquivo) {
+      return;
+    }
+
+    if (
+      arquivo.type !== "application/json" &&
+      !arquivo.name.toLowerCase().endsWith(".json")
+    ) {
+      alert("Selecione um arquivo de backup .json.");
+      e.target.value = "";
+      return;
+    }
+
+    const confirmar = confirm(
+      "ATENÇÃO!\n\nA importação do backup irá substituir os dados atuais deste dispositivo pelos dados do arquivo selecionado.\n\nDeseja continuar?"
+    );
+
+    if (!confirmar) {
+      e.target.value = "";
+      return;
+    }
+
+    onImport(arquivo);
+
+    // Permite selecionar novamente o mesmo arquivo posteriormente
+    e.target.value = "";
   };
 
   return (
@@ -146,8 +177,6 @@ export function ConfigSection({
             onChange={(e) =>
               setNovoEspecie(e.target.value)
             }
-            placeholder="Digite o nome da espécie..."
-            className="border rounded px-2 py-1 flex-1"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 const especie =
@@ -168,6 +197,8 @@ export function ConfigSection({
                 setNovoEspecie("");
               }
             }}
+            placeholder="Digite o nome da espécie..."
+            className="border rounded px-2 py-1 flex-1"
           />
 
           <button
@@ -202,9 +233,7 @@ export function ConfigSection({
         </div>
       </div>
 
-      {/* ============================================================
-          LOCAIS DE OVOS
-          ============================================================ */}
+      {/* Locais de ovos */}
       <div className="bg-white shadow rounded p-4">
         <h2 className="text-lg font-bold mb-2">
           Locais de ovos
@@ -237,7 +266,6 @@ export function ConfigSection({
           ))}
         </div>
 
-        {/* Quando ainda não existem locais */}
         {locaisOvos.length === 0 && (
           <div className="border border-dashed rounded p-4 text-center text-sm text-slate-400 mt-2">
             Nenhum local cadastrado.
@@ -277,36 +305,54 @@ export function ConfigSection({
 
       {/* Backup */}
       <div className="bg-white shadow rounded p-4">
-        <h2 className="text-lg font-bold mb-2">
+        <h2 className="text-lg font-bold mb-3">
           Backup
         </h2>
 
-        <div className="flex gap-2">
+        {/* Campo real de arquivo - fica oculto */}
+        <input
+          ref={inputArquivoRef}
+          type="file"
+          accept=".json,application/json"
+          onChange={importarArquivo}
+          className="hidden"
+        />
+
+        <div className="flex flex-wrap gap-2">
+          {/* Exportar */}
           <button
-            className="bg-blue-600 text-white px-3 py-1 rounded"
+            type="button"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold"
             onClick={onExport}
           >
-            Exportar
+            ↓ EXPORTAR BACKUP
           </button>
 
-          <input
-            type="file"
-            accept="application/json"
-            onChange={(e) => {
-              if (e.target.files?.[0]) {
-                onImport(
-                  e.target.files[0]
-                );
-              }
-            }}
-          />
-
+          {/* Importar */}
           <button
-            className="bg-red-600 text-white px-3 py-1 rounded"
+            type="button"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded font-bold"
+            onClick={selecionarArquivo}
+          >
+            ↑ IMPORTAR BACKUP
+          </button>
+
+          {/* Limpar tudo */}
+          <button
+            type="button"
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-bold"
             onClick={onClear}
           >
-            Limpar tudo
+            LIMPAR TUDO
           </button>
+        </div>
+
+        <div className="mt-3 text-sm text-slate-500">
+          Use <strong>Exportar Backup</strong> para salvar
+          seus dados em um arquivo .json.
+          <br />
+          Use <strong>Importar Backup</strong> para restaurar
+          os dados em outro celular ou computador.
         </div>
       </div>
     </div>
