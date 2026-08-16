@@ -23,7 +23,7 @@ export function ConfigSection({
 
   return (
     <div className="space-y-6">
-      {/* Prazo de alerta */}
+      {/* Configurações gerais */}
       <div className="bg-white shadow rounded p-4">
         <h2 className="text-lg font-bold mb-2">Configurações Gerais</h2>
         <label className="block mb-2">
@@ -42,97 +42,34 @@ export function ConfigSection({
         </label>
       </div>
 
-      {/* Espécies */}
+      {/* Espécies cadastradas */}
       <div className="bg-white shadow rounded p-4">
-        <h2 className="text-lg font-bold mb-2">Espécies</h2>
-        <ul className="list-disc pl-6">
+        <h2 className="text-lg font-bold mb-2">Espécies cadastradas</h2>
+        <div className="space-y-2">
           {config.especies.map((esp) => (
-            <li key={esp}>{esp}</li>
+            <div
+              key={esp}
+              className="flex items-center justify-between border rounded px-3 py-2"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🐦</span>
+                <span>{esp}</span>
+              </div>
+              <button
+                className="text-red-500 font-bold"
+                onClick={() =>
+                  onSaveConfig({
+                    ...config,
+                    especies: config.especies.filter((e) => e !== esp),
+                  })
+                }
+              >
+                x
+              </button>
+            </div>
           ))}
-        </ul>
-        <div className="flex gap-2 mt-2">
+        </div>
+        <div className="flex gap-2 mt-3">
           <input
             type="text"
-            value={novoEspecie}
-            onChange={(e) => setNovoEspecie(e.target.value)}
-            placeholder="Nova espécie"
-            className="border rounded px-2 py-1 flex-1"
-          />
-          <button
-            className="bg-green-500 text-white px-3 py-1 rounded"
-            onClick={() => {
-              if (!novoEspecie.trim()) return;
-              onSaveConfig({
-                ...config,
-                especies: [...config.especies, novoEspecie.trim()],
-              });
-              setNovoEspecie("");
-            }}
-          >
-            Adicionar
-          </button>
-        </div>
-      </div>
-
-      {/* Locais de ovos */}
-      <div className="bg-white shadow rounded p-4">
-        <h2 className="text-lg font-bold mb-2">Locais de ovos</h2>
-        <ul className="list-disc pl-6">
-          {config.locaisOvos?.map((local) => (
-            <li key={local}>{local}</li>
-          ))}
-        </ul>
-        <div className="flex gap-2 mt-2">
-          <input
-            type="text"
-            value={novoLocal}
-            onChange={(e) => setNovoLocal(e.target.value)}
-            placeholder="Novo local"
-            className="border rounded px-2 py-1 flex-1"
-          />
-          <button
-            className="bg-blue-500 text-white px-3 py-1 rounded"
-            onClick={() => {
-              if (!novoLocal.trim()) return;
-              onSaveConfig({
-                ...config,
-                locaisOvos: [...(config.locaisOvos || []), novoLocal.trim()],
-              });
-              setNovoLocal("");
-            }}
-          >
-            Adicionar
-          </button>
-        </div>
-      </div>
-
-      {/* Backup */}
-      <div className="bg-white shadow rounded p-4">
-        <h2 className="text-lg font-bold mb-2">Backup</h2>
-        <div className="flex gap-2">
-          <button
-            className="bg-blue-600 text-white px-3 py-1 rounded"
-            onClick={onExport}
-          >
-            Exportar
-          </button>
-          <input
-            type="file"
-            accept="application/json"
-            onChange={(e) => {
-              if (e.target.files?.[0]) {
-                onImport(e.target.files[0]);
-              }
-            }}
-          />
-          <button
-            className="bg-red-600 text-white px-3 py-1 rounded"
-            onClick={onClear}
-          >
-            Limpar tudo
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+            value={novoEspec
