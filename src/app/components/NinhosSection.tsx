@@ -655,17 +655,31 @@ export function NinhosSection({
 
                               {/* Origem / Casal */}
                               <td className="py-1.5 px-1">
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-[9px] font-black text-slate-700 uppercase">
+                                <div className="flex flex-col gap-0.5 min-w-[150px]">
+                                  <span className="text-[8px] font-black text-slate-400 uppercase">
                                     {ninho.name || 'Ninho s/ nome'}
                                   </span>
-                                  {casal ? (
-                                    <span className="text-[8px] font-bold text-slate-400">
-                                      Casal: {casal.cage || 'S/ Gaiola'}
-                                    </span>
-                                  ) : (
+
+                                  {casal ? (() => {
+                                    const macho = aves.find(a => a.id === casal.mId);
+                                    const femea = aves.find(a => a.id === casal.fId);
+
+                                    const machoNome = macho?.ring || macho?.name || 'Macho s/ identificação';
+                                    const femeaNome = femea?.ring || femea?.name || 'Fêmea s/ identificação';
+
+                                    return (
+                                      <>
+                                        <span className="text-[9px] font-black text-slate-700 leading-tight">
+                                          {machoNome} × {femeaNome}
+                                        </span>
+                                        <span className="text-[8px] font-bold text-slate-400 leading-tight">
+                                          Gaiola: {casal.cage || 'S/ Gaiola'}
+                                        </span>
+                                      </>
+                                    );
+                                  })() : (
                                     <span className="text-[8px] font-bold text-rose-400">
-                                      Sem casal
+                                      Sem casal associado
                                     </span>
                                   )}
                                 </div>
