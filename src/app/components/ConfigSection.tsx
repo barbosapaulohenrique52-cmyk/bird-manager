@@ -72,4 +72,111 @@ export function ConfigSection({
         <div className="flex gap-2 mt-3">
           <input
             type="text"
-            value={novoEspec
+            value={novoEspecie}
+            onChange={(e) => setNovoEspecie(e.target.value)}
+            placeholder="Digite o nome da espécie..."
+            className="border rounded px-2 py-1 flex-1"
+          />
+          <button
+            className="bg-green-500 text-white px-3 py-1 rounded"
+            onClick={() => {
+              if (!novoEspecie.trim()) return;
+              onSaveConfig({
+                ...config,
+                especies: [...config.especies, novoEspecie.trim()],
+              });
+              setNovoEspecie("");
+            }}
+          >
+            + ADICIONAR
+          </button>
+        </div>
+        <div className="mt-2 text-sm text-green-700">
+          Total de espécies: {config.especies.length} • As alterações são salvas automaticamente
+        </div>
+      </div>
+
+      {/* Locais de ovos */}
+      <div className="bg-white shadow rounded p-4">
+        <h2 className="text-lg font-bold mb-2">Locais de ovos</h2>
+        <div className="space-y-2">
+          {config.locaisOvos?.map((local) => (
+            <div
+              key={local}
+              className="flex items-center justify-between border rounded px-3 py-2"
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🥚</span>
+                <span>{local}</span>
+              </div>
+              <button
+                className="text-red-500 font-bold"
+                onClick={() =>
+                  onSaveConfig({
+                    ...config,
+                    locaisOvos: config.locaisOvos.filter((l) => l !== local),
+                  })
+                }
+              >
+                x
+              </button>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 mt-3">
+          <input
+            type="text"
+            value={novoLocal}
+            onChange={(e) => setNovoLocal(e.target.value)}
+            placeholder="Digite o nome do local..."
+            className="border rounded px-2 py-1 flex-1"
+          />
+          <button
+            className="bg-green-500 text-white px-3 py-1 rounded"
+            onClick={() => {
+              if (!novoLocal.trim()) return;
+              onSaveConfig({
+                ...config,
+                locaisOvos: [...(config.locaisOvos || []), novoLocal.trim()],
+              });
+              setNovoLocal("");
+            }}
+          >
+            + ADICIONAR
+          </button>
+        </div>
+        <div className="mt-2 text-sm text-green-700">
+          Total de locais: {config.locaisOvos?.length || 0} • As alterações são salvas automaticamente
+        </div>
+      </div>
+
+      {/* Backup */}
+      <div className="bg-white shadow rounded p-4">
+        <h2 className="text-lg font-bold mb-2">Backup</h2>
+        <div className="flex gap-2">
+          <button
+            className="bg-blue-600 text-white px-3 py-1 rounded"
+            onClick={onExport}
+          >
+            Exportar
+          </button>
+          <input
+            type="file"
+            accept="application/json"
+            onChange={(e) => {
+              if (e.target.files?.[0]) {
+                onImport(e.target.files[0]);
+              }
+            }}
+          />
+          <button
+            className="bg-red-600 text-white px-3 py-1 rounded"
+            onClick={onClear}
+          >
+            Limpar tudo
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
