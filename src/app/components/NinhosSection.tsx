@@ -655,85 +655,76 @@ export function NinhosSection({
 
                               {/* Origem / Casal */}
                               <td className="py-1.5 px-1">
-                                <div className="flex items-center gap-2 min-w-[150px]">
-                                  {casal ? (() => {
-                                    const macho = aves.find(a => a.id === casal.mId);
-                                    const femea = aves.find(a => a.id === casal.fId);
+                                {casal ? (() => {
+                                  const macho = aves.find(a => a.id === casal.mId);
+                                  const femea = aves.find(a => a.id === casal.fId);
 
-                                    const machoNome = macho?.ring || macho?.name || 'Macho s/ identificação';
-                                    const femeaNome = femea?.ring || femea?.name || 'Fêmea s/ identificação';
+                                  const machoIdentificacao = macho?.ring || macho?.name || 'S/ anilha';
+                                  const femeaIdentificacao = femea?.ring || femea?.name || 'S/ anilha';
+                                  const machoNome = macho?.name || 'Macho';
+                                  const femeaNome = femea?.name || 'Fêmea';
 
-                                    return (
-                                      <>
-                                        {/* Fotos do casal — mesma lógica visual usada nos casais */}
-                                        <div className="flex items-center flex-shrink-0">
-                                          <div
-                                            className="w-8 h-8 rounded-full border-2 border-white shadow-sm overflow-hidden bg-slate-100 flex items-center justify-center"
-                                            title={machoNome}
-                                          >
-                                            {macho?.photo ? (
-                                              <img
-                                                src={macho.photo}
-                                                alt={machoNome}
-                                                className="w-full h-full object-cover"
-                                              />
-                                            ) : (
-                                              <i className="fas fa-mars text-blue-500 text-[11px]"></i>
-                                            )}
-                                          </div>
-
-                                          <div
-                                            className="w-8 h-8 rounded-full border-2 border-white shadow-sm overflow-hidden bg-slate-100 flex items-center justify-center -ml-2"
-                                            title={femeaNome}
-                                          >
-                                            {femea?.photo ? (
-                                              <img
-                                                src={femea.photo}
-                                                alt={femeaNome}
-                                                className="w-full h-full object-cover"
-                                              />
-                                            ) : (
-                                              <i className="fas fa-venus text-pink-500 text-[11px]"></i>
-                                            )}
-                                          </div>
+                                  return (
+                                    <div
+                                      className="flex items-center gap-1.5 min-w-[105px]"
+                                      title={`Macho: ${machoNome} | Fêmea: ${femeaNome} | Ninho: ${ninho.name || 'S/ nome'} | Gaiola: ${casal.cage || 'S/ Gaiola'}`}
+                                    >
+                                      {/* Fotos do casal */}
+                                      <div className="flex items-center flex-shrink-0">
+                                        <div
+                                          className="w-7 h-7 rounded-full border-2 border-white shadow-sm overflow-hidden bg-slate-100 flex items-center justify-center"
+                                          title={`♂ ${machoIdentificacao}`}
+                                        >
+                                          {macho?.photo ? (
+                                            <img
+                                              src={macho.photo}
+                                              alt={machoNome}
+                                              className="w-full h-full object-cover"
+                                            />
+                                          ) : (
+                                            <i className="fas fa-mars text-blue-500 text-[10px]"></i>
+                                          )}
                                         </div>
 
-                                        <div className="flex flex-col gap-0.5 min-w-0">
-                                          <span className="text-[8px] font-black text-slate-400 uppercase truncate">
-                                            {ninho.name || 'Ninho s/ nome'}
-                                          </span>
-
-                                          <span
-                                            className="text-[9px] font-black text-slate-700 leading-tight truncate"
-                                            title={`${machoNome} × ${femeaNome}`}
-                                          >
-                                            {machoNome} × {femeaNome}
-                                          </span>
-
-                                          <span className="text-[8px] font-bold text-slate-400 leading-tight">
-                                            Gaiola: {casal.cage || 'S/ Gaiola'}
-                                          </span>
+                                        <div
+                                          className="w-7 h-7 rounded-full border-2 border-white shadow-sm overflow-hidden bg-slate-100 flex items-center justify-center -ml-2"
+                                          title={`♀ ${femeaIdentificacao}`}
+                                        >
+                                          {femea?.photo ? (
+                                            <img
+                                              src={femea.photo}
+                                              alt={femeaNome}
+                                              className="w-full h-full object-cover"
+                                            />
+                                          ) : (
+                                            <i className="fas fa-venus text-pink-500 text-[10px]"></i>
+                                          )}
                                         </div>
-                                      </>
-                                    );
-                                  })() : (
-                                    <>
-                                      <div className="w-8 h-8 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center flex-shrink-0">
-                                        <i className="fas fa-heart-broken text-rose-400 text-[11px]"></i>
                                       </div>
 
-                                      <div className="flex flex-col gap-0.5">
-                                        <span className="text-[8px] font-black text-slate-400 uppercase">
-                                          {ninho.name || 'Ninho s/ nome'}
-                                        </span>
+                                      {/* Identificação curta */}
+                                      <span
+                                        className="text-[8px] font-black text-slate-700 leading-tight whitespace-nowrap"
+                                        title={`${machoNome} × ${femeaNome}`}
+                                      >
+                                        ♂ {machoIdentificacao} × ♀ {femeaIdentificacao}
+                                      </span>
+                                    </div>
+                                  );
+                                })() : (
+                                  <div
+                                    className="flex items-center gap-1.5 min-w-[105px]"
+                                    title={`Ninho: ${ninho.name || 'S/ nome'} | Sem casal associado`}
+                                  >
+                                    <div className="w-7 h-7 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center flex-shrink-0">
+                                      <i className="fas fa-heart-broken text-rose-400 text-[10px]"></i>
+                                    </div>
 
-                                        <span className="text-[8px] font-bold text-rose-400">
-                                          Sem casal associado
-                                        </span>
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
+                                    <span className="text-[8px] font-bold text-rose-400 whitespace-nowrap">
+                                      Sem casal
+                                    </span>
+                                  </div>
+                                )}
                               </td>
 
                               {/* Local */}
