@@ -19,6 +19,7 @@ export type TabType =
   | "calendario"
   | "financeiro"
   | "config";
+
 export type ModalType = "ave" | "ninho" | "casal" | null;
 
 export interface Ave {
@@ -66,7 +67,7 @@ export interface Casal {
 export interface Egg {
   id: string;
   postura: string; // Data de postura
-  local?: "ninho" | "caixa"; // Local do ovo
+  local?: string; // Local onde o ovo está
   species?: string; // Espécie (herdada dos pais, mas editável)
   status:
     | "Em Espera"
@@ -103,6 +104,10 @@ export interface ParametrosEspecie {
 export interface Config {
   prazoAlertaPostura: number; // Dias sem postura para alertar
   especies: string[]; // Lista de espécies cadastradas
+
+  // Locais disponíveis para os ovos
+  locaisOvos: string[];
+
   parametrosEspecies: {
     [especie: string]: ParametrosEspecie; // Parâmetros por espécie
   };
@@ -130,6 +135,7 @@ export default function App() {
   const [aveDetalheId, setAveDetalheId] = useState<
     string | null
   >(null);
+
   const {
     db,
     colorLists,
@@ -203,6 +209,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <Header onConfigClick={() => setActiveTab("config")} />
+
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -286,7 +293,9 @@ export default function App() {
                 new File(
                   [JSON.stringify(data)],
                   "restore.json",
-                  { type: "application/json" },
+                  {
+                    type: "application/json",
+                  },
                 ),
               );
             }}
@@ -320,7 +329,11 @@ export default function App() {
 
       {aveDetalheId && (
         <AveDetalhesModal
-          ave={db.aves.find((a) => a.id === aveDetalheId)!}
+          ave={
+            db.aves.find(
+              (a) => a.id === aveDetalheId,
+            )!
+          }
           aves={db.aves}
           casais={db.casais}
           ninhos={db.ninhos}
