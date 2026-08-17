@@ -1333,7 +1333,8 @@ export function NinhosSection({
                                             <img
                                               src={macho.photo}
                                               alt={machoNome}
-                                              className="w-full h-full object-cover"
+                                              onClick={() => setFotoCasalZoom(macho.photo)}
+                              className="cursor-zoom-in w-full h-full object-cover"
                                             />
                                           ) : (
                                             <i className="fas fa-mars text-blue-500 text-[10px]"></i>
@@ -1348,7 +1349,7 @@ export function NinhosSection({
                                             <img
                                               src={femea.photo}
                                               alt={femeaNome}
-                                              onClick={() => setFotoCasalZoom(femea.photo)}
+                              onClick={() => setFotoCasalZoom(femea.photo)}
                               className="cursor-zoom-in w-full h-full object-cover"
                                             />
                                           ) : (
