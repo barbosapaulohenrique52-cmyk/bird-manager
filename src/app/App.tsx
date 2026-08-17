@@ -19,7 +19,6 @@ export type TabType =
   | "calendario"
   | "financeiro"
   | "config";
-
 export type ModalType = "ave" | "ninho" | "casal" | null;
 
 export interface Ave {
@@ -33,22 +32,22 @@ export interface Ave {
   creator: string;
   acqYear: number;
   photo?: string;
-  parentMaleId?: string; // Pai (sempre quem botou)
-  parentFemaleId?: string; // Mãe (sempre quem botou)
-  birthDate?: string; // Data de nascimento
-  birthNestId?: string; // Ninho de origem
-  criadoPorAmas?: boolean; // Se foi criado por amas
-  casalAmasId?: string; // ID do casal de amas que criou
-  corCabeca?: string; // Cor da cabeça
-  corPeito?: string; // Cor do peito
-  corDorso?: string; // Cor do dorso
+  parentMaleId?: string;
+  parentFemaleId?: string;
+  birthDate?: string;
+  birthNestId?: string;
+  criadoPorAmas?: boolean;
+  casalAmasId?: string;
+  corCabeca?: string;
+  corPeito?: string;
+  corDorso?: string;
 }
 
 export interface Filhote {
   id: string;
   anilha: string;
   anoAnilha: number;
-  aveId?: string; // ID da ave no plantel
+  aveId?: string;
   dataVenda?: string;
   valorVenda?: number;
   comprador?: string;
@@ -60,15 +59,15 @@ export interface Casal {
   mId: string;
   fId: string;
   cage: string;
-  lastEggDate?: string; // Última postura
-  historico: Filhote[]; // Histórico de filhotes
+  lastEggDate?: string;
+  historico: Filhote[];
 }
 
 export interface Egg {
   id: string;
-  postura: string; // Data de postura
-  local?: string; // Local onde o ovo está
-  species?: string; // Espécie (herdada dos pais, mas editável)
+  postura: string;
+  local?: "ninho" | "caixa";
+  species?: string;
   status:
     | "Em Espera"
     | "Chocando"
@@ -76,42 +75,38 @@ export interface Egg {
     | "Infértil"
     | "Eclodido"
     | "Perdido";
-  inicioChoca?: string; // Data início da choca
-  casalChocandoId?: string; // Casal que está chocando (pode ser diferente do casal que botou)
-  localChoca?: string; // Local onde está sendo chocado (se diferente do ninho original)
-  dataEclosao?: string; // Data real de eclosão
-  filhoteId?: string; // ID da ave se eclodiu
-  filhoteAnilhado?: boolean; // Se já foi anilhado
-  anilha?: string; // Número da anilha
-  anoAnilha?: number; // Ano da anilha
+  inicioChoca?: string;
+  casalChocandoId?: string;
+  localChoca?: string;
+  dataEclosao?: string;
+  filhoteId?: string;
+  filhoteAnilhado?: boolean;
+  anilha?: string;
+  anoAnilha?: number;
 }
 
 export interface Ninho {
   id: string;
-  name?: string; // Agora opcional
+  name?: string;
   casalId: string;
   eggs: Egg[];
   active: boolean;
 }
 
 export interface ParametrosEspecie {
-  diasFertilidade: number; // Dias para verificar fertilidade
-  duracaoChoca: number; // Dias de choca até eclosão
-  diasSaidaNinho: number; // Dias até filhote sair do ninho
-  diasAnilhamento: number; // Dias após eclosão para anilhar
+  diasFertilidade: number;
+  duracaoChoca: number;
+  diasSaidaNinho: number;
+  diasAnilhamento: number;
 }
 
 export interface Config {
-  prazoAlertaPostura: number; // Dias sem postura para alertar
-  especies: string[]; // Lista de espécies cadastradas
-
-  // Locais disponíveis para os ovos
-  locaisOvos: string[];
-
+  prazoAlertaPostura: number;
+  especies: string[];
   parametrosEspecies: {
-    [especie: string]: ParametrosEspecie; // Parâmetros por espécie
+    [especie: string]: ParametrosEspecie;
   };
-  parametrosPadrao: ParametrosEspecie; // Parâmetros padrão para espécies não configuradas
+  parametrosPadrao: ParametrosEspecie;
 }
 
 export interface Lancamento {
@@ -121,20 +116,16 @@ export interface Lancamento {
   descricao: string;
   valor: number;
   data: string;
-  aveId?: string; // Se for venda de ave
-  casalId?: string; // Associar ao casal
+  aveId?: string;
+  casalId?: string;
 }
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>("ninhos");
   const [modalType, setModalType] = useState<ModalType>(null);
   const [editId, setEditId] = useState<string | null>(null);
-  const [zoomPhoto, setZoomPhoto] = useState<string | null>(
-    null,
-  );
-  const [aveDetalheId, setAveDetalheId] = useState<
-    string | null
-  >(null);
+  const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+  const [aveDetalheId, setAveDetalheId] = useState<string | null>(null);
 
   const {
     db,
@@ -156,6 +147,7 @@ export default function App() {
     reverterEclosao,
     saveConfig,
     exportBackup,
+    saveBackupToGoogleDrive,
     importBackup,
     clearEverything,
     saveLancamento,
@@ -179,10 +171,8 @@ export default function App() {
     setEditId(null);
   };
 
-  // Mensagem antes de sair sugerindo backup
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      // Verificar se há dados para fazer backup
       if (
         db.aves.length > 0 ||
         db.casais.length > 0 ||
@@ -209,7 +199,6 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <Header onConfigClick={() => setActiveTab("config")} />
-
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -230,9 +219,9 @@ export default function App() {
             onAnilharFilhote={anilharFilhote}
             onReverterEclosao={reverterEclosao}
             onUpdateNinhoCasal={updateNinhoCasal}
-            onUpdateNinho={updateNinho}
             onSaveCasal={saveCasal}
             onDeleteNinho={deleteNinho}
+            onUpdateNinho={updateNinho}
             onSaveConfig={saveConfig}
             onViewDetails={setAveDetalheId}
           />
@@ -288,14 +277,13 @@ export default function App() {
             onExport={exportBackup}
             onImport={importBackup}
             onClear={clearEverything}
+            onSaveToGoogleDrive={saveBackupToGoogleDrive}
             onRestoreBackup={(data) => {
               importBackup(
                 new File(
                   [JSON.stringify(data)],
                   "restore.json",
-                  {
-                    type: "application/json",
-                  },
+                  { type: "application/json" },
                 ),
               );
             }}
@@ -329,11 +317,7 @@ export default function App() {
 
       {aveDetalheId && (
         <AveDetalhesModal
-          ave={
-            db.aves.find(
-              (a) => a.id === aveDetalheId,
-            )!
-          }
+          ave={db.aves.find((a) => a.id === aveDetalheId)!}
           aves={db.aves}
           casais={db.casais}
           ninhos={db.ninhos}
