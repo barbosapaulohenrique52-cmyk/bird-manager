@@ -1441,12 +1441,24 @@ export function NinhosSection({
                                       className="text-[10px] font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-1 w-24 h-7"
                                       ariaLabel="Data de início da choca"
                                     />
-                                    {egg.casalChocandoId && egg.casalChocandoId !== ninho.casalId && (
-                                      <span className="text-[8px] font-black text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
-                                        <i className="fas fa-users text-[7px] mr-1"></i>
-                                        AMAS
-                                      </span>
-                                    )}
+                                    {egg.casalChocandoId && egg.casalChocandoId !== ninho.casalId && (() => {
+                                      const casalAmas = casais.find(c => c.id === egg.casalChocandoId);
+                                      const machoAmas = casalAmas ? aves.find(a => a.id === casalAmas.mId) : undefined;
+                                      const femeaAmas = casalAmas ? aves.find(a => a.id === casalAmas.fId) : undefined;
+
+                                      const machoAmasId = machoAmas?.ring || machoAmas?.name || 'S/ anilha';
+                                      const femeaAmasId = femeaAmas?.ring || femeaAmas?.name || 'S/ anilha';
+
+                                      return (
+                                        <span
+                                          className="text-[8px] font-black text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded"
+                                          title={`Casal de amas: ${machoAmas?.name || machoAmasId} × ${femeaAmas?.name || femeaAmasId}`}
+                                        >
+                                          <i className="fas fa-users text-[7px] mr-1"></i>
+                                          AMAS: {machoAmasId} × {femeaAmasId}
+                                        </span>
+                                      );
+                                    })()}
                                   </div>
                                 )}
                               </td>
