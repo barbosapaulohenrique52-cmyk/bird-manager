@@ -320,6 +320,17 @@ export function NinhosSection({
   // garantindo que a seleção continue correta mesmo com os ovos agrupados por local.
   const [ovosSelecionados, setOvosSelecionados] = useState<Set<string>>(new Set());
 
+  const [edicaoLoteAberta, setEdicaoLoteAberta] = useState(false);
+  const [loteCampos, setLoteCampos] = useState({
+    postura: false, local: false, species: false, status: false,
+    inicioChoca: false, casalChocandoId: false, localChoca: false,
+    dataEclosao: false, filhoteId: false,
+  });
+  const [loteValores, setLoteValores] = useState({
+    postura: '', local: '', species: '', status: 'Em Espera' as Egg['status'],
+    inicioChoca: '', casalChocandoId: '', localChoca: '', dataEclosao: '', filhoteId: '',
+  });
+
   const getChaveOvo = (ninhoId: string, egg: Egg, eggIdx: number) =>
     `${ninhoId}::${egg.id || `idx-${eggIdx}`}`;
 
@@ -373,6 +384,39 @@ export function NinhosSection({
   };
 
   const limparSelecaoOvos = () => {
+    setOvosSelecionados(new Set());
+  };
+
+  const abrirEdicaoLote = () => {
+    if (ovosSelecionados.size === 0) {
+      alert('Selecione pelo menos um ovo para editar.');
+      return;
+    }
+    setEdicaoLoteAberta(true);
+  };
+
+  const aplicarEdicaoLote = () => {
+    if (ovosSelecionados.size === 0) return;
+    if (!Object.values(loteCampos).some(Boolean)) {
+      alert('Marque pelo menos um campo para alterar.');
+      return;
+    }
+
+    const ovosAlvo = todosOvos.filter((item) => ovosSelecionados.has(item.chave));
+    ovosAlvo.forEach(({ ninho, eggIdx }) => {
+      if (loteCampos.postura) onUpdateEgg(ninho.id, eggIdx, 'postura', loteValores.postura);
+      if (loteCampos.local) onUpdateEgg(ninho.id, eggIdx, 'local', loteValores.local);
+      if (loteCampos.species) onUpdateEgg(ninho.id, eggIdx, 'species', loteValores.species);
+      if (loteCampos.status) onUpdateEgg(ninho.id, eggIdx, 'status', loteValores.status);
+      if (loteCampos.inicioChoca) onUpdateEgg(ninho.id, eggIdx, 'inicioChoca', loteValores.inicioChoca);
+      if (loteCampos.casalChocandoId) onUpdateEgg(ninho.id, eggIdx, 'casalChocandoId', loteValores.casalChocandoId || undefined);
+      if (loteCampos.localChoca) onUpdateEgg(ninho.id, eggIdx, 'localChoca', loteValores.localChoca);
+      if (loteCampos.dataEclosao) onUpdateEgg(ninho.id, eggIdx, 'dataEclosao', loteValores.dataEclosao);
+      if (loteCampos.filhoteId) onUpdateEgg(ninho.id, eggIdx, 'filhoteId', loteValores.filhoteId || undefined);
+    });
+
+    alert(`Edição aplicada a ${ovosAlvo.length} ${ovosAlvo.length === 1 ? 'ovo' : 'ovos'}.`);
+    setEdicaoLoteAberta(false);
     setOvosSelecionados(new Set());
   };
 
@@ -863,6 +907,17 @@ export function NinhosSection({
               <span className="text-[9px] font-black text-amber-600 uppercase px-2">
                 {ovosSelecionados.size} {ovosSelecionados.size === 1 ? 'ovo selecionado' : 'ovos selecionados'}
               </span>
+
+              {ovosSelecionados.size > 0 && (
+                <button
+                  type="button"
+                  onClick={abrirEdicaoLote}
+                  className="bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-black uppercase px-3 py-1.5 rounded-lg shadow-sm transition-colors"
+                >
+                  <i className="fas fa-edit mr-1"></i>
+                  Editar selecionados
+                </button>
+              )}
 
               {ovosSelecionados.size > 0 && (
                 <button
@@ -1807,6 +1862,76 @@ export function NinhosSection({
       })()}
 
       {/* Modal de Criar Nova Espécie */}
+      {/* ============================================================
+          MODAL DE EDIÇÃO EM LOTE
+          ============================================================ */}
+      {edicaoLoteAberta && (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="bg-amber-500 text-white px-5 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black uppercase">Editar ovos selecionados</h3>
+                <p className="text-[10px] font-bold text-amber-100 mt-1">{ovosSelecionados.size} {ovosSelecionados.size === 1 ? 'ovo selecionado' : 'ovos selecionados'}</p>
+              </div>
+              <button type="button" onClick={() => setEdicaoLoteAberta(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"><i className="fas fa-times"></i></button>
+            </div>
+            <div className="p-5 overflow-y-auto space-y-3">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-800 font-bold">Marque <strong>Alterar</strong> somente nos campos que deseja modificar. Os demais permanecerão como estão.</div>
+
+              {[
+                ['postura','Data de postura','date'],
+                ['local','Local','selectLocal'],
+                ['species','Espécie','selectSpecies'],
+                ['status','Status','selectStatus'],
+                ['inicioChoca','Início da choca','date'],
+                ['casalChocandoId','Casal que está chocando','selectCasal'],
+                ['localChoca','Local da choca','text'],
+                ['dataEclosao','Data de eclosão','date'],
+                ['filhoteId','ID do filhote associado','text'],
+              ].map(([campo, label, tipo]) => {
+                const key = campo as keyof typeof loteCampos;
+                return (
+                  <div key={campo} className="border border-slate-200 rounded-xl p-3">
+                    <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                      <input type="checkbox" checked={loteCampos[key]} onChange={(e) => setLoteCampos(v => ({ ...v, [key]: e.target.checked }))} className="w-4 h-4 text-amber-500 rounded" />
+                      <span className="text-[10px] font-black uppercase text-slate-700">Alterar {label.toLowerCase()}</span>
+                    </label>
+                    {tipo === 'selectLocal' ? (
+                      <select disabled={!loteCampos[key]} value={loteValores.local} onChange={(e) => setLoteValores(v => ({ ...v, local: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400">
+                        <option value="">Sem local</option>{(config.locaisOvos || []).map(local => <option key={local} value={local}>{local}</option>)}
+                      </select>
+                    ) : tipo === 'selectSpecies' ? (
+                      <select disabled={!loteCampos[key]} value={loteValores.species} onChange={(e) => setLoteValores(v => ({ ...v, species: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400">
+                        <option value="">Sem espécie</option>{getEspeciesDisponiveis().map(esp => <option key={esp} value={esp}>{esp}</option>)}
+                      </select>
+                    ) : tipo === 'selectStatus' ? (
+                      <select disabled={!loteCampos[key]} value={loteValores.status} onChange={(e) => setLoteValores(v => ({ ...v, status: e.target.value as Egg['status'] }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400">
+                        {(['Em Espera','Chocando','Fértil','Infértil','Eclodido','Perdido'] as Egg['status'][]).map(status => <option key={status} value={status}>{status}</option>)}
+                      </select>
+                    ) : tipo === 'selectCasal' ? (
+                      <select disabled={!loteCampos[key]} value={loteValores.casalChocandoId} onChange={(e) => setLoteValores(v => ({ ...v, casalChocandoId: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400">
+                        <option value="">Sem casal</option>{casais.map(casal => { const macho=aves.find(a=>a.id===casal.mId); const femea=aves.find(a=>a.id===casal.fId); return <option key={casal.id} value={casal.id}>{macho?.ring || macho?.name || 'Macho'} × {femea?.ring || femea?.name || 'Fêmea'}</option>; })}
+                      </select>
+                    ) : (
+                      <input type={tipo === 'date' ? 'date' : 'text'} disabled={!loteCampos[key]} value={loteValores[key as keyof typeof loteValores] as string} onChange={(e) => setLoteValores(v => ({ ...v, [key]: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400" />
+                    )}
+                  </div>
+                );
+              })}
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[9px] text-slate-600 font-bold">
+                <i className="fas fa-lock mr-1 text-slate-400"></i>
+                Anilha, ano da anilha e o estado de anilhamento não são alterados por esta função.
+              </div>
+            </div>
+            <div className="border-t border-slate-200 p-4 flex gap-2 bg-white">
+              <button type="button" onClick={() => setEdicaoLoteAberta(false)} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-black text-xs uppercase hover:bg-slate-200">Cancelar</button>
+              <button type="button" onClick={aplicarEdicaoLote} className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-black text-xs uppercase hover:bg-amber-600"><i className="fas fa-check mr-2"></i>Aplicar alterações</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {criarEspecieModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-xl w-full">
