@@ -19,6 +19,7 @@ export type TabType =
   | "calendario"
   | "financeiro"
   | "config";
+
 export type ModalType = "ave" | "ninho" | "casal" | null;
 
 export interface Ave {
@@ -201,12 +202,13 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <Header onConfigClick={() => setActiveTab("config")} />
+
       <Navigation
         activeTab={activeTab}
         setActiveTab={setActiveTab}
       />
 
-      <main className="flex-1 max-w-5xl mx-auto w-full p-4 pb-32">
+      <main className="flex-1 w-full px-2 sm:px-4 lg:px-5 pb-32">
         {activeTab === "ninhos" && (
           <NinhosSection
             ninhos={db.ninhos}
