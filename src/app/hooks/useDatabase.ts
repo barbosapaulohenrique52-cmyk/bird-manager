@@ -234,6 +234,10 @@ export function useDatabase() {
     lancamentos: []
   });
 
+  const [lastGoogleDriveBackup, setLastGoogleDriveBackup] = useState<string | null>(() =>
+    localStorage.getItem('gpro_v19_lastGoogleDriveBackup')
+  );
+
   const [colorLists, setColorLists] = useState<ColorLists>({
     coresCabeca: [],
     coresPeito: [],
@@ -648,6 +652,7 @@ export function useDatabase() {
       const agora = new Date().toISOString();
       localStorage.setItem('gpro_v19_lastGoogleDriveBackup', agora);
       localStorage.setItem('gpro_v19_lastBackup', agora);
+      setLastGoogleDriveBackup(agora);
       alert('Backup salvo no Google Drive com sucesso!\n\nArquivo: backup.json\nPasta: GouldPRO');
     } catch (error) {
       console.error('Erro no backup do Google Drive:', error);
@@ -655,6 +660,71 @@ export function useDatabase() {
       alert(`Não foi possível salvar o backup no Google Drive.\n\n${mensagem}`);
     }
   }, [db]);
+
+  const importBackupFromGoogleDrive = useCallback(async () => {
+    try {
+      const accessToken = await obterTokenGoogle();
+      const folderId = await buscarOuCriarPastaGoogleDrive(accessToken);
+      const backupId = await buscarBackupGoogleDrive(accessToken, folderId);
+
+      if (!backupId) {
+        alert('Nenhum backup.json foi encontrado na pasta GouldPRO do Google Drive.');
+        return;
+      }
+
+      const resposta = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${backupId}?alt=media`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      if (!resposta.ok) {
+        throw new Error('Não foi possível baixar o backup do Google Drive.');
+      }
+
+      const imported = await resposta.json();
+
+      if (
+        !imported ||
+        !Array.isArray(imported.aves) ||
+        !Array.isArray(imported.casais) ||
+        !Array.isArray(imported.ninhos) ||
+        !imported.config ||
+        !Array.isArray(imported.lancamentos)
+      ) {
+        throw new Error('O backup encontrado não possui um formato válido do GouldPRO.');
+      }
+
+      const confirmar = confirm(
+        'ATENÇÃO: importar o backup do Google Drive substituirá os dados atuais deste navegador.\n\n' +
+        `Backup encontrado: ${imported.aves.length} aves, ${imported.casais.length} casais e ${imported.ninhos.length} ninhos.\n\n` +
+        'Deseja continuar?'
+      );
+
+      if (!confirmar) return;
+
+      const newDb: Database = {
+        aves: imported.aves,
+        casais: imported.casais.map((casal: Casal) => ({
+          ...casal,
+          historico: casal.historico || []
+        })),
+        ninhos: imported.ninhos,
+        config: imported.config,
+        lancamentos: imported.lancamentos
+      };
+
+      save(newDb);
+
+      const agora = new Date().toISOString();
+      localStorage.setItem('gpro_v19_lastGoogleDriveImport', agora);
+      alert('Backup importado do Google Drive com sucesso! A página será recarregada.');
+      window.location.reload();
+    } catch (error) {
+      console.error('Erro ao importar do Google Drive:', error);
+      const mensagem = error instanceof Error ? error.message : 'Erro desconhecido.';
+      alert(`Não foi possível importar o backup do Google Drive.\n\n${mensagem}`);
+    }
+  }, [save]);
 
   const exportBackup = useCallback(() => {
     const blob = new Blob([JSON.stringify(db)], { type: 'application/json' });
@@ -771,6 +841,8 @@ export function useDatabase() {
     saveConfig,
     exportBackup,
     saveBackupToGoogleDrive,
+    importBackupFromGoogleDrive,
+    lastGoogleDriveBackup,
     importBackup,
     clearEverything,
     saveLancamento,
