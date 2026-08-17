@@ -591,32 +591,155 @@ export function NinhosSection({
                 </div>
               </div>
 
-              {/* Resumo do ninho - os ovos agora são exibidos por local abaixo */}
+              {/* Resumo / expansão dos ovos do casal */}
               <div className="p-2">
                 {ninho.eggs.length === 0 ? (
                   <div className="text-center py-6 text-slate-400">
                     <i className="fas fa-egg text-2xl mb-2"></i>
                     <p className="text-sm">Nenhum ovo registrado</p>
                   </div>
+                ) : !ninhosExpandidos.has(ninho.id) ? (
+                  <div
+                    onClick={() => toggleNinhoExpandido(ninho.id)}
+                    className="bg-gradient-to-r from-emerald-50 to-blue-50 border-2 border-emerald-200 rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                          <i className="fas fa-egg text-emerald-600 text-lg"></i>
+                        </div>
+                        <div>
+                          <h4 className="font-black text-slate-800 uppercase text-xs">
+                            Ovos deste casal
+                          </h4>
+                          <p className="text-[10px] font-bold text-slate-500 mt-0.5">
+                            {ninho.eggs.length} {ninho.eggs.length === 1 ? 'ovo registrado' : 'ovos registrados'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleNinhoExpandido(ninho.id);
+                        }}
+                        className="bg-emerald-600 text-white px-3 py-2 rounded-lg font-black text-[9px] uppercase flex items-center gap-1.5 shadow-sm"
+                      >
+                        <i className="fas fa-chevron-down"></i>
+                        Expandir
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4">
-                    <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border-2 border-emerald-200 p-4 rounded-xl text-center">
-                      <div className="text-3xl font-black text-emerald-600">{ninho.eggs.length}</div>
-                      <div className="text-[10px] font-black text-emerald-600 uppercase mt-1">Total de Ovos</div>
+                  <div className="border-2 border-emerald-200 rounded-2xl overflow-hidden">
+                    <div className="bg-emerald-50 px-3 py-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <i className="fas fa-egg text-emerald-600 text-xs"></i>
+                        <span className="text-[10px] font-black text-emerald-700 uppercase">
+                          Ovos deste casal ({ninho.eggs.length})
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleNinhoExpandido(ninho.id)}
+                        className="text-emerald-700 hover:text-emerald-900 px-2 py-1 rounded-lg hover:bg-white transition-colors"
+                        title="Recolher ovos"
+                      >
+                        <i className="fas fa-chevron-up text-[10px]"></i>
+                      </button>
                     </div>
 
-                    <div className="bg-purple-50 border-2 border-purple-100 p-4 rounded-xl text-center">
-                      <div className="text-3xl font-black text-purple-600">
-                        {ninho.eggs.filter(e => e.status === 'Chocando' && e.status !== 'Fértil' && e.status !== 'Infértil').length}
-                      </div>
-                      <div className="text-[10px] font-black text-purple-600 uppercase mt-1">Pend. Fertilidade</div>
-                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="py-2 px-2 text-left text-[8px] font-black text-slate-500 uppercase">Postura</th>
+                            <th className="py-2 px-2 text-left text-[8px] font-black text-slate-500 uppercase">Espécie</th>
+                            <th className="py-2 px-2 text-left text-[8px] font-black text-slate-500 uppercase">Local</th>
+                            <th className="py-2 px-2 text-center text-[8px] font-black text-slate-500 uppercase">Status</th>
+                            <th className="py-2 px-2 text-center text-[8px] font-black text-slate-500 uppercase">Ação</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ninho.eggs.map((egg, eggIdx) => (
+                            <tr
+                              key={`${ninho.id}-resumo-${egg.id || eggIdx}`}
+                              className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50"
+                            >
+                              <td className="py-2 px-2">
+                                <DataCompacta
+                                  value={egg.postura || ''}
+                                  onChange={(value) =>
+                                    onUpdateEgg(ninho.id, eggIdx, 'postura', value)
+                                  }
+                                  className="text-[9px] font-bold text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-1 w-[88px] h-7"
+                                  ariaLabel="Data da postura"
+                                />
+                              </td>
 
-                    <div className="bg-amber-50 border-2 border-amber-100 p-4 rounded-xl text-center">
-                      <div className="text-3xl font-black text-amber-600">
-                        {ninho.eggs.filter(e => e.status === 'Eclodido' && !e.filhoteAnilhado).length}
-                      </div>
-                      <div className="text-[10px] font-black text-amber-600 uppercase mt-1">A Anilhar</div>
+                              <td className="py-2 px-2">
+                                <span className="text-[9px] font-bold text-slate-700">
+                                  {egg.species || '--'}
+                                </span>
+                              </td>
+
+                              <td className="py-2 px-2">
+                                <select
+                                  value={egg.local || ''}
+                                  onChange={(e) =>
+                                    onUpdateEgg(ninho.id, eggIdx, 'local', e.target.value)
+                                  }
+                                  className="text-[9px] font-bold text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-1 max-w-[120px]"
+                                >
+                                  <option value="">Sem local</option>
+                                  {(config.locaisOvos || []).map((localCadastrado) => (
+                                    <option key={localCadastrado} value={localCadastrado}>
+                                      {localCadastrado}
+                                    </option>
+                                  ))}
+                                  {egg.local && !(config.locaisOvos || []).includes(egg.local) && (
+                                    <option value={egg.local}>{egg.local}</option>
+                                  )}
+                                </select>
+                              </td>
+
+                              <td className="py-2 px-2 text-center">
+                                <StatusSelector
+                                  status={egg.status}
+                                  onChange={(novoStatus) =>
+                                    onUpdateEgg(ninho.id, eggIdx, 'status', novoStatus)
+                                  }
+                                  onChocar={() => {
+                                    setChocaModal({
+                                      ninhoId: ninho.id,
+                                      eggIdx
+                                    });
+                                    setChocaData({
+                                      tipo: 'pais',
+                                      dataInicio: new Date().toISOString().split('T')[0],
+                                      casalAmasId: '',
+                                      localChoca: ''
+                                    });
+                                  }}
+                                />
+                              </td>
+
+                              <td className="py-2 px-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => onRemoveEgg(ninho.id, eggIdx)}
+                                  className="w-7 h-7 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                  title="Excluir ovo"
+                                >
+                                  <i className="fas fa-trash text-[9px]"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
