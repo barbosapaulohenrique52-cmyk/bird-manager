@@ -943,7 +943,11 @@ export function NinhosSection({
                           {ninho.eggs.map((egg, eggIdx) => (
                             <tr
                               key={`${ninho.id}-resumo-${egg.id || eggIdx}`}
-                              className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50"
+                              className={`border-b border-emerald-100/70 last:border-b-0 transition-colors ${
+                                eggIdx % 2 === 0
+                                  ? 'bg-white hover:bg-emerald-50'
+                                  : 'bg-emerald-50/50 hover:bg-emerald-100/60'
+                              }`}
                             >
                               <td className="py-2 px-2">
                                 <DataCompacta
@@ -1146,10 +1150,12 @@ export function NinhosSection({
                           return (
                             <tr
                               key={`${ninho.id}-${egg.id || eggIdx}`}
-                              className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${
+                              className={`border-b border-emerald-100/70 transition-colors ${
                                 ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))
-                                  ? 'bg-amber-50/60'
-                                  : ''
+                                  ? 'bg-amber-50/60 hover:bg-amber-100/60'
+                                  : eggIdx % 2 === 0
+                                    ? 'bg-white hover:bg-emerald-50'
+                                    : 'bg-emerald-50/50 hover:bg-emerald-100/60'
                               }`}
                             >
                               {/* Seleção para edição em lote */}
