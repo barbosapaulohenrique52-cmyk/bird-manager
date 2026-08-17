@@ -315,10 +315,88 @@ export function NinhosSection({
   };
   
   // Estados para edição em lote
-  const [edicaoLoteModal, setEdicaoLoteModal] = useState<string | null>(null); // ID do ninho
-  const [loteStatus, setLoteStatus] = useState('');
-  const [loteData, setLoteData] = useState('');
-  const [loteTipo, setLoteTipo] = useState<'status' | 'postura' | 'inicioChoca'>('status');
+  // Seleção de ovos para edição em lote
+  // A chave usa o ID do ninho + ID do ovo (ou índice como fallback),
+  // garantindo que a seleção continue correta mesmo com os ovos agrupados por local.
+  const [ovosSelecionados, setOvosSelecionados] = useState<Set<string>>(new Set());
+
+  const getChaveOvo = (ninhoId: string, egg: Egg, eggIdx: number) =>
+    `${ninhoId}::${egg.id || `idx-${eggIdx}`}`;
+
+  const todosOvos = ninhos.flatMap((ninho) =>
+    ninho.eggs.map((egg, eggIdx) => ({
+      ninho,
+      egg,
+      eggIdx,
+      chave: getChaveOvo(ninho.id, egg, eggIdx),
+    }))
+  );
+
+  const toggleOvoSelecionado = (chave: string) => {
+    setOvosSelecionados((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(chave)) {
+        novo.delete(chave);
+      } else {
+        novo.add(chave);
+      }
+      return novo;
+    });
+  };
+
+  const toggleTodosOvos = () => {
+    setOvosSelecionados((atual) => {
+      if (atual.size === todosOvos.length) {
+        return new Set();
+      }
+
+      return new Set(todosOvos.map((item) => item.chave));
+    });
+  };
+
+  const toggleTodosOvosDoNinho = (ninhoId: string) => {
+    const ovosDoNinho = todosOvos.filter((item) => item.ninho.id === ninhoId);
+    setOvosSelecionados((atual) => {
+      const novo = new Set(atual);
+      const todosSelecionados = ovosDoNinho.every((item) => novo.has(item.chave));
+
+      ovosDoNinho.forEach((item) => {
+        if (todosSelecionados) {
+          novo.delete(item.chave);
+        } else {
+          novo.add(item.chave);
+        }
+      });
+
+      return novo;
+    });
+  };
+
+  const limparSelecaoOvos = () => {
+    setOvosSelecionados(new Set());
+  };
+
+  // Mantém a seleção sincronizada quando um ovo é excluído ou os dados mudam.
+  useEffect(() => {
+    const chavesValidas = new Set(
+      ninhos.flatMap((ninho) =>
+        ninho.eggs.map((egg, eggIdx) => getChaveOvo(ninho.id, egg, eggIdx))
+      )
+    );
+
+    setOvosSelecionados((atual) => {
+      const filtrado = new Set(
+        Array.from(atual).filter((chave) => chavesValidas.has(chave))
+      );
+
+      if (filtrado.size === atual.size) {
+        return atual;
+      }
+
+      return filtrado;
+    });
+  }, [ninhos]);
+
   
   // Obter todas as espécies disponíveis (usa lista do config)
   const getEspeciesDisponiveis = () => {
@@ -548,11 +626,16 @@ export function NinhosSection({
                   <div className="flex gap-2">
                     {ninho.eggs.length > 0 && (
                       <button
-                        onClick={() => setEdicaoLoteModal(ninho.id)}
+                        onClick={() => toggleTodosOvosDoNinho(ninho.id)}
                         className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl font-black text-[10px] uppercase shadow-md transition-all"
-                        title="Edição em lote"
+                        title="Selecionar/desselecionar todos os ovos deste ninho para edição em lote"
                       >
-                        <i className="fas fa-edit"></i> LOTE
+                        <i className="fas fa-check-square mr-1"></i>
+                        {ninho.eggs.every((egg, eggIdx) =>
+                          ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))
+                        )
+                          ? 'DESMARCAR'
+                          : 'SELECIONAR'}
                       </button>
                     )}
 
@@ -754,13 +837,44 @@ export function NinhosSection({
           ============================================================ */}
       {ninhos.some(n => n.eggs.length > 0) && (
         <div className="pt-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase italic">
-              Ovos por Local
-            </h2>
-            <span className="text-[10px] font-black text-slate-400 uppercase">
-              {ninhos.reduce((total, ninho) => total + ninho.eggs.length, 0)} ovos
-            </span>
+          <div className="flex flex-col gap-3 mb-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase italic">
+                Ovos por Local
+              </h2>
+              <span className="text-[10px] font-black text-slate-400 uppercase">
+                {ninhos.reduce((total, ninho) => total + ninho.eggs.length, 0)} ovos
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 bg-white border-2 border-slate-200 rounded-2xl p-2">
+              <label className="flex items-center gap-2 px-2 py-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={todosOvos.length > 0 && ovosSelecionados.size === todosOvos.length}
+                  onChange={toggleTodosOvos}
+                  className="w-4 h-4 rounded border-2 border-amber-300 text-amber-500 focus:ring-2 focus:ring-amber-400 cursor-pointer"
+                />
+                <span className="text-[9px] font-black text-slate-600 uppercase">
+                  Selecionar todos
+                </span>
+              </label>
+
+              <span className="text-[9px] font-black text-amber-600 uppercase px-2">
+                {ovosSelecionados.size} {ovosSelecionados.size === 1 ? 'ovo selecionado' : 'ovos selecionados'}
+              </span>
+
+              {ovosSelecionados.size > 0 && (
+                <button
+                  type="button"
+                  onClick={limparSelecaoOvos}
+                  className="ml-auto text-[9px] font-black text-slate-500 hover:text-rose-600 px-2 py-1.5 rounded-lg hover:bg-rose-50 transition-colors uppercase"
+                >
+                  <i className="fas fa-times mr-1"></i>
+                  Limpar seleção
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-6">
@@ -789,6 +903,9 @@ export function NinhosSection({
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="bg-slate-50">
+                          <th className="py-2 px-1 text-center text-[9px] font-black text-slate-600 uppercase">
+                            <i className="fas fa-check-square"></i>
+                          </th>
                           <th className="py-2 px-1 text-left text-[9px] font-black text-slate-600 uppercase">Postura</th>
                           <th className="py-2 px-1 text-left text-[9px] font-black text-slate-600 uppercase">Espécie</th>
                           <th className="py-2 px-1 text-left text-[9px] font-black text-slate-600 uppercase">Origem / Casal</th>
@@ -822,7 +939,27 @@ export function NinhosSection({
                           const especieEditada = egg.species && egg.species !== especieEsperada;
 
                           return (
-                            <tr key={`${ninho.id}-${egg.id || eggIdx}`} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                            <tr
+                              key={`${ninho.id}-${egg.id || eggIdx}`}
+                              className={`border-b border-slate-50 hover:bg-slate-50 transition-colors ${
+                                ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))
+                                  ? 'bg-amber-50/60'
+                                  : ''
+                              }`}
+                            >
+                              {/* Seleção para edição em lote */}
+                              <td className="py-1.5 px-1 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))}
+                                  onChange={() =>
+                                    toggleOvoSelecionado(getChaveOvo(ninho.id, egg, eggIdx))
+                                  }
+                                  className="w-4 h-4 rounded border-2 border-amber-300 text-amber-500 focus:ring-2 focus:ring-amber-400 cursor-pointer"
+                                  title="Selecionar este ovo para edição em lote"
+                                />
+                              </td>
+
                               {/* Data Postura */}
                               <td className="py-1.5 px-1">
                                 <DataCompacta
@@ -1566,117 +1703,6 @@ export function NinhosSection({
           </div>
         </div>
       )}
-
-      {/* Modal de Edição em Lote */}
-      {edicaoLoteModal && (() => {
-        const ninho = ninhos.find(n => n.id === edicaoLoteModal);
-        if (!ninho) return null;
-
-        const handleAplicarLote = () => {
-          if (loteTipo === 'status' && loteStatus) {
-            ninho.eggs.forEach((_, idx) => {
-              onUpdateEgg(ninho.id, idx, 'status', loteStatus);
-            });
-            alert(`Status alterado para "${loteStatus}" em ${ninho.eggs.length} ovo(s)`);
-          } else if (loteTipo === 'postura' && loteData) {
-            ninho.eggs.forEach((_, idx) => {
-              onUpdateEgg(ninho.id, idx, 'postura', loteData);
-            });
-            alert(`Data de postura alterada em ${ninho.eggs.length} ovo(s)`);
-          } else if (loteTipo === 'inicioChoca' && loteData) {
-            ninho.eggs.forEach((_, idx) => {
-              onUpdateEgg(ninho.id, idx, 'inicioChoca', loteData);
-            });
-            alert(`Data de início de choca alterada em ${ninho.eggs.length} ovo(s)`);
-          }
-          setEdicaoLoteModal(null);
-          setLoteStatus('');
-          setLoteData('');
-        };
-
-        return (
-          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl p-6 max-w-md w-full">
-              <h3 className="text-lg font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
-                <i className="fas fa-edit text-amber-600"></i>
-                Edição em Lote - {ninho.eggs.length} ovo(s)
-              </h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
-                    Campo a Editar
-                  </label>
-                  <select
-                    value={loteTipo}
-                    onChange={(e) => setLoteTipo(e.target.value as any)}
-                    className="w-full border-2 border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-amber-500"
-                  >
-                    <option value="status">Status</option>
-                    <option value="postura">Data de Postura</option>
-                    <option value="inicioChoca">Data de Início da Choca</option>
-                  </select>
-                </div>
-
-                {loteTipo === 'status' && (
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
-                      Novo Status
-                    </label>
-                    <select
-                      value={loteStatus}
-                      onChange={(e) => setLoteStatus(e.target.value)}
-                      className="w-full border-2 border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-amber-500"
-                    >
-                      <option value="">Selecione...</option>
-                      <option value="Em Espera">Em Espera</option>
-                      <option value="Chocando">Chocando</option>
-                      <option value="Fértil">Fértil</option>
-                      <option value="Infértil">Infértil</option>
-                      <option value="Eclodido">Eclodido</option>
-                      <option value="Perdido">Perdido</option>
-                    </select>
-                  </div>
-                )}
-
-                {(loteTipo === 'postura' || loteTipo === 'inicioChoca') && (
-                  <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
-                      Nova Data
-                    </label>
-                    <DataCompacta
-                      value={loteData}
-                      onChange={setLoteData}
-                      className="w-full h-12 border-2 border-slate-200 p-3 rounded-xl text-sm font-bold bg-white outline-none focus-within:border-amber-500"
-                      ariaLabel="Nova data"
-                    />
-                  </div>
-                )}
-
-                <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={() => {
-                      setEdicaoLoteModal(null);
-                      setLoteStatus('');
-                      setLoteData('');
-                    }}
-                    className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-black text-xs uppercase"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleAplicarLote}
-                    disabled={loteTipo === 'status' ? !loteStatus : !loteData}
-                    className="flex-1 bg-amber-600 text-white py-3 rounded-xl font-black text-xs uppercase disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Aplicar a Todos
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Modal de Criar Novo Casal no Dropdown */}
       {criandoCasalDropdown && (() => {
