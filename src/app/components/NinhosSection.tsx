@@ -319,6 +319,7 @@ export function NinhosSection({
   // A chave usa o ID do ninho + ID do ovo (ou índice como fallback),
   // garantindo que a seleção continue correta mesmo com os ovos agrupados por local.
   const [ovosSelecionados, setOvosSelecionados] = useState<Set<string>>(new Set());
+  const [fotoCasalZoom, setFotoCasalZoom] = useState<string | null>(null);
 
   const [edicaoLoteAberta, setEdicaoLoteAberta] = useState(false);
   const [loteCampos, setLoteCampos] = useState({
@@ -1347,7 +1348,8 @@ export function NinhosSection({
                                             <img
                                               src={femea.photo}
                                               alt={femeaNome}
-                                              className="w-full h-full object-cover"
+                                              onClick={() => setFotoCasalZoom(femea.photo)}
+                              className="cursor-zoom-in w-full h-full object-cover"
                                             />
                                           ) : (
                                             <i className="fas fa-venus text-pink-500 text-[10px]"></i>
@@ -2270,6 +2272,33 @@ export function NinhosSection({
                 Criar Espécie
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {fotoCasalZoom && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setFotoCasalZoom(null)}
+        >
+          <div
+            className="relative max-w-5xl max-h-[90vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setFotoCasalZoom(null)}
+              className="absolute -top-3 -right-3 z-10 w-9 h-9 rounded-full bg-white text-slate-700 shadow-lg font-black hover:bg-emerald-50"
+              aria-label="Fechar foto ampliada"
+              title="Fechar"
+            >
+              ×
+            </button>
+            <img
+              src={fotoCasalZoom}
+              alt="Foto ampliada do casal"
+              className="max-w-[90vw] max-h-[90vh] object-contain rounded-2xl shadow-2xl"
+            />
           </div>
         </div>
       )}
