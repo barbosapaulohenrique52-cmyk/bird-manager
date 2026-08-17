@@ -148,6 +148,8 @@ export default function App() {
     saveConfig,
     exportBackup,
     saveBackupToGoogleDrive,
+    importBackupFromGoogleDrive,
+    lastGoogleDriveBackup,
     importBackup,
     clearEverything,
     saveLancamento,
@@ -278,6 +280,8 @@ export default function App() {
             onImport={importBackup}
             onClear={clearEverything}
             onSaveToGoogleDrive={saveBackupToGoogleDrive}
+            onImportFromGoogleDrive={importBackupFromGoogleDrive}
+            lastGoogleDriveBackup={lastGoogleDriveBackup}
             onRestoreBackup={(data) => {
               importBackup(
                 new File(
