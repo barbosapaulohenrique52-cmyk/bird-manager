@@ -387,37 +387,187 @@ export function NinhosSection({
     setOvosSelecionados(new Set());
   };
 
+  const resetarEdicaoLote = () => {
+    setLoteCampos({
+      postura: false,
+      local: false,
+      species: false,
+      status: false,
+      inicioChoca: false,
+      casalChocandoId: false,
+      localChoca: false,
+      dataEclosao: false,
+      filhoteId: false,
+    });
+
+    setLoteValores({
+      postura: '',
+      local: '',
+      species: '',
+      status: 'Em Espera',
+      inicioChoca: '',
+      casalChocandoId: '',
+      localChoca: '',
+      dataEclosao: '',
+      filhoteId: '',
+    });
+  };
+
   const abrirEdicaoLote = () => {
     if (ovosSelecionados.size === 0) {
       alert('Selecione pelo menos um ovo para editar.');
       return;
     }
+
+    resetarEdicaoLote();
     setEdicaoLoteAberta(true);
   };
 
   const aplicarEdicaoLote = () => {
     if (ovosSelecionados.size === 0) return;
+
     if (!Object.values(loteCampos).some(Boolean)) {
       alert('Marque pelo menos um campo para alterar.');
       return;
     }
 
-    const ovosAlvo = todosOvos.filter((item) => ovosSelecionados.has(item.chave));
+    // Regras de segurança para manter os dados coerentes.
+    if (
+      loteCampos.status &&
+      loteValores.status === 'Chocando' &&
+      !loteCampos.inicioChoca
+    ) {
+      alert(
+        'Para marcar os ovos como "Chocando", marque também "Início da choca" e informe a data.'
+      );
+      return;
+    }
+
+    if (
+      loteCampos.status &&
+      loteValores.status === 'Eclodido' &&
+      !loteCampos.dataEclosao
+    ) {
+      alert(
+        'Para marcar os ovos como "Eclodido", marque também "Data de eclosão" e informe a data.'
+      );
+      return;
+    }
+
+    if (loteCampos.postura && !loteValores.postura) {
+      alert('Informe a data de postura.');
+      return;
+    }
+
+    if (loteCampos.inicioChoca && !loteValores.inicioChoca) {
+      alert('Informe a data de início da choca.');
+      return;
+    }
+
+    if (loteCampos.dataEclosao && !loteValores.dataEclosao) {
+      alert('Informe a data de eclosão.');
+      return;
+    }
+
+    if (loteCampos.status && loteValores.status === 'Chocando' && loteCampos.casalChocandoId) {
+      const casalId = loteValores.casalChocandoId;
+
+      if (casalId) {
+        const ovosAlvoComNinho = todosOvos.filter((item) =>
+          ovosSelecionados.has(item.chave)
+        );
+
+        const conflito = ovosAlvoComNinho.some(
+          ({ ninho }) => casalId === ninho.casalId
+        );
+
+        if (conflito) {
+          // É permitido usar o próprio casal dos pais. A restrição de
+          // "não ser o mesmo casal" existe apenas quando a choca é do tipo amas.
+        }
+      }
+    }
+
+    const ovosAlvo = todosOvos.filter((item) =>
+      ovosSelecionados.has(item.chave)
+    );
+
     ovosAlvo.forEach(({ ninho, eggIdx }) => {
-      if (loteCampos.postura) onUpdateEgg(ninho.id, eggIdx, 'postura', loteValores.postura);
-      if (loteCampos.local) onUpdateEgg(ninho.id, eggIdx, 'local', loteValores.local);
-      if (loteCampos.species) onUpdateEgg(ninho.id, eggIdx, 'species', loteValores.species);
-      if (loteCampos.status) onUpdateEgg(ninho.id, eggIdx, 'status', loteValores.status);
-      if (loteCampos.inicioChoca) onUpdateEgg(ninho.id, eggIdx, 'inicioChoca', loteValores.inicioChoca);
-      if (loteCampos.casalChocandoId) onUpdateEgg(ninho.id, eggIdx, 'casalChocandoId', loteValores.casalChocandoId || undefined);
-      if (loteCampos.localChoca) onUpdateEgg(ninho.id, eggIdx, 'localChoca', loteValores.localChoca);
-      if (loteCampos.dataEclosao) onUpdateEgg(ninho.id, eggIdx, 'dataEclosao', loteValores.dataEclosao);
-      if (loteCampos.filhoteId) onUpdateEgg(ninho.id, eggIdx, 'filhoteId', loteValores.filhoteId || undefined);
+      if (loteCampos.postura) {
+        onUpdateEgg(ninho.id, eggIdx, 'postura', loteValores.postura);
+      }
+
+      if (loteCampos.local) {
+        if (loteValores.local.trim()) {
+          onUpdateEgg(ninho.id, eggIdx, 'local', loteValores.local);
+        }
+      }
+
+      if (loteCampos.species) {
+        if (loteValores.species.trim()) {
+          onUpdateEgg(ninho.id, eggIdx, 'species', loteValores.species);
+        }
+      }
+
+      if (loteCampos.status) {
+        onUpdateEgg(ninho.id, eggIdx, 'status', loteValores.status);
+      }
+
+      if (loteCampos.inicioChoca) {
+        onUpdateEgg(
+          ninho.id,
+          eggIdx,
+          'inicioChoca',
+          loteValores.inicioChoca || undefined
+        );
+      }
+
+      if (loteCampos.casalChocandoId) {
+        onUpdateEgg(
+          ninho.id,
+          eggIdx,
+          'casalChocandoId',
+          loteValores.casalChocandoId || undefined
+        );
+      }
+
+      if (loteCampos.localChoca) {
+        onUpdateEgg(
+          ninho.id,
+          eggIdx,
+          'localChoca',
+          loteValores.localChoca || undefined
+        );
+      }
+
+      if (loteCampos.dataEclosao) {
+        onUpdateEgg(
+          ninho.id,
+          eggIdx,
+          'dataEclosao',
+          loteValores.dataEclosao || undefined
+        );
+      }
+
+      if (loteCampos.filhoteId) {
+        onUpdateEgg(
+          ninho.id,
+          eggIdx,
+          'filhoteId',
+          loteValores.filhoteId || undefined
+        );
+      }
     });
 
-    alert(`Edição aplicada a ${ovosAlvo.length} ${ovosAlvo.length === 1 ? 'ovo' : 'ovos'}.`);
+    alert(
+      `Edição aplicada a ${ovosAlvo.length} ${
+        ovosAlvo.length === 1 ? 'ovo' : 'ovos'
+      }.`
+    );
+
     setEdicaoLoteAberta(false);
     setOvosSelecionados(new Set());
+    resetarEdicaoLote();
   };
 
   // Mantém a seleção sincronizada quando um ovo é excluído ou os dados mudam.
@@ -1876,7 +2026,27 @@ export function NinhosSection({
               <button type="button" onClick={() => setEdicaoLoteAberta(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"><i className="fas fa-times"></i></button>
             </div>
             <div className="p-5 overflow-y-auto space-y-3">
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-800 font-bold">Marque <strong>Alterar</strong> somente nos campos que deseja modificar. Os demais permanecerão como estão.</div>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-800 font-bold">
+                Marque <strong>Alterar</strong> somente nos campos que deseja modificar.
+                Os demais permanecerão como estão em cada ovo.
+              </div>
+
+              {loteCampos.status && loteValores.status === 'Chocando' && (
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 text-[10px] text-purple-800 font-bold">
+                  <i className="fas fa-info-circle mr-1"></i>
+                  Para ovos marcados como <strong>Chocando</strong>, informe também
+                  o <strong>Início da choca</strong>. Casal e local da choca são
+                  opcionais e só serão alterados se você marcar esses campos.
+                </div>
+              )}
+
+              {loteCampos.status && loteValores.status === 'Eclodido' && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-[10px] text-emerald-800 font-bold">
+                  <i className="fas fa-info-circle mr-1"></i>
+                  Para ovos marcados como <strong>Eclodido</strong>, informe também
+                  a <strong>Data de eclosão</strong>.
+                </div>
+              )}
 
               {[
                 ['postura','Data de postura','date'],
@@ -1922,6 +2092,7 @@ export function NinhosSection({
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[9px] text-slate-600 font-bold">
                 <i className="fas fa-lock mr-1 text-slate-400"></i>
                 Anilha, ano da anilha e o estado de anilhamento não são alterados por esta função.
+                A anilhagem continua sendo feita individualmente pelo botão <strong>Anilhar</strong>.
               </div>
             </div>
             <div className="border-t border-slate-200 p-4 flex gap-2 bg-white">
