@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Casal, Ave, Filhote } from '../App';
+import { PhotoZoom } from './PhotoZoom';
 
 interface CasalHistoricoModalProps {
   casal: Casal;
@@ -15,6 +16,7 @@ export function CasalHistoricoModal({ casal, macho, femea, onClose, onAddFilhote
   const filhotes = casal.historico || [];
 
   const [showAddFilhote, setShowAddFilhote] = useState(false);
+  const [fotoZoom, setFotoZoom] = useState<string | null>(null);
   const [newFilhote, setNewFilhote] = useState({
     anilha: '',
     anoAnilha: new Date().getFullYear(),
@@ -75,7 +77,19 @@ export function CasalHistoricoModal({ casal, macho, femea, onClose, onAddFilhote
           <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl">
             <div className="flex items-center gap-3">
               {macho?.photo ? (
-                <img src={macho.photo} className="w-14 h-14 rounded-xl object-cover" alt={macho.name} />
+                <button
+                  type="button"
+                  onClick={() => setFotoZoom(macho.photo!)}
+                  className="flex-shrink-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  title="Clique para ampliar a foto"
+                  aria-label={`Ampliar foto de ${macho.name || macho.ring || 'macho'}`}
+                >
+                  <img
+                    src={macho.photo}
+                    className="w-14 h-14 rounded-xl object-cover cursor-zoom-in hover:scale-105 transition-transform"
+                    alt={macho.name}
+                  />
+                </button>
               ) : (
                 <div className="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center">
                   <i className="fas fa-mars text-blue-600"></i>
@@ -90,7 +104,19 @@ export function CasalHistoricoModal({ casal, macho, femea, onClose, onAddFilhote
 
             <div className="flex items-center gap-3">
               {femea?.photo ? (
-                <img src={femea.photo} className="w-14 h-14 rounded-xl object-cover" alt={femea.name} />
+                <button
+                  type="button"
+                  onClick={() => setFotoZoom(femea.photo!)}
+                  className="flex-shrink-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  title="Clique para ampliar a foto"
+                  aria-label={`Ampliar foto de ${femea.name || femea.ring || 'fêmea'}`}
+                >
+                  <img
+                    src={femea.photo}
+                    className="w-14 h-14 rounded-xl object-cover cursor-zoom-in hover:scale-105 transition-transform"
+                    alt={femea.name}
+                  />
+                </button>
               ) : (
                 <div className="w-14 h-14 rounded-xl bg-pink-100 flex items-center justify-center">
                   <i className="fas fa-venus text-pink-600"></i>
@@ -271,6 +297,13 @@ export function CasalHistoricoModal({ casal, macho, femea, onClose, onAddFilhote
           </div>
         </div>
       </div>
+
+      {fotoZoom && (
+        <PhotoZoom
+          src={fotoZoom}
+          onClose={() => setFotoZoom(null)}
+        />
+      )}
     </div>
   );
 }
