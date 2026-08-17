@@ -8,6 +8,8 @@ interface Props {
   onImport: (file: File) => void;
   onClear: () => void;
   onSaveToGoogleDrive: () => void;
+  onImportFromGoogleDrive: () => void;
+  lastGoogleDriveBackup: string | null;
   onRestoreBackup: (data: any) => void;
 }
 
@@ -18,10 +20,30 @@ export function ConfigSection({
   onImport,
   onClear,
   onSaveToGoogleDrive,
+  onImportFromGoogleDrive,
+  lastGoogleDriveBackup,
   onRestoreBackup,
 }: Props) {
   const [novoLocal, setNovoLocal] = useState("");
   const [novoEspecie, setNovoEspecie] = useState("");
+
+  const formatarUltimoBackup = () => {
+    if (!lastGoogleDriveBackup) return "Nenhum backup registrado nesta sessão";
+
+    const data = new Date(lastGoogleDriveBackup);
+
+    if (Number.isNaN(data.getTime())) {
+      return "Data do backup indisponível";
+    }
+
+    return data.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -155,6 +177,7 @@ export function ConfigSection({
       {/* Backup */}
       <div className="bg-white shadow rounded p-4">
         <h2 className="text-lg font-bold mb-2">Backup</h2>
+
         <div className="flex gap-2 flex-wrap">
           <button
             className="bg-blue-600 text-white px-3 py-1 rounded"
@@ -170,12 +193,20 @@ export function ConfigSection({
             ☁️ Salvar no Google Drive
           </button>
 
+          <button
+            className="bg-indigo-600 text-white px-3 py-1 rounded"
+            onClick={onImportFromGoogleDrive}
+          >
+            📥 Importar do Google Drive
+          </button>
+
           <input
             type="file"
             accept="application/json"
             onChange={(e) => {
               if (e.target.files?.[0]) {
                 onImport(e.target.files[0]);
+                e.currentTarget.value = "";
               }
             }}
           />
@@ -186,6 +217,16 @@ export function ConfigSection({
           >
             Limpar tudo
           </button>
+        </div>
+
+        <div className="mt-3 text-sm text-slate-600">
+          <span className="font-semibold">☁️ Último backup no Google Drive:</span>{" "}
+          {formatarUltimoBackup()}
+        </div>
+
+        <div className="mt-1 text-xs text-slate-400">
+          O backup é salvo como <span className="font-semibold">backup.json</span> na pasta{" "}
+          <span className="font-semibold">GouldPRO</span>.
         </div>
       </div>
     </div>
