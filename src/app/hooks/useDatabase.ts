@@ -1309,6 +1309,89 @@ export function useDatabase() {
     [db, save]
   );
 
+  /**
+   * Desfaz a saída do ninho e retorna o filhote ao passo anterior:
+   *
+   * Sair do ninho -> Anilhado / ainda no ninho.
+   *
+   * A ave criada no Plantel é removida, o vínculo filhoteId é desfeito,
+   * a data de saída é removida e o registro correspondente do histórico
+   * do casal é removido.
+   *
+   * A anilha permanece registrada, portanto o filhote volta para o estado
+   * "Anilhado" e pode sair novamente do ninho quando necessário.
+   */
+  const desfazerSaidaDoNinho = useCallback(
+    (
+      ninhoId: string,
+      eggIdx: number
+    ) => {
+      const newDb = { ...db };
+
+      const ninho = newDb.ninhos.find(
+        n => n.id === ninhoId
+      );
+
+      if (!ninho || !ninho.eggs[eggIdx]) {
+        alert('Não foi possível localizar o ovo.');
+        return;
+      }
+
+      const egg = ninho.eggs[eggIdx];
+
+      if (!egg.filhoteId || !egg.dataSaidaNinho) {
+        alert(
+          'A saída deste filhote ainda não foi registrada.'
+        );
+        return;
+      }
+
+      const aveId = egg.filhoteId;
+
+      // Localizar o casal original do ninho.
+      const casalOriginal = newDb.casais.find(
+        c => c.id === ninho.casalId
+      );
+
+      /*
+       * Remover a ave criada no Plantel.
+       *
+       * Somente a ave vinculada a este ovo é removida.
+       */
+      newDb.aves = newDb.aves.filter(
+        ave => ave.id !== aveId
+      );
+
+      /*
+       * Remover do histórico do casal apenas o registro
+       * correspondente a esta ave.
+       */
+      if (casalOriginal?.historico) {
+        casalOriginal.historico =
+          casalOriginal.historico.filter(
+            filhote => filhote.aveId !== aveId
+          );
+      }
+
+      /*
+       * Retornar o ovo ao estado anterior à saída.
+       *
+       * A anilha NÃO é removida.
+       * Portanto ele continua "Anilhado".
+       */
+      delete egg.filhoteId;
+      delete egg.dataSaidaNinho;
+
+      save(newDb);
+
+      alert(
+        'Saída do ninho desfeita com sucesso!\\n\\n' +
+        'O filhote voltou para o ninho como anilhado e não está mais no Plantel.'
+      );
+    },
+    [db, save]
+  );
+
   const reverterEclosao = useCallback(
     (
       ninhoId: string,
@@ -1893,6 +1976,7 @@ export function useDatabase() {
     eclodirOvo,
     anilharFilhote,
     registrarSaidaDoNinho,
+    desfazerSaidaDoNinho,
     reverterEclosao,
 
     saveConfig,
