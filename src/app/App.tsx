@@ -84,8 +84,6 @@ export interface Egg {
   filhoteAnilhado?: boolean;
   anilha?: string;
   anoAnilha?: number;
-
-  // Data em que o filhote efetivamente saiu do ninho
   dataSaidaNinho?: string;
 }
 
