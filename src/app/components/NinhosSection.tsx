@@ -231,6 +231,7 @@ export function NinhosSection({
   const [anilhamentoModal, setAnilhamentoModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
   const [anilhaEditando, setAnilhaEditando] = useState(false);
   const [saidaNinhoModal, setSaidaNinhoModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
+  const [opcoesOvoAberto, setOpcoesOvoAberto] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
   const [dataSaidaNinho, setDataSaidaNinho] = useState(new Date().toISOString().split('T')[0]);
   const [editCasalNinhoId, setEditCasalNinhoId] = useState<string | null>(null);
   const [dataEclosao, setDataEclosao] = useState(new Date().toISOString().split('T')[0]);
@@ -1723,14 +1724,116 @@ export function NinhosSection({
                               </td>
 
                               {/* Ações */}
-                              <td className="py-1.5 px-1 text-center">
-                                <button
-                                  onClick={() => onRemoveEgg(ninho.id, eggIdx)}
-                                  className="w-6 h-6 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded transition-all"
-                                  title="Excluir ovo"
-                                >
-                                  <i className="fas fa-trash text-[9px]"></i>
-                                </button>
+                              <td className="py-1.5 px-1 text-center relative">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpcoesOvoAberto((atual) =>
+                                        atual?.ninhoId === ninho.id && atual?.eggIdx === eggIdx
+                                          ? null
+                                          : { ninhoId: ninho.id, eggIdx }
+                                      );
+                                    }}
+                                    className={`px-2 py-1 rounded-lg text-[8px] font-black uppercase whitespace-nowrap transition-all ${
+                                      opcoesOvoAberto?.ninhoId === ninho.id && opcoesOvoAberto?.eggIdx === eggIdx
+                                        ? "bg-indigo-600 text-white"
+                                        : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                                    }`}
+                                    title="Mais opções do ovo"
+                                  >
+                                    <i className="fas fa-ellipsis-h mr-1"></i>
+                                    + Opções
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => onRemoveEgg(ninho.id, eggIdx)}
+                                    className="w-6 h-6 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded transition-all"
+                                    title="Excluir ovo"
+                                  >
+                                    <i className="fas fa-trash text-[9px]"></i>
+                                  </button>
+                                </div>
+
+                                {opcoesOvoAberto?.ninhoId === ninho.id &&
+                                  opcoesOvoAberto?.eggIdx === eggIdx && (
+                                    <div
+                                      className="absolute right-0 top-full mt-2 z-[100] w-64 max-w-[calc(100vw-1rem)] bg-white border-2 border-indigo-200 rounded-xl shadow-2xl p-3 text-left"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <div className="flex items-center justify-between mb-3">
+                                        <div>
+                                          <div className="text-[10px] font-black text-indigo-700 uppercase">
+                                            Mais opções
+                                          </div>
+                                          <div className="text-[8px] text-slate-400 font-bold mt-0.5">
+                                            Informações adicionais
+                                          </div>
+                                        </div>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => setOpcoesOvoAberto(null)}
+                                          className="w-6 h-6 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                                          title="Fechar"
+                                        >
+                                          <i className="fas fa-times text-[9px]"></i>
+                                        </button>
+                                      </div>
+
+                                      <div className="space-y-3">
+                                        <div>
+                                          <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">
+                                            Nota
+                                          </label>
+                                          <textarea
+                                            value={egg.nota || ""}
+                                            onChange={(e) =>
+                                              onUpdateEgg(
+                                                ninho.id,
+                                                eggIdx,
+                                                "nota",
+                                                e.target.value
+                                              )
+                                            }
+                                            placeholder="Digite uma observação..."
+                                            rows={3}
+                                            className="w-full border border-slate-200 rounded-lg px-2.5 py-2 text-[10px] font-bold text-slate-700 outline-none resize-y focus:border-indigo-500"
+                                          />
+                                        </div>
+
+                                        <div>
+                                          <label className="text-[8px] font-black text-slate-500 uppercase block mb-1">
+                                            Porta
+                                          </label>
+                                          <input
+                                            type="text"
+                                            value={egg.porta || ""}
+                                            onChange={(e) =>
+                                              onUpdateEgg(
+                                                ninho.id,
+                                                eggIdx,
+                                                "porta",
+                                                e.target.value
+                                              )
+                                            }
+                                            placeholder="Ex.: porta azul"
+                                            className="w-full border border-slate-200 rounded-lg px-2.5 py-2 text-[10px] font-bold text-slate-700 outline-none focus:border-indigo-500"
+                                          />
+                                        </div>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => setOpcoesOvoAberto(null)}
+                                          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-[9px] font-black uppercase transition-all"
+                                        >
+                                          <i className="fas fa-check mr-1"></i>
+                                          Fechar
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
                               </td>
                             </tr>
                           );
