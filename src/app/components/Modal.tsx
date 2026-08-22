@@ -28,6 +28,39 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
   const currentYear = new Date().getFullYear();
   const ave = editId && type === 'ave' ? aves.find(a => a.id === editId) : null;
   const [photoData, setPhotoData] = useState(ave?.photo || '');
+
+  // Nome da ave:
+  // - por padrão é ANILHA-ANO;
+  // - continua editável pelo usuário;
+  // - depois que o usuário digita um nome próprio, o sistema não
+  //   sobrescreve mais esse nome automaticamente.
+  const [nomeAve, setNomeAve] = useState(
+    ave?.name ||
+    (ave?.ring
+      ? `${ave.ring}-${ave.ringYear || currentYear}`
+      : '')
+  );
+  const [nomeAveManual, setNomeAveManual] = useState(
+    !!ave?.name &&
+    !/^Filhote\s+/i.test(ave.name) &&
+    (!ave.ring || ave.name !== `${ave.ring}-${ave.ringYear || currentYear}`)
+  );
+
+  const atualizarNomeAutomatico = (
+    anilha: string,
+    ano: string
+  ) => {
+    if (!nomeAveManual) {
+      const anilhaLimpa = anilha.trim();
+
+      if (anilhaLimpa) {
+        setNomeAve(`${anilhaLimpa}-${ano || currentYear}`);
+      } else {
+        setNomeAve('');
+      }
+    }
+  };
+
   const [selectedMacho, setSelectedMacho] = useState<string>('');
   const [selectedFemea, setSelectedFemea] = useState<string>('');
   const [selectedPai, setSelectedPai] = useState<string>(ave?.parentMaleId || '');
@@ -88,7 +121,7 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
       species: formData.get('species') as string,
       ring: formData.get('ring') as string,
       ringYear: Number(formData.get('ringYear')),
-      name: formData.get('name') as string,
+      name: nomeAve.trim() || `${(formData.get('ring') as string || '').trim()}-${formData.get('ringYear') || currentYear}`,
       sex: formData.get('sex') as 'Macho' | 'Fêmea' | 'Indefinido',
       status: formData.get('status') as 'Ativo' | 'Vendido' | 'Óbito',
       creator: formData.get('creator') as string,
@@ -242,6 +275,16 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                     name="ring"
                     defaultValue={ave?.ring || ''}
                     placeholder="Ex: ABC-123"
+                    onChange={(e) => {
+                      const ano = (
+                        e.currentTarget.form?.elements.namedItem('ringYear') as HTMLInputElement
+                      )?.value || String(currentYear);
+
+                      atualizarNomeAutomatico(
+                        e.target.value,
+                        ano
+                      );
+                    }}
                     className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
                   />
                 </div>
@@ -252,6 +295,16 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                     type="number"
                     name="ringYear"
                     defaultValue={ave?.ringYear || currentYear}
+                    onChange={(e) => {
+                      const anilha = (
+                        e.currentTarget.form?.elements.namedItem('ring') as HTMLInputElement
+                      )?.value || '';
+
+                      atualizarNomeAutomatico(
+                        anilha,
+                        e.target.value
+                      );
+                    }}
                     className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
                   />
                 </div>
@@ -260,10 +313,17 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                   <label className="text-[10px] font-black text-slate-400 uppercase">Nome / Identificador</label>
                   <input
                     name="name"
-                    defaultValue={ave?.name || ''}
-                    placeholder="Nome para fácil identificação"
+                    value={nomeAve}
+                    onChange={(e) => {
+                      setNomeAveManual(true);
+                      setNomeAve(e.target.value);
+                    }}
+                    placeholder="Será gerado automaticamente: anilha-ano"
                     className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
                   />
+                  <p className="text-[9px] text-slate-400 mt-1">
+                    Padrão: <strong>anilha-ano</strong>. Você pode substituir por um nome próprio.
+                  </p>
                 </div>
 
                 <div>
