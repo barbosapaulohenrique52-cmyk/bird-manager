@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { CasalSelector } from './CasalSelector';
+import { AveSelector } from './AveSelector';
 import type { ModalType, Ave, Casal, Config } from '../App';
 
 interface ColorLists {
@@ -29,6 +30,8 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
   const [photoData, setPhotoData] = useState(ave?.photo || '');
   const [selectedMacho, setSelectedMacho] = useState<string>('');
   const [selectedFemea, setSelectedFemea] = useState<string>('');
+  const [selectedPai, setSelectedPai] = useState<string>(ave?.parentMaleId || '');
+  const [selectedMae, setSelectedMae] = useState<string>(ave?.parentFemaleId || '');
   const [showMachoList, setShowMachoList] = useState(false);
   const [showFemeaList, setShowFemeaList] = useState(false);
 
@@ -94,6 +97,10 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
       corCabeca: formData.get('corCabeca') as string,
       corPeito: formData.get('corPeito') as string,
       corDorso: formData.get('corDorso') as string,
+      nota: formData.get('nota') as string,
+      porta: formData.get('porta') as string,
+      parentMaleId: selectedPai || undefined,
+      parentFemaleId: selectedMae || undefined,
     };
     onSaveAve(data, editId);
     onClose();
@@ -280,6 +287,7 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                     className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
                   >
                     <option value="Ativo">Ativo</option>
+                    <option value="No Ninho">No Ninho</option>
                     <option value="Vendido">Vendido</option>
                     <option value="Óbito">Óbito</option>
                   </select>
@@ -350,6 +358,56 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                       <option key={color} value={color} />
                     ))}
                   </datalist>
+                </div>
+
+                {/* Filiação */}
+                <div className="col-span-2 border-t-2 border-slate-100 pt-5">
+                  <h3 className="text-[10px] font-black text-slate-500 uppercase mb-3 flex items-center gap-2">
+                    <i className="fas fa-sitemap text-indigo-500"></i> Filiação
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Pai</label>
+                      <AveSelector
+                        aves={aves.filter(a => a.id !== ave?.id && (a.sex === 'Macho' || a.id === selectedPai))}
+                        value={selectedPai}
+                        onChange={setSelectedPai}
+                        placeholder="Selecione o pai..."
+                        tipo="macho"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase mb-1 block">Mãe</label>
+                      <AveSelector
+                        aves={aves.filter(a => a.id !== ave?.id && (a.sex === 'Fêmea' || a.id === selectedMae))}
+                        value={selectedMae}
+                        onChange={setSelectedMae}
+                        placeholder="Selecione a mãe..."
+                        tipo="femea"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Nota</label>
+                  <textarea
+                    name="nota"
+                    defaultValue={ave?.nota || ''}
+                    placeholder="Observações sobre a ave..."
+                    rows={3}
+                    className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1 resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Porta</label>
+                  <input
+                    name="porta"
+                    defaultValue={ave?.porta || ''}
+                    placeholder="Ex: Porta azul"
+                    className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
+                  />
                 </div>
               </div>
 
