@@ -197,7 +197,6 @@ interface NinhosSectionProps {
   onEclodirOvo: (ninhoId: string, eggIdx: number, dataEclosao: string) => void;
   onAnilharFilhote: (ninhoId: string, eggIdx: number, anilha: string, anoAnilha: number) => void;
   onRegistrarSaidaDoNinho?: (ninhoId: string, eggIdx: number, dataSaidaNinho: string) => void;
-  onDesfazerSaidaDoNinho?: (ninhoId: string, eggIdx: number) => void;
   onReverterEclosao: (ninhoId: string, eggIdx: number) => void;
   onUpdateNinhoCasal: (ninhoId: string, casalId: string) => void;
   onSaveCasal: (data: Omit<Casal, 'id'>) => string;
@@ -219,7 +218,6 @@ export function NinhosSection({
   onEclodirOvo,
   onAnilharFilhote,
   onRegistrarSaidaDoNinho,
-  onDesfazerSaidaDoNinho,
   onReverterEclosao,
   onUpdateNinhoCasal,
   onSaveCasal,
@@ -752,30 +750,6 @@ export function NinhosSection({
 
     setSaidaNinhoModal(null);
     setDataSaidaNinho(new Date().toISOString().split('T')[0]);
-  };
-
-  const handleDesfazerSaidaNinho = (
-    ninhoId: string,
-    eggIdx: number
-  ) => {
-    if (!onDesfazerSaidaDoNinho) {
-      alert(
-        'A função para desfazer a saída do ninho ainda não está conectada ao sistema.'
-      );
-      return;
-    }
-
-    const confirmar = window.confirm(
-      'Desfazer a saída do ninho?\\n\\n' +
-      'O filhote será removido do Plantel e voltará para o estado "Anilhado", permanecendo registrado no ninho.'
-    );
-
-    if (!confirmar) return;
-
-    onDesfazerSaidaDoNinho(
-      ninhoId,
-      eggIdx
-    );
   };
 
   const getStatusColor = (status: string) => {
@@ -1697,22 +1671,10 @@ export function NinhosSection({
                                         </button>
 
                                         {(egg as any).dataSaidaNinho ? (
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              handleDesfazerSaidaNinho(
-                                                ninho.id,
-                                                eggIdx
-                                              )
-                                            }
-                                            disabled={!onDesfazerSaidaDoNinho}
-                                            className="text-[8px] font-black text-emerald-700 bg-emerald-50 hover:bg-amber-50 hover:text-amber-700 px-1.5 py-1 rounded whitespace-nowrap transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                                            title="Desfazer saída do ninho e retornar ao estado anilhado"
-                                          >
+                                          <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded whitespace-nowrap">
                                             <i className="fas fa-check-circle mr-1"></i>
                                             Saiu {formatarDataCurta((egg as any).dataSaidaNinho)}
-                                            <i className="fas fa-undo ml-1 text-[7px]"></i>
-                                          </button>
+                                          </span>
                                         ) : (
                                           <button
                                             type="button"
