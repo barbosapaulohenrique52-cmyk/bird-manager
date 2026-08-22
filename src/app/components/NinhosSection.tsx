@@ -333,11 +333,12 @@ export function NinhosSection({
   const [loteCampos, setLoteCampos] = useState({
     postura: false, local: false, species: false, status: false,
     inicioChoca: false, casalChocandoId: false, localChoca: false,
-    dataEclosao: false, filhoteId: false,
+    dataEclosao: false, filhoteId: false, nota: false, porta: false,
   });
   const [loteValores, setLoteValores] = useState({
     postura: '', local: '', species: '', status: 'Em Espera' as Egg['status'],
     inicioChoca: '', casalChocandoId: '', localChoca: '', dataEclosao: '', filhoteId: '',
+    nota: '', porta: '',
   });
 
   const getChaveOvo = (ninhoId: string, egg: Egg, eggIdx: number) =>
@@ -407,6 +408,8 @@ export function NinhosSection({
       localChoca: false,
       dataEclosao: false,
       filhoteId: false,
+      nota: false,
+      porta: false,
     });
 
     setLoteValores({
@@ -419,6 +422,8 @@ export function NinhosSection({
       localChoca: '',
       dataEclosao: '',
       filhoteId: '',
+      nota: '',
+      porta: '',
     });
   };
 
@@ -564,6 +569,24 @@ export function NinhosSection({
           eggIdx,
           'filhoteId',
           loteValores.filhoteId || undefined
+        );
+      }
+
+      if (loteCampos.nota) {
+        onUpdateEgg(
+          ninho.id,
+          eggIdx,
+          'nota',
+          loteValores.nota
+        );
+      }
+
+      if (loteCampos.porta) {
+        onUpdateEgg(
+          ninho.id,
+          eggIdx,
+          'porta',
+          loteValores.porta
         );
       }
     });
@@ -2384,6 +2407,8 @@ export function NinhosSection({
                 ['localChoca','Local da choca','text'],
                 ['dataEclosao','Data de eclosão','date'],
                 ['filhoteId','ID do filhote associado','text'],
+                ['nota','Nota','textarea'],
+                ['porta','Porta','text'],
               ].map(([campo, label, tipo]) => {
                 const key = campo as keyof typeof loteCampos;
                 return (
@@ -2408,6 +2433,15 @@ export function NinhosSection({
                       <select disabled={!loteCampos[key]} value={loteValores.casalChocandoId} onChange={(e) => setLoteValores(v => ({ ...v, casalChocandoId: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400">
                         <option value="">Sem casal</option>{casais.map(casal => { const macho=aves.find(a=>a.id===casal.mId); const femea=aves.find(a=>a.id===casal.fId); return <option key={casal.id} value={casal.id}>{macho?.ring || macho?.name || 'Macho'} × {femea?.ring || femea?.name || 'Fêmea'}</option>; })}
                       </select>
+                    ) : tipo === 'textarea' ? (
+                      <textarea
+                        disabled={!loteCampos[key]}
+                        value={loteValores[key as keyof typeof loteValores] as string}
+                        onChange={(e) => setLoteValores(v => ({ ...v, [key]: e.target.value }))}
+                        placeholder={key === 'nota' ? 'Digite uma observação...' : ''}
+                        rows={3}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400 resize-y"
+                      />
                     ) : (
                       <input type={tipo === 'date' ? 'date' : 'text'} disabled={!loteCampos[key]} value={loteValores[key as keyof typeof loteValores] as string} onChange={(e) => setLoteValores(v => ({ ...v, [key]: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400" />
                     )}
@@ -2419,6 +2453,8 @@ export function NinhosSection({
                 <i className="fas fa-lock mr-1 text-slate-400"></i>
                 Anilha, ano da anilha e o estado de anilhamento não são alterados por esta função.
                 A anilhagem continua sendo feita individualmente pelo botão <strong>Anilhar</strong>.
+                <br />
+                <span className="text-slate-500">Nota e Porta agora também podem ser alteradas em lote.</span>
               </div>
             </div>
             <div className="border-t border-slate-200 p-4 flex gap-2 bg-white">
