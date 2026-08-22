@@ -431,6 +431,55 @@ export function useDatabase() {
       historico: casal.historico || []
     }));
 
+    // Sincronizar filhotes que já foram anilhados antes da criação dos
+    // campos de Nota/Porta no Plantel. Não sobrescreve valores já
+    // existentes na ave; apenas recupera os dados do ovo quando faltarem.
+    let houveMigracaoNotaPorta = false;
+    ninhos.forEach((ninho: Ninho) => {
+      ninho.eggs?.forEach((egg: Egg) => {
+        if (!egg.filhoteId) return;
+
+        const ave = aves.find((a: Ave) => a.id === egg.filhoteId);
+        if (!ave) return;
+
+        if (ave.nota === undefined && egg.nota !== undefined) {
+          ave.nota = egg.nota;
+          houveMigracaoNotaPorta = true;
+        }
+        if (ave.porta === undefined && egg.porta !== undefined) {
+          ave.porta = egg.porta;
+          houveMigracaoNotaPorta = true;
+        }
+      });
+    });
+
+    // Corrigir nomes automáticos criados pela versão anterior.
+    // Ex.: "Filhote 123" -> "123-2026".
+    // Nomes personalizados pelo usuário não são alterados.
+    let houveMigracaoNome = false;
+
+    aves.forEach((ave: Ave) => {
+      if (
+        ave.name &&
+        /^Filhote\s+/i.test(ave.name) &&
+        ave.ring
+      ) {
+        ave.name = `${ave.ring}-${ave.ringYear}`;
+        houveMigracaoNome = true;
+      }
+    });
+
+    if (houveMigracaoNome) {
+      localStorage.setItem(
+        'gpro_v19_aves',
+        JSON.stringify(aves)
+      );
+    }
+
+    if (houveMigracaoNotaPorta) {
+      localStorage.setItem('gpro_v19_aves', JSON.stringify(aves));
+    }
+
     setDb({
       aves,
       casais: casaisMigrados,
@@ -1114,6 +1163,17 @@ export function useDatabase() {
           aveExistente.ring = anilhaLimpa;
           aveExistente.ringYear = anoAnilha;
 
+          // Nome automático padrão: ANILHA-ANO.
+          // Se o nome anterior era o nome automático "Filhote ...",
+          // atualizamos. Se o usuário já colocou um nome próprio,
+          // preservamos o nome informado por ele.
+          if (
+            !aveExistente.name ||
+            /^Filhote\s+/i.test(aveExistente.name)
+          ) {
+            aveExistente.name = `${anilhaLimpa}-${anoAnilha}`;
+          }
+
           /*
            * Se ainda não saiu do ninho, permanece como "No Ninho".
            * Se já saiu, preservamos "Ativo".
@@ -1124,6 +1184,15 @@ export function useDatabase() {
 
           aveExistente.species =
             egg.species || aveExistente.species;
+
+          // A nota e a porta registradas no ovo passam a acompanhar
+          // o filhote no Plantel.
+          if (egg.nota !== undefined) {
+            aveExistente.nota = egg.nota;
+          }
+          if (egg.porta !== undefined) {
+            aveExistente.porta = egg.porta;
+          }
         }
 
         /*
@@ -1159,7 +1228,7 @@ export function useDatabase() {
             anoAnilha,
 
           name:
-            `Filhote ${anilhaLimpa}`,
+            `${anilhaLimpa}-${anoAnilha}`,
 
           sex:
             'Indefinido',
@@ -1187,6 +1256,10 @@ export function useDatabase() {
 
           criadoPorAmas:
             criadoPorAmas,
+
+          // Levar para o Plantel as informações registradas no ovo.
+          nota: egg.nota,
+          porta: egg.porta,
 
           casalAmasId:
             criadoPorAmas
@@ -1339,7 +1412,7 @@ export function useDatabase() {
             egg.anoAnilha!,
 
           name:
-            `Filhote ${egg.anilha}`,
+            `${egg.anilha}-${egg.anoAnilha}`,
 
           sex:
             'Indefinido',
