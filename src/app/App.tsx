@@ -147,6 +147,7 @@ export default function App() {
     eclodirOvo,
     anilharFilhote,
     registrarSaidaDoNinho,
+    desfazerSaidaDoNinho,
     reverterEclosao,
     saveConfig,
     exportBackup,
@@ -224,6 +225,7 @@ export default function App() {
             onEclodirOvo={eclodirOvo}
             onAnilharFilhote={anilharFilhote}
             onRegistrarSaidaDoNinho={registrarSaidaDoNinho}
+            onDesfazerSaidaDoNinho={desfazerSaidaDoNinho}
             onReverterEclosao={reverterEclosao}
             onUpdateNinhoCasal={updateNinhoCasal}
             onSaveCasal={saveCasal}
