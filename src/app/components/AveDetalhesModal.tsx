@@ -23,6 +23,16 @@ export function AveDetalhesModal({ ave, aves, casais, ninhos, onClose, onNavigat
   // Buscar ninho de origem
   const ninhoOrigem = ave.birthNestId ? ninhos.find(n => n.id === ave.birthNestId) : undefined;
 
+  // Buscar o casal dos pais para mostrar a gaiola,
+  // da mesma forma que aparece na tela de Ninhos.
+  const casalPais = ninhoOrigem?.casalId
+    ? casais.find(c => c.id === ninhoOrigem.casalId)
+    : casais.find(
+        c =>
+          c.mId === ave.parentMaleId &&
+          c.fId === ave.parentFemaleId
+      );
+
   // Buscar descendentes (filhotes) - aves que têm esta ave como pai ou mãe
   const descendentes = aves.filter(a =>
     a.parentMaleId === ave.id || a.parentFemaleId === ave.id
@@ -97,6 +107,36 @@ export function AveDetalhesModal({ ave, aves, casais, ninhos, onClose, onNavigat
               )}
             </div>
 
+            {(ave.nota || ave.porta) && (
+              <div className="mt-4 pt-4 border-t-2 border-slate-200">
+                <h4 className="font-black text-slate-600 uppercase text-xs mb-2">
+                  Registro
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {ave.nota && (
+                    <div className="bg-white border border-slate-200 rounded-xl p-3">
+                      <div className="text-[9px] font-black text-slate-400 uppercase">
+                        Nota
+                      </div>
+                      <div className="font-bold text-xs whitespace-pre-wrap">
+                        {ave.nota}
+                      </div>
+                    </div>
+                  )}
+                  {ave.porta && (
+                    <div className="bg-white border border-slate-200 rounded-xl p-3">
+                      <div className="text-[9px] font-black text-slate-400 uppercase">
+                        Porta
+                      </div>
+                      <div className="font-bold text-xs">
+                        {ave.porta}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Cores */}
             {(ave.corCabeca || ave.corPeito || ave.corDorso) && (
               <div className="mt-4 pt-4 border-t-2 border-slate-200">
@@ -136,37 +176,93 @@ export function AveDetalhesModal({ ave, aves, casais, ninhos, onClose, onNavigat
               {/* Pais Biológicos */}
               {(pai || mae) && (
                 <div className="mb-3">
-                  <div className="text-[10px] font-black text-blue-600 uppercase mb-2">Pais Biológicos</div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {pai && (
-                      <button
-                        onClick={() => onNavigate(pai.id)}
-                        className="bg-white border-2 border-blue-300 hover:border-blue-500 p-3 rounded-xl text-left transition-all"
-                      >
-                        <div className="flex items-center gap-2">
-                          <i className="fas fa-mars text-blue-600"></i>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-bold text-sm truncate">{pai.name || 'S/ Nome'}</div>
-                            <div className="text-[10px] text-slate-500">{pai.ring || 'S/A'}</div>
+                  <div className="text-[10px] font-black text-blue-600 uppercase mb-2">
+                    Pais Biológicos
+                  </div>
+
+                  <div className="bg-white border-2 border-blue-200 rounded-xl p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        {pai ? (
+                          <button
+                            type="button"
+                            onClick={() => onNavigate(pai.id)}
+                            className="flex items-center gap-2 flex-1 min-w-0 text-left hover:bg-blue-50 rounded-lg p-1 transition-all"
+                            title="Ver pai"
+                          >
+                            {pai.photo ? (
+                              <img
+                                src={pai.photo}
+                                alt={pai.name || pai.ring}
+                                className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                                <i className="fas fa-mars text-blue-600 text-xs"></i>
+                              </div>
+                            )}
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-[10px] font-bold text-slate-700 truncate">
+                                {pai.ring || 'S/ anilha'}
+                              </span>
+                              <span className="text-[8px] text-slate-500">
+                                {pai.ringYear || '--'}
+                              </span>
+                            </div>
+                          </button>
+                        ) : (
+                          <div className="flex-1 text-[10px] text-slate-400">
+                            Pai não encontrado
                           </div>
-                          <i className="fas fa-arrow-right text-blue-400 text-xs"></i>
-                        </div>
-                      </button>
-                    )}
-                    {mae && (
-                      <button
-                        onClick={() => onNavigate(mae.id)}
-                        className="bg-white border-2 border-pink-300 hover:border-pink-500 p-3 rounded-xl text-left transition-all"
-                      >
-                        <div className="flex items-center gap-2">
-                          <i className="fas fa-venus text-pink-600"></i>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-bold text-sm truncate">{mae.name || 'S/ Nome'}</div>
-                            <div className="text-[10px] text-slate-500">{mae.ring || 'S/A'}</div>
+                        )}
+
+                        <span className="text-slate-300 font-bold">+</span>
+
+                        {mae ? (
+                          <button
+                            type="button"
+                            onClick={() => onNavigate(mae.id)}
+                            className="flex items-center gap-2 flex-1 min-w-0 text-left hover:bg-pink-50 rounded-lg p-1 transition-all"
+                            title="Ver mãe"
+                          >
+                            {mae.photo ? (
+                              <img
+                                src={mae.photo}
+                                alt={mae.name || mae.ring}
+                                className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
+                                <i className="fas fa-venus text-pink-600 text-xs"></i>
+                              </div>
+                            )}
+                            <div className="flex flex-col min-w-0">
+                              <span className="text-[10px] font-bold text-slate-700 truncate">
+                                {mae.ring || 'S/ anilha'}
+                              </span>
+                              <span className="text-[8px] text-slate-500">
+                                {mae.ringYear || '--'}
+                              </span>
+                            </div>
+                          </button>
+                        ) : (
+                          <div className="flex-1 text-[10px] text-slate-400">
+                            Mãe não encontrada
                           </div>
-                          <i className="fas fa-arrow-right text-pink-400 text-xs"></i>
+                        )}
+                      </div>
+
+                      {casalPais && (
+                        <div className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded shrink-0">
+                          Gaiola {casalPais.cage || 'S/ Gaiola'}
                         </div>
-                      </button>
+                      )}
+                    </div>
+
+                    {ninhoOrigem && (
+                      <div className="mt-2 pt-2 border-t border-slate-100 text-[8px] text-slate-400 font-bold uppercase">
+                        Ninho: {ninhoOrigem.name || 'S/ nome'}
+                      </div>
                     )}
                   </div>
                 </div>
