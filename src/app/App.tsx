@@ -84,6 +84,9 @@ export interface Egg {
   filhoteAnilhado?: boolean;
   anilha?: string;
   anoAnilha?: number;
+
+  // Data em que o filhote efetivamente saiu do ninho
+  dataSaidaNinho?: string;
 }
 
 export interface Ninho {
@@ -145,6 +148,7 @@ export default function App() {
     updateEgg,
     eclodirOvo,
     anilharFilhote,
+    registrarSaidaDoNinho,
     reverterEclosao,
     saveConfig,
     exportBackup,
@@ -221,6 +225,7 @@ export default function App() {
             onUpdateEgg={updateEgg}
             onEclodirOvo={eclodirOvo}
             onAnilharFilhote={anilharFilhote}
+            onRegistrarSaidaDoNinho={registrarSaidaDoNinho}
             onReverterEclosao={reverterEclosao}
             onUpdateNinhoCasal={updateNinhoCasal}
             onSaveCasal={saveCasal}
