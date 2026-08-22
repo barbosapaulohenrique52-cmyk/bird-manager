@@ -1006,19 +1006,18 @@ export function useDatabase() {
    * ANILHAR FILHOTE
    * ============================================================
    *
-   * NOVO FLUXO:
+   * Fluxo:
    *
-   * Anilhar NÃO coloca mais o filhote no Plantel.
+   * Eclodido -> Anilhado -> No Ninho (Plantel)
+   *                          |
+   *                          -> Sair do ninho -> Ativo
    *
-   * Nesta etapa apenas registramos:
-   * - que o filhote foi anilhado;
-   * - número da anilha;
-   * - ano da anilha.
+   * A partir do anilhamento, a ave já existe no Plantel com
+   * status "No Ninho", mas continua aparecendo no ninho.
    *
-   * O filhote continua pertencendo ao ovo/ninho.
-   *
-   * A criação da ave no Plantel acontecerá somente quando
-   * a função registrarSaidaDoNinho for chamada.
+   * Se a anilha for apagada antes da saída do ninho, a ave
+   * provisória é removida do Plantel e o ovo volta para
+   * "Anilha pendente".
    */
   const anilharFilhote = useCallback(
     (
@@ -1029,10 +1028,9 @@ export function useDatabase() {
     ) => {
       const newDb = { ...db };
 
-      const ninho =
-        newDb.ninhos.find(
-          n => n.id === ninhoId
-        );
+      const ninho = newDb.ninhos.find(
+        n => n.id === ninhoId
+      );
 
       if (
         !ninho ||
@@ -1041,36 +1039,49 @@ export function useDatabase() {
         return;
       }
 
-      const egg =
-        ninho.eggs[eggIdx];
-
-      const anilhaLimpa =
-        anilha.trim();
+      const egg = ninho.eggs[eggIdx];
+      const anilhaLimpa = anilha.trim();
 
       /*
-       * Se o usuário apagar completamente a anilha
-       * durante a edição, o filhote volta para o estado
-       * anterior: anilha pendente.
+       * Se o usuário apagar completamente a anilha:
        *
-       * Isso evita a necessidade de criar um botão
-       * separado para "Desfazer anilhamento".
+       * - antes da saída: desfaz o anilhamento e remove a ave
+       *   provisória do Plantel;
+       * - depois da saída: não permite, pois a ave já está
+       *   oficialmente no Plantel.
        */
       if (!anilhaLimpa) {
-        /*
-         * Se o filhote já saiu do ninho e já foi criado
-         * no Plantel, não permitimos apagar a anilha,
-         * pois isso quebraria o vínculo entre o ovo e a ave.
-         */
-        if (egg.filhoteId) {
+        if (egg.dataSaidaNinho) {
           alert(
-            'Este filhote já saiu do ninho e foi incluído no Plantel.\n\nA anilha não pode ser removida nesta etapa.'
+            'Este filhote já saiu do ninho e está no Plantel.\n\nA anilha não pode ser removida nesta etapa.'
           );
           return;
+        }
+
+        if (egg.filhoteId) {
+          const aveId = egg.filhoteId;
+
+          newDb.aves = newDb.aves.filter(
+            ave => ave.id !== aveId
+          );
+
+          const casalOriginal = newDb.casais.find(
+            c => c.id === ninho.casalId
+          );
+
+          if (casalOriginal?.historico) {
+            casalOriginal.historico =
+              casalOriginal.historico.filter(
+                filhote => filhote.aveId !== aveId
+              );
+          }
         }
 
         egg.filhoteAnilhado = false;
         delete egg.anilha;
         delete egg.anoAnilha;
+        delete egg.filhoteId;
+        delete egg.dataSaidaNinho;
 
         save(newDb);
 
@@ -1081,27 +1092,151 @@ export function useDatabase() {
         return;
       }
 
-      // Registrar ou atualizar a anilha
+      const casalOriginal = newDb.casais.find(
+        c => c.id === ninho.casalId
+      );
+
+      const criadoPorAmas = !!(
+        egg.casalChocandoId &&
+        egg.casalChocandoId !== ninho.casalId
+      );
+
+      /*
+       * Atualizar a ave existente caso ela já tenha sido criada
+       * no primeiro anilhamento.
+       */
+      if (egg.filhoteId) {
+        const aveExistente = newDb.aves.find(
+          ave => ave.id === egg.filhoteId
+        );
+
+        if (aveExistente) {
+          aveExistente.ring = anilhaLimpa;
+          aveExistente.ringYear = anoAnilha;
+
+          /*
+           * Se ainda não saiu do ninho, permanece como "No Ninho".
+           * Se já saiu, preservamos "Ativo".
+           */
+          if (!egg.dataSaidaNinho) {
+            aveExistente.status = 'No Ninho';
+          }
+
+          aveExistente.species =
+            egg.species || aveExistente.species;
+        }
+
+        /*
+         * Atualizar também o histórico existente, sem criar
+         * uma segunda entrada.
+         */
+        if (casalOriginal?.historico) {
+          const historico = casalOriginal.historico.find(
+            filhote => filhote.aveId === egg.filhoteId
+          );
+
+          if (historico) {
+            historico.anilha = anilhaLimpa;
+            historico.anoAnilha = anoAnilha;
+          }
+        }
+      } else {
+        /*
+         * Primeiro anilhamento:
+         * criar imediatamente a ave no Plantel como "No Ninho".
+         */
+        const novaAve: Ave = {
+          id: Date.now().toString(),
+
+          species:
+            egg.species ||
+            'Não especificado',
+
+          ring:
+            anilhaLimpa,
+
+          ringYear:
+            anoAnilha,
+
+          name:
+            `Filhote ${anilhaLimpa}`,
+
+          sex:
+            'Indefinido',
+
+          status:
+            'No Ninho',
+
+          creator:
+            'Criação Própria',
+
+          acqYear:
+            anoAnilha,
+
+          parentMaleId:
+            casalOriginal?.mId,
+
+          parentFemaleId:
+            casalOriginal?.fId,
+
+          birthDate:
+            egg.dataEclosao,
+
+          birthNestId:
+            ninhoId,
+
+          criadoPorAmas:
+            criadoPorAmas,
+
+          casalAmasId:
+            criadoPorAmas
+              ? egg.casalChocandoId
+              : undefined
+        };
+
+        newDb.aves.push(novaAve);
+
+        egg.filhoteId =
+          novaAve.id;
+
+        /*
+         * O histórico é criado no anilhamento e permanece
+         * durante toda a vida do filhote.
+         */
+        if (casalOriginal) {
+          if (!casalOriginal.historico) {
+            casalOriginal.historico = [];
+          }
+
+          casalOriginal.historico.push({
+            id:
+              Date.now().toString() +
+              '_hist',
+
+            anilha:
+              anilhaLimpa,
+
+            anoAnilha:
+              anoAnilha,
+
+            aveId:
+              novaAve.id,
+
+            status:
+              'Ativo'
+          });
+        }
+      }
+
       egg.filhoteAnilhado = true;
       egg.anilha = anilhaLimpa;
       egg.anoAnilha = anoAnilha;
-
-      /*
-       * IMPORTANTE:
-       *
-       * Não criamos a Ave aqui.
-       * Não adicionamos ao Plantel.
-       * Não criamos ainda o histórico do casal.
-       *
-       * Tudo isso será feito somente na saída efetiva
-       * do ninho.
-       */
 
       save(newDb);
 
       alert(
         'Filhote anilhado com sucesso!\n\n' +
-        'O filhote continuará no ninho até que você registre a saída do ninho.'
+        'O filhote já foi incluído no Plantel como "No Ninho" e continuará no ninho até que você registre a saída.'
       );
     },
     [db, save]
@@ -1112,22 +1247,12 @@ export function useDatabase() {
    * REGISTRAR SAÍDA DO NINHO
    * ============================================================
    *
-   * Esta é a segunda etapa.
+   * O filhote já existe no Plantel desde o anilhamento.
+   * Aqui apenas mudamos seu status:
    *
-   * Ao confirmar a saída:
+   * No Ninho -> Ativo
    *
-   * 1. O filhote é criado no Plantel;
-   * 2. Recebe status "Ativo";
-   * 3. Mantém o vínculo com o ninho de origem;
-   * 4. Mantém o vínculo com os pais biológicos;
-   * 5. Mantém a informação de criação por amas;
-   * 6. É registrado no histórico do casal;
-   * 7. O ovo continua no ninho.
-   *
-   * A informação da data efetiva de saída é armazenada no próprio
-   * registro do ovo usando a propriedade dataSaidaNinho.
-   *
-   * A propriedade dataSaidaNinho pertence ao registro do ovo.
+   * O registro continua no ninho e no histórico do casal.
    */
   const registrarSaidaDoNinho = useCallback(
     (
@@ -1155,7 +1280,6 @@ export function useDatabase() {
       const egg =
         ninho.eggs[eggIdx];
 
-      // Só pode registrar saída depois de anilhar
       if (
         !egg.filhoteAnilhado ||
         !egg.anilha
@@ -1166,15 +1290,25 @@ export function useDatabase() {
         return;
       }
 
-      // Evitar criar a mesma ave duas vezes
-      if (egg.filhoteId) {
+      if (egg.dataSaidaNinho) {
         alert(
           'A saída deste filhote já foi registrada.'
         );
         return;
       }
 
-      // Buscar casal original / pais biológicos
+      /*
+       * O filhote normalmente já existe no Plantel.
+       * O bloco de criação abaixo serve apenas para recuperar
+       * registros antigos ou inconsistentes que tenham anilha,
+       * mas não tenham filhoteId.
+       */
+      let ave = egg.filhoteId
+        ? newDb.aves.find(
+            a => a.id === egg.filhoteId
+          )
+        : undefined;
+
       const casalOriginal =
         newDb.casais.find(
           c =>
@@ -1182,7 +1316,6 @@ export function useDatabase() {
             ninho.casalId
         );
 
-      // Verificar se foi criado por amas
       const criadoPorAmas =
         !!(
           egg.casalChocandoId &&
@@ -1190,117 +1323,153 @@ export function useDatabase() {
             ninho.casalId
         );
 
+      if (!ave) {
+        const novaAve: Ave = {
+          id:
+            Date.now().toString(),
+
+          species:
+            egg.species ||
+            'Não especificado',
+
+          ring:
+            egg.anilha,
+
+          ringYear:
+            egg.anoAnilha!,
+
+          name:
+            `Filhote ${egg.anilha}`,
+
+          sex:
+            'Indefinido',
+
+          status:
+            'No Ninho',
+
+          creator:
+            'Criação Própria',
+
+          acqYear:
+            egg.anoAnilha!,
+
+          parentMaleId:
+            casalOriginal?.mId,
+
+          parentFemaleId:
+            casalOriginal?.fId,
+
+          birthDate:
+            egg.dataEclosao,
+
+          birthNestId:
+            ninhoId,
+
+          criadoPorAmas:
+            criadoPorAmas,
+
+          casalAmasId:
+            criadoPorAmas
+              ? egg.casalChocandoId
+              : undefined
+        };
+
+        newDb.aves.push(
+          novaAve
+        );
+
+        egg.filhoteId =
+          novaAve.id;
+
+        ave = novaAve;
+
+        if (casalOriginal) {
+          if (!casalOriginal.historico) {
+            casalOriginal.historico = [];
+          }
+
+          casalOriginal.historico.push({
+            id:
+              Date.now().toString() +
+              '_hist',
+
+            anilha:
+              egg.anilha,
+
+            anoAnilha:
+              egg.anoAnilha!,
+
+            aveId:
+              novaAve.id,
+
+            status:
+              'Ativo'
+          });
+        }
+      }
+
       /*
-       * Criar a ave somente agora.
-       *
-       * Antes ela ficava no Plantel com status "No Ninho".
-       * Agora a entrada no Plantel acontece somente após
-       * a saída efetiva do ninho.
+       * Agora a saída efetiva:
+       * o filhote deixa de estar "No Ninho" e passa a "Ativo".
        */
-      const novaAve: Ave = {
-        id:
-          Date.now().toString(),
+      ave.status = 'Ativo';
+      ave.ring = egg.anilha;
+      ave.ringYear = egg.anoAnilha!;
 
-        species:
-          egg.species ||
-          'Não especificado',
-
-        ring:
-          egg.anilha,
-
-        ringYear:
-          egg.anoAnilha!,
-
-        name:
-          `Filhote ${egg.anilha}`,
-
-        sex:
-          'Indefinido',
-
-        status:
-          'Ativo',
-
-        creator:
-          'Criação Própria',
-
-        acqYear:
-          egg.anoAnilha!,
-
-        parentMaleId:
-          casalOriginal?.mId,
-
-        parentFemaleId:
-          casalOriginal?.fId,
-
-        birthDate:
-          egg.dataEclosao,
-
-        birthNestId:
-          ninhoId,
-
-        criadoPorAmas:
-          criadoPorAmas,
-
-        casalAmasId:
-          criadoPorAmas
-            ? egg.casalChocandoId
-            : undefined
-      };
-
-      // Adicionar ao Plantel
-      newDb.aves.push(
-        novaAve
-      );
-
-      // Vincular o filhote ao registro do ovo
-      egg.filhoteId =
-        novaAve.id;
-
-      /*
-       * Registrar a data efetiva da saída do ninho.
-       */
       egg.dataSaidaNinho =
         dataSaidaNinho;
 
       /*
-       * Adicionar ao histórico do casal.
-       *
-       * O registro permanece no histórico mesmo depois que
-       * o ninho deixar de aparecer na lista de ativos.
+       * Garantir que o histórico esteja vinculado à mesma ave.
        */
       if (casalOriginal) {
-        if (
-          !casalOriginal.historico
-        ) {
-          casalOriginal.historico =
-            [];
+        if (!casalOriginal.historico) {
+          casalOriginal.historico = [];
         }
 
-        casalOriginal.historico.push({
-          id:
-            Date.now().toString() +
-            '_hist',
+        const historico =
+          casalOriginal.historico.find(
+            filhote =>
+              filhote.aveId ===
+              ave!.id
+          );
 
-          anilha:
-            egg.anilha,
+        if (historico) {
+          historico.anilha =
+            egg.anilha;
 
-          anoAnilha:
-            egg.anoAnilha!,
+          historico.anoAnilha =
+            egg.anoAnilha!;
 
-          aveId:
-            novaAve.id,
+          historico.status =
+            'Ativo';
+        } else {
+          casalOriginal.historico.push({
+            id:
+              Date.now().toString() +
+              '_hist',
 
-          status:
-            'Ativo'
-        });
+            anilha:
+              egg.anilha,
+
+            anoAnilha:
+              egg.anoAnilha!,
+
+            aveId:
+              ave.id,
+
+            status:
+              'Ativo'
+          });
+        }
       }
 
       save(newDb);
 
       const mensagem =
         criadoPorAmas
-          ? `Saída do ninho registrada com sucesso!\n\nFilhote ${egg.anilha} adicionado ao plantel.\nCriado por amas.`
-          : `Saída do ninho registrada com sucesso!\n\nFilhote ${egg.anilha} adicionado ao plantel.`;
+          ? `Saída do ninho registrada com sucesso!\n\nFilhote ${egg.anilha} agora está como "Ativo" no Plantel.\nCriado por amas.`
+          : `Saída do ninho registrada com sucesso!\n\nFilhote ${egg.anilha} agora está como "Ativo" no Plantel.`;
 
       alert(
         mensagem
@@ -1310,16 +1479,20 @@ export function useDatabase() {
   );
 
   /**
-   * Desfaz a saída do ninho e retorna o filhote ao passo anterior:
+   * ============================================================
+   * DESFAZER SAÍDA DO NINHO
+   * ============================================================
    *
-   * Sair do ninho -> Anilhado / ainda no ninho.
+   * Retorna:
    *
-   * A ave criada no Plantel é removida, o vínculo filhoteId é desfeito,
-   * a data de saída é removida e o registro correspondente do histórico
-   * do casal é removido.
+   * Ativo -> No Ninho
    *
-   * A anilha permanece registrada, portanto o filhote volta para o estado
-   * "Anilhado" e pode sair novamente do ninho quando necessário.
+   * IMPORTANTE:
+   * - NÃO remove a ave do Plantel;
+   * - NÃO remove o histórico;
+   * - NÃO remove a anilha;
+   * - apenas remove a data de saída e devolve o status
+   *   para "No Ninho".
    */
   const desfazerSaidaDoNinho = useCallback(
     (
@@ -1328,65 +1501,105 @@ export function useDatabase() {
     ) => {
       const newDb = { ...db };
 
-      const ninho = newDb.ninhos.find(
-        n => n.id === ninhoId
-      );
+      const ninho =
+        newDb.ninhos.find(
+          n => n.id === ninhoId
+        );
 
-      if (!ninho || !ninho.eggs[eggIdx]) {
-        alert('Não foi possível localizar o ovo.');
+      if (
+        !ninho ||
+        !ninho.eggs[eggIdx]
+      ) {
+        alert(
+          'Não foi possível localizar o ovo.'
+        );
         return;
       }
 
-      const egg = ninho.eggs[eggIdx];
+      const egg =
+        ninho.eggs[eggIdx];
 
-      if (!egg.filhoteId || !egg.dataSaidaNinho) {
+      if (
+        !egg.filhoteId ||
+        !egg.dataSaidaNinho
+      ) {
         alert(
           'A saída deste filhote ainda não foi registrada.'
         );
         return;
       }
 
-      const aveId = egg.filhoteId;
+      const ave =
+        newDb.aves.find(
+          a =>
+            a.id ===
+            egg.filhoteId
+        );
 
-      // Localizar o casal original do ninho.
-      const casalOriginal = newDb.casais.find(
-        c => c.id === ninho.casalId
-      );
-
-      /*
-       * Remover a ave criada no Plantel.
-       *
-       * Somente a ave vinculada a este ovo é removida.
-       */
-      newDb.aves = newDb.aves.filter(
-        ave => ave.id !== aveId
-      );
-
-      /*
-       * Remover do histórico do casal apenas o registro
-       * correspondente a esta ave.
-       */
-      if (casalOriginal?.historico) {
-        casalOriginal.historico =
-          casalOriginal.historico.filter(
-            filhote => filhote.aveId !== aveId
-          );
+      if (!ave) {
+        alert(
+          'A ave correspondente não foi encontrada no Plantel.'
+        );
+        return;
       }
 
       /*
-       * Retornar o ovo ao estado anterior à saída.
-       *
-       * A anilha NÃO é removida.
-       * Portanto ele continua "Anilhado".
+       * Retorna a ave ao Plantel como "No Ninho".
        */
-      delete egg.filhoteId;
+      ave.status =
+        'No Ninho';
+
+      ave.ring =
+        egg.anilha || ave.ring;
+
+      ave.ringYear =
+        egg.anoAnilha || ave.ringYear;
+
+      /*
+       * A anilha e o vínculo com o ovo permanecem.
+       * Apenas a saída é desfeita.
+       */
       delete egg.dataSaidaNinho;
+
+      /*
+       * O histórico permanece.
+       */
+      const casalOriginal =
+        newDb.casais.find(
+          c =>
+            c.id ===
+            ninho.casalId
+        );
+
+      if (casalOriginal?.historico) {
+        const historico =
+          casalOriginal.historico.find(
+            filhote =>
+              filhote.aveId ===
+              ave.id
+          );
+
+        if (historico) {
+          historico.anilha =
+            egg.anilha || historico.anilha;
+
+          historico.anoAnilha =
+            egg.anoAnilha || historico.anoAnilha;
+
+          /*
+           * Filhote continua sendo um registro ativo no histórico.
+           * "No Ninho" é o status da ave no Plantel.
+           */
+          historico.status =
+            'Ativo';
+        }
+      }
 
       save(newDb);
 
       alert(
-        'Saída do ninho desfeita com sucesso!\\n\\n' +
-        'O filhote voltou para o ninho como anilhado e não está mais no Plantel.'
+        'Saída do ninho desfeita com sucesso!\n\n' +
+        'O filhote voltou para "No Ninho" no Plantel e continua registrado no ninho e no histórico do casal.'
       );
     },
     [db, save]
@@ -1998,4 +2211,3 @@ export function useDatabase() {
     deleteFilhoteHistorico
   };
 }
-
