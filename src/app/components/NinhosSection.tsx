@@ -196,6 +196,7 @@ interface NinhosSectionProps {
   onUpdateEgg: (ninhoId: string, eggIdx: number, field: keyof Egg, value: any) => void;
   onEclodirOvo: (ninhoId: string, eggIdx: number, dataEclosao: string) => void;
   onAnilharFilhote: (ninhoId: string, eggIdx: number, anilha: string, anoAnilha: number) => void;
+  onRegistrarSaidaDoNinho?: (ninhoId: string, eggIdx: number, dataSaidaNinho: string) => void;
   onReverterEclosao: (ninhoId: string, eggIdx: number) => void;
   onUpdateNinhoCasal: (ninhoId: string, casalId: string) => void;
   onSaveCasal: (data: Omit<Casal, 'id'>) => string;
@@ -216,6 +217,7 @@ export function NinhosSection({
   onUpdateEgg,
   onEclodirOvo,
   onAnilharFilhote,
+  onRegistrarSaidaDoNinho,
   onReverterEclosao,
   onUpdateNinhoCasal,
   onSaveCasal,
@@ -227,6 +229,9 @@ export function NinhosSection({
   const [eclosaoModal, setEclosaoModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
   const [chocaModal, setChocaModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
   const [anilhamentoModal, setAnilhamentoModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
+  const [anilhaEditando, setAnilhaEditando] = useState(false);
+  const [saidaNinhoModal, setSaidaNinhoModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
+  const [dataSaidaNinho, setDataSaidaNinho] = useState(new Date().toISOString().split('T')[0]);
   const [editCasalNinhoId, setEditCasalNinhoId] = useState<string | null>(null);
   const [dataEclosao, setDataEclosao] = useState(new Date().toISOString().split('T')[0]);
   const [chocaData, setChocaData] = useState({
@@ -703,11 +708,48 @@ export function NinhosSection({
   };
 
   const handleAnilhar = () => {
-    if (anilhamentoModal && anilhaData.numero) {
-      onAnilharFilhote(anilhamentoModal.ninhoId, anilhamentoModal.eggIdx, anilhaData.numero, anilhaData.ano);
-      setAnilhamentoModal(null);
-      setAnilhaData({ numero: '', ano: new Date().getFullYear() });
+    if (!anilhamentoModal) return;
+
+    /*
+     * Quando estamos editando, o campo pode ser apagado.
+     * Nesse caso o useDatabase interpreta a anilha vazia
+     * como "desfazer anilhamento" e retorna o ovo para
+     * "Anilha pendente".
+     */
+    if (!anilhaEditando && !anilhaData.numero.trim()) {
+      return;
     }
+
+    onAnilharFilhote(
+      anilhamentoModal.ninhoId,
+      anilhamentoModal.eggIdx,
+      anilhaData.numero,
+      anilhaData.ano
+    );
+
+    setAnilhamentoModal(null);
+    setAnilhaEditando(false);
+    setAnilhaData({ numero: '', ano: new Date().getFullYear() });
+  };
+
+  const handleRegistrarSaidaNinho = () => {
+    if (!saidaNinhoModal) return;
+
+    if (!onRegistrarSaidaDoNinho) {
+      alert(
+        'A função de saída do ninho ainda não está conectada ao sistema.'
+      );
+      return;
+    }
+
+    onRegistrarSaidaDoNinho(
+      saidaNinhoModal.ninhoId,
+      saidaNinhoModal.eggIdx,
+      dataSaidaNinho
+    );
+
+    setSaidaNinhoModal(null);
+    setDataSaidaNinho(new Date().toISOString().split('T')[0]);
   };
 
   const getStatusColor = (status: string) => {
@@ -1597,27 +1639,84 @@ export function NinhosSection({
                                 )}
                               </td>
 
-                              {/* Data Anilhamento */}
+                              {/* Data Anilhamento / Saída do Ninho */}
                               <td className="py-1.5 px-1">
                                 {egg.status === 'Eclodido' ? (
-                                  egg.filhoteAnilhado ? (
-                                    <div className="flex items-center gap-1">
-                                      <i className="fas fa-check-circle text-emerald-600 text-[8px]"></i>
-                                      <span className="text-[9px] font-bold text-slate-600">
-                                        {egg.anilha}
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => {
-                                        setAnilhamentoModal({ ninhoId: ninho.id, eggIdx });
-                                        setAnilhaData({ numero: '', ano: new Date().getFullYear() });
-                                      }}
-                                      className="text-[8px] font-black px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all whitespace-nowrap"
-                                    >
-                                      Anilhar
-                                    </button>
-                                  )
+                                  <div className="flex flex-col gap-1.5 min-w-[90px]">
+                                    {egg.filhoteAnilhado ? (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setAnilhamentoModal({
+                                              ninhoId: ninho.id,
+                                              eggIdx
+                                            });
+                                            setAnilhaEditando(true);
+                                            setAnilhaData({
+                                              numero: egg.anilha || '',
+                                              ano: egg.anoAnilha || new Date().getFullYear()
+                                            });
+                                          }}
+                                          className={`flex items-center gap-1 text-[9px] font-bold rounded px-1.5 py-1 text-left transition-all ${
+                                            (egg as any).dataSaidaNinho
+                                              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                              : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                                          }`}
+                                          title="Editar anilha"
+                                        >
+                                          <i className="fas fa-ring text-[8px]"></i>
+                                          <span className="truncate">{egg.anilha}</span>
+                                          <i className="fas fa-pencil-alt text-[7px] ml-auto"></i>
+                                        </button>
+
+                                        {(egg as any).dataSaidaNinho ? (
+                                          <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                            <i className="fas fa-check-circle mr-1"></i>
+                                            Saiu {formatarDataCurta((egg as any).dataSaidaNinho)}
+                                          </span>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setSaidaNinhoModal({
+                                                ninhoId: ninho.id,
+                                                eggIdx
+                                              });
+                                              setDataSaidaNinho(
+                                                new Date().toISOString().split('T')[0]
+                                              );
+                                            }}
+                                            disabled={!onRegistrarSaidaDoNinho}
+                                            className="text-[8px] font-black px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                            title="Registrar que o filhote saiu do ninho e incluí-lo no Plantel"
+                                          >
+                                            <i className="fas fa-sign-out-alt mr-1"></i>
+                                            Sair do ninho
+                                          </button>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setAnilhamentoModal({
+                                            ninhoId: ninho.id,
+                                            eggIdx
+                                          });
+                                          setAnilhaEditando(false);
+                                          setAnilhaData({
+                                            numero: '',
+                                            ano: new Date().getFullYear()
+                                          });
+                                        }}
+                                        className="text-[8px] font-black px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all whitespace-nowrap"
+                                      >
+                                        <i className="fas fa-ring mr-1"></i>
+                                        Anilhar
+                                      </button>
+                                    )}
+                                  </div>
                                 ) : (
                                   <span className="text-[10px] text-slate-400">--</span>
                                 )}
@@ -1874,13 +1973,13 @@ export function NinhosSection({
         </div>
       )}
 
-      {/* Modal de Anilhamento */}
+      {/* Modal de Anilhamento / Edição da Anilha */}
       {anilhamentoModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full">
             <h3 className="text-lg font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
               <i className="fas fa-ring text-amber-600"></i>
-              Anilhar Filhote
+              {anilhaEditando ? 'Editar Anilha' : 'Anilhar Filhote'}
             </h3>
             
             <div className="space-y-4">
@@ -1910,6 +2009,14 @@ export function NinhosSection({
                 <p className="text-[9px] text-slate-400 mt-1">Padrão: ano vigente</p>
               </div>
 
+              {anilhaEditando && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[9px] text-amber-800 font-bold">
+                  <i className="fas fa-info-circle mr-1"></i>
+                  Se apagar completamente a anilha e salvar, o filhote volta para
+                  <strong> Anilha pendente</strong>.
+                </div>
+              )}
+
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => setAnilhamentoModal(null)}
@@ -1919,16 +2026,73 @@ export function NinhosSection({
                 </button>
                 <button
                   onClick={handleAnilhar}
-                  disabled={!anilhaData.numero}
+                  disabled={!anilhaEditando && !anilhaData.numero.trim()}
                   className="flex-1 bg-amber-600 text-white py-3 rounded-xl font-black text-xs uppercase disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Anilhar e Mover para Plantel
+                  {anilhaEditando ? 'Salvar Anilha' : 'Confirmar Anilhamento'}
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Modal de Saída do Ninho */}
+      {saidaNinhoModal && (() => {
+        const ninhoSaida = ninhos.find(n => n.id === saidaNinhoModal.ninhoId);
+        const eggSaida = ninhoSaida?.eggs[saidaNinhoModal.eggIdx];
+
+        return (
+          <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl">
+              <h3 className="text-lg font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
+                <i className="fas fa-sign-out-alt text-emerald-600"></i>
+                Registrar saída do ninho
+              </h3>
+
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4">
+                <p className="text-[10px] font-bold text-emerald-800">
+                  Filhote <strong>{eggSaida?.anilha || 'sem anilha'}</strong>
+                </p>
+                <p className="text-[9px] text-emerald-700 mt-1">
+                  Ao confirmar, o filhote será incluído no Plantel e o registro
+                  continuará no ninho e no histórico do casal.
+                </p>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
+                  Data de saída do ninho
+                </label>
+                <DataCompacta
+                  value={dataSaidaNinho}
+                  onChange={setDataSaidaNinho}
+                  className="w-full h-12 border-2 border-slate-200 p-3 rounded-xl text-sm font-bold bg-white outline-none focus-within:border-emerald-500"
+                  ariaLabel="Data de saída do ninho"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setSaidaNinhoModal(null)}
+                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-black text-xs uppercase hover:bg-slate-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRegistrarSaidaNinho}
+                  className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-black text-xs uppercase hover:bg-emerald-700"
+                >
+                  <i className="fas fa-check mr-2"></i>
+                  Confirmar saída
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal de Criar Novo Casal no Dropdown */}
       {criandoCasalDropdown && (() => {
