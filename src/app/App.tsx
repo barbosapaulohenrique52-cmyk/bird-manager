@@ -85,6 +85,8 @@ export interface Egg {
   anilha?: string;
   anoAnilha?: number;
   dataSaidaNinho?: string;
+  nota?: string;
+  porta?: string;
 }
 
 export interface Ninho {
