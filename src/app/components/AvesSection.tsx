@@ -4,7 +4,7 @@ import BirdColorDiagram from './BirdColorDiagram';
 
 interface AvesSectionProps {
   aves: Ave[];
-  config: Config;
+  config?: Config;
   onOpenModal: (type: ModalType, id?: string | null) => void;
   onDeleteAve: (id: string) => void;
   onPhotoClick?: (photoUrl: string) => void;
@@ -16,7 +16,7 @@ function obterHexDaCor(
   cores: CorAve[] | undefined,
   padrao: string
 ): string {
-  if (!nome) {
+  if (!nome || !nome.trim()) {
     return padrao;
   }
 
@@ -110,19 +110,19 @@ export function AvesSection({
         {filteredAves.map((ave) => {
           const hexCabeca = obterHexDaCor(
             ave.corCabeca,
-            config.coresCabeca,
+            config?.coresCabeca,
             '#f1f3f5'
           );
 
           const hexPeito = obterHexDaCor(
             ave.corPeito,
-            config.coresPeito,
+            config?.coresPeito,
             '#f1f3f5'
           );
 
           const hexDorso = obterHexDaCor(
             ave.corDorso,
-            config.coresDorso,
+            config?.coresDorso,
             '#f1f3f5'
           );
 
