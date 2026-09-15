@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Config, CorAve } from "../App";
+import type { Config, CorAve } from "../App";
 
 interface Props {
   config: Config;
@@ -13,6 +13,147 @@ interface Props {
   onRestoreBackup: (data: any) => void;
 }
 
+interface SeletorCoresProps {
+  titulo: string;
+  emoji: string;
+  cores: CorAve[];
+  novaCorNome: string;
+  novaCorHex: string;
+  onChangeNome: (valor: string) => void;
+  onChangeHex: (valor: string) => void;
+  onAdicionarCor: () => void;
+  onRemoverCor: (id: string) => void;
+}
+
+function SeletorCores({
+  titulo,
+  emoji,
+  cores,
+  novaCorNome,
+  novaCorHex,
+  onChangeNome,
+  onChangeHex,
+  onAdicionarCor,
+  onRemoverCor,
+}: SeletorCoresProps) {
+  return (
+    <div className="border rounded-lg p-4 bg-white">
+      <h3 className="text-base font-bold mb-3 flex items-center gap-2">
+        <span>{emoji}</span>
+        {titulo}
+      </h3>
+
+      {/* Cores já cadastradas */}
+      <div className="mb-4">
+        <div className="text-sm font-semibold text-slate-700 mb-2">
+          Cores cadastradas
+        </div>
+
+        {cores.length === 0 ? (
+          <div className="border border-dashed rounded p-3 text-sm text-slate-500">
+            Nenhuma cor cadastrada.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {cores.map((cor) => (
+              <div
+                key={cor.id}
+                className="flex items-center justify-between gap-2 border rounded px-3 py-2"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="w-8 h-8 rounded-full border border-slate-300 shadow-sm flex-shrink-0"
+                    style={{ backgroundColor: cor.hex }}
+                    title={cor.hex}
+                  />
+
+                  <div className="min-w-0">
+                    <div className="font-medium text-sm truncate">
+                      {cor.nome}
+                    </div>
+
+                    <div className="text-xs text-slate-500">
+                      {cor.hex}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => onRemoverCor(cor.id)}
+                  className="text-red-500 hover:text-red-700 font-bold px-1"
+                  title={`Excluir a cor ${cor.nome}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Cadastro de nova cor */}
+      <div className="border-t pt-4">
+        <div className="text-sm font-semibold text-slate-700 mb-2">
+          Cadastrar nova cor
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_180px_auto] gap-3 items-end">
+          {/* Nome */}
+          <label className="block">
+            <span className="block text-sm mb-1">
+              Nome da cor
+            </span>
+
+            <input
+              type="text"
+              value={novaCorNome}
+              onChange={(e) => onChangeNome(e.target.value)}
+              placeholder="Ex.: Verde pastel"
+              className="border rounded px-3 py-2 w-full"
+            />
+          </label>
+
+          {/* Seletor de cor e hexadecimal */}
+          <label className="block">
+            <span className="block text-sm mb-1">
+              Selecionar cor
+            </span>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={novaCorHex}
+                onChange={(e) => onChangeHex(e.target.value.toUpperCase())}
+                className="h-10 w-14 cursor-pointer border rounded p-1 bg-white"
+                title="Escolha uma cor"
+              />
+
+              <input
+                type="text"
+                value={novaCorHex}
+                onChange={(e) => onChangeHex(e.target.value.toUpperCase())}
+                className="border rounded px-2 py-2 w-full uppercase"
+                maxLength={7}
+                placeholder="#000000"
+              />
+            </div>
+          </label>
+
+          {/* Botão */}
+          <button
+            type="button"
+            onClick={onAdicionarCor}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+          >
+            + ADICIONAR
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ConfigSection({
   config,
   onSaveConfig,
@@ -22,13 +163,18 @@ export function ConfigSection({
   onSaveToGoogleDrive,
   onImportFromGoogleDrive,
   lastGoogleDriveBackup,
-  onRestoreBackup,
 }: Props) {
   const [novoLocal, setNovoLocal] = useState("");
   const [novoEspecie, setNovoEspecie] = useState("");
 
-  const [novaCorNome, setNovaCorNome] = useState("");
-  const [novaCorHex, setNovaCorHex] = useState("#A7D7A9");
+  const [novaCorNomeCabeca, setNovaCorNomeCabeca] = useState("");
+  const [novaCorHexCabeca, setNovaCorHexCabeca] = useState("#A7D7A9");
+
+  const [novaCorNomePeito, setNovaCorNomePeito] = useState("");
+  const [novaCorHexPeito, setNovaCorHexPeito] = useState("#A7D7A9");
+
+  const [novaCorNomeDorso, setNovaCorNomeDorso] = useState("");
+  const [novaCorHexDorso, setNovaCorHexDorso] = useState("#A7D7A9");
 
   const coresAves: CorAve[] = config.coresAves || [];
 
@@ -65,27 +211,37 @@ export function ConfigSection({
       .substring(2, 9)}`;
   };
 
-  const adicionarCor = () => {
-    const nome = novaCorNome.trim();
+  const adicionarCor = (
+    nomeInformado: string,
+    hexInformado: string,
+  ) => {
+    const nome = nomeInformado.trim();
+    const hex = hexInformado.trim().toUpperCase();
 
     if (!nome) {
       alert("Digite o nome da cor.");
-      return;
+      return false;
+    }
+
+    if (!/^#[0-9A-F]{6}$/i.test(hex)) {
+      alert("Digite um código hexadecimal válido, por exemplo: #A7D7A9.");
+      return false;
     }
 
     const corJaExiste = coresAves.some(
-      (cor) => cor.nome.trim().toLowerCase() === nome.toLowerCase(),
+      (cor) =>
+        cor.nome.trim().toLowerCase() === nome.toLowerCase(),
     );
 
     if (corJaExiste) {
       alert("Já existe uma cor cadastrada com esse nome.");
-      return;
+      return false;
     }
 
     const novaCor: CorAve = {
       id: gerarIdCor(),
       nome,
-      hex: novaCorHex.toUpperCase(),
+      hex,
     };
 
     onSaveConfig({
@@ -93,8 +249,7 @@ export function ConfigSection({
       coresAves: [...coresAves, novaCor],
     });
 
-    setNovaCorNome("");
-    setNovaCorHex("#A7D7A9");
+    return true;
   };
 
   const removerCor = (id: string) => {
@@ -114,6 +269,42 @@ export function ConfigSection({
     });
   };
 
+  const cadastrarCorCabeca = () => {
+    const adicionou = adicionarCor(
+      novaCorNomeCabeca,
+      novaCorHexCabeca,
+    );
+
+    if (adicionou) {
+      setNovaCorNomeCabeca("");
+      setNovaCorHexCabeca("#A7D7A9");
+    }
+  };
+
+  const cadastrarCorPeito = () => {
+    const adicionou = adicionarCor(
+      novaCorNomePeito,
+      novaCorHexPeito,
+    );
+
+    if (adicionou) {
+      setNovaCorNomePeito("");
+      setNovaCorHexPeito("#A7D7A9");
+    }
+  };
+
+  const cadastrarCorDorso = () => {
+    const adicionou = adicionarCor(
+      novaCorNomeDorso,
+      novaCorHexDorso,
+    );
+
+    if (adicionou) {
+      setNovaCorNomeDorso("");
+      setNovaCorHexDorso("#A7D7A9");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Configurações gerais */}
@@ -124,6 +315,7 @@ export function ConfigSection({
 
         <label className="block mb-2">
           Prazo de alerta de postura (dias):
+
           <input
             type="number"
             value={config.prazoAlertaPostura}
@@ -277,116 +469,69 @@ export function ConfigSection({
       </div>
 
       {/* Paleta de cores das aves */}
-      <div className="bg-white shadow rounded p-4">
+      <div className="bg-slate-50 shadow rounded p-4">
         <h2 className="text-lg font-bold mb-2">
-          🎨 Paleta de cores das aves
+          🎨 Cores das aves
         </h2>
 
         <p className="text-sm text-slate-600 mb-4">
-          Cadastre as cores que poderão ser utilizadas no cadastro
-          e na identificação visual das aves.
+          Selecione uma cor existente ou cadastre uma nova cor
+          personalizada. A paleta é compartilhada entre cabeça,
+          peito e dorso.
         </p>
 
-        {/* Formulário de nova cor */}
-        <div className="border rounded p-3 bg-slate-50">
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_150px_auto] gap-3 items-end">
-            <label className="block">
-              <span className="block text-sm font-medium mb-1">
-                Nome da cor
-              </span>
+        <div className="space-y-4">
+          {/* Cabeça */}
+          <SeletorCores
+            titulo="Cores da cabeça"
+            emoji="🟢"
+            cores={coresAves}
+            novaCorNome={novaCorNomeCabeca}
+            novaCorHex={novaCorHexCabeca}
+            onChangeNome={setNovaCorNomeCabeca}
+            onChangeHex={setNovaCorHexCabeca}
+            onAdicionarCor={cadastrarCorCabeca}
+            onRemoverCor={removerCor}
+          />
 
-              <input
-                type="text"
-                value={novaCorNome}
-                onChange={(e) => setNovaCorNome(e.target.value)}
-                placeholder="Ex.: Verde pastel"
-                className="border rounded px-2 py-2 w-full bg-white"
-              />
-            </label>
+          {/* Peito */}
+          <SeletorCores
+            titulo="Cores do peito"
+            emoji="🟡"
+            cores={coresAves}
+            novaCorNome={novaCorNomePeito}
+            novaCorHex={novaCorHexPeito}
+            onChangeNome={setNovaCorNomePeito}
+            onChangeHex={setNovaCorHexPeito}
+            onAdicionarCor={cadastrarCorPeito}
+            onRemoverCor={removerCor}
+          />
 
-            <label className="block">
-              <span className="block text-sm font-medium mb-1">
-                Cor
-              </span>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={novaCorHex}
-                  onChange={(e) => setNovaCorHex(e.target.value)}
-                  className="h-10 w-14 cursor-pointer border rounded p-1 bg-white"
-                />
-
-                <input
-                  type="text"
-                  value={novaCorHex}
-                  onChange={(e) => setNovaCorHex(e.target.value)}
-                  className="border rounded px-2 py-2 w-full uppercase bg-white"
-                  maxLength={7}
-                  placeholder="#000000"
-                />
-              </div>
-            </label>
-
-            <button
-              type="button"
-              onClick={adicionarCor}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
-            >
-              + ADICIONAR
-            </button>
-          </div>
+          {/* Dorso */}
+          <SeletorCores
+            titulo="Cores do dorso"
+            emoji="🔵"
+            cores={coresAves}
+            novaCorNome={novaCorNomeDorso}
+            novaCorHex={novaCorHexDorso}
+            onChangeNome={setNovaCorNomeDorso}
+            onChangeHex={setNovaCorHexDorso}
+            onAdicionarCor={cadastrarCorDorso}
+            onRemoverCor={removerCor}
+          />
         </div>
 
-        {/* Lista de cores */}
-        <div className="mt-4 space-y-2">
-          {coresAves.length === 0 ? (
-            <div className="border border-dashed rounded p-4 text-sm text-slate-500">
-              Nenhuma cor personalizada cadastrada.
-            </div>
-          ) : (
-            coresAves.map((cor) => (
-              <div
-                key={cor.id}
-                className="flex items-center justify-between border rounded px-3 py-2"
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className="w-8 h-8 rounded-full border border-slate-300 shadow-sm"
-                    style={{ backgroundColor: cor.hex }}
-                    title={cor.hex}
-                  />
-
-                  <div>
-                    <div className="font-medium">{cor.nome}</div>
-                    <div className="text-xs text-slate-500">
-                      {cor.hex}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => removerCor(cor.id)}
-                  className="text-red-500 font-bold px-2"
-                  title={`Excluir ${cor.nome}`}
-                >
-                  x
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="mt-3 text-sm text-green-700">
-          Total de cores cadastradas: {coresAves.length} • As
+        <div className="mt-4 text-sm text-green-700">
+          Total de cores disponíveis: {coresAves.length} • As
           alterações são salvas automaticamente
         </div>
       </div>
 
       {/* Backup */}
       <div className="bg-white shadow rounded p-4">
-        <h2 className="text-lg font-bold mb-2">Backup</h2>
+        <h2 className="text-lg font-bold mb-2">
+          Backup
+        </h2>
 
         <div className="flex gap-2 flex-wrap">
           <button
