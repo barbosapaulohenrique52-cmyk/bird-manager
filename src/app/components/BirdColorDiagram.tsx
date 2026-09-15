@@ -9,11 +9,13 @@ interface BirdColorDiagramProps {
 
 function obterCor(
   valor: string | undefined,
-  corPadrao: string,
+  corPadrao: string
 ): string {
-  if (!valor || !valor.trim()) return corPadrao;
+  if (!valor || !valor.trim()) {
+    return corPadrao;
+  }
 
-  const cor = valor.trim().toLowerCase();
+  const valorNormalizado = valor.trim().toLowerCase();
 
   const cores: Record<string, string> = {
     vermelho: "#E53935",
@@ -30,9 +32,9 @@ function obterCor(
 
     azul: "#4285D4",
     azulada: "#4285D4",
+    azulado: "#4285D4",
     blue: "#4285D4",
 
-    verde: "#4CAF50",
     verde: "#4CAF50",
     green: "#4CAF50",
 
@@ -46,6 +48,7 @@ function obterCor(
 
     cinza: "#9E9E9E",
     cinzenta: "#9E9E9E",
+    cinzento: "#9E9E9E",
     gray: "#9E9E9E",
     grey: "#9E9E9E",
 
@@ -55,7 +58,6 @@ function obterCor(
     rosa: "#EFA7C8",
     pink: "#EFA7C8",
 
-    marrom: "#8D6E63",
     marrom: "#8D6E63",
     brown: "#8D6E63",
 
@@ -69,7 +71,23 @@ function obterCor(
     turquoise: "#4DB6AC",
   };
 
-  return cores[cor] || valor;
+  // Primeiro, verifica nomes de cores conhecidos.
+  if (cores[valorNormalizado]) {
+    return cores[valorNormalizado];
+  }
+
+  // Aceita hexadecimal curto ou completo.
+  const hexadecimalValido =
+    /^#([0-9A-F]{3}|[0-9A-F]{6}|[0-9A-F]{8})$/i.test(valor.trim());
+
+  if (hexadecimalValido) {
+    return valor.trim();
+  }
+
+  // Mantém compatibilidade com outros valores CSS válidos.
+  // Caso o valor seja um nome personalizado não convertido,
+  // utiliza a cor padrão para evitar problemas no SVG.
+  return corPadrao;
 }
 
 export function BirdColorDiagram({
