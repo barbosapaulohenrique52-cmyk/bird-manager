@@ -58,6 +58,19 @@ function SeletorCores({
     setNovoHex("#808080");
   };
 
+  const alterarCor = (id: string, novoHex: string) => {
+    onChange(
+      cores.map((cor) =>
+        cor.id === id
+          ? {
+              ...cor,
+              hex: novoHex.toUpperCase(),
+            }
+          : cor
+      )
+    );
+  };
+
   const excluirCor = (id: string) => {
     const cor = cores.find((item) => item.id === id);
 
@@ -127,11 +140,19 @@ function SeletorCores({
               className="flex items-center justify-between gap-3 border rounded bg-white px-3 py-2"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <span
-                  className="w-8 h-8 rounded border border-slate-300 flex-shrink-0"
+                <label
+                  className="relative w-10 h-10 rounded border border-slate-300 flex-shrink-0 overflow-hidden cursor-pointer shadow-sm"
                   style={{ backgroundColor: cor.hex }}
-                  title={cor.hex}
-                />
+                  title={`Clique para alterar a cor ${cor.nome}`}
+                >
+                  <input
+                    type="color"
+                    value={cor.hex}
+                    onChange={(e) => alterarCor(cor.id, e.target.value)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    aria-label={`Alterar cor ${cor.nome}`}
+                  />
+                </label>
 
                 <div className="min-w-0">
                   <div className="font-semibold truncate">
