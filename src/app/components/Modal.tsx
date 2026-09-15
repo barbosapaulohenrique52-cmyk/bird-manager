@@ -3,157 +3,63 @@ import { CasalSelector } from './CasalSelector';
 import { AveSelector } from './AveSelector';
 import type { ModalType, Ave, Casal, Config } from '../App';
 
-
-interface BirdColorDiagramProps {
-  head: string;
-  chest: string;
-  back: string;
-  onHeadChange: (value: string) => void;
-  onChestChange: (value: string) => void;
-  onBackChange: (value: string) => void;
-  colorLists: ColorLists;
-}
-
-function colorToSvgColor(value: string, fallback: string) {
-  const normalized = value.toLowerCase().trim();
-  const colors: Record<string, string> = {
-    preto: "#202124",
-    vermelho: "#e45757",
-    laranja: "#f28c28",
-    amarelo: "#f4d35e",
-    branco: "#f8fafc",
-    roxo: "#9b7ede",
-    lilás: "#b9a0e8",
-    lilas: "#b9a0e8",
-    azul: "#5b9bd5",
-    verde: "#79b979",
-    cinza: "#9ca3af",
-    cinzento: "#9ca3af",
-    marrom: "#9a6b4f",
-    castanho: "#9a6b4f",
-    rosa: "#e99ab2",
-  };
-  return colors[normalized] || fallback;
-}
-
-function BirdColorDiagram({
-  head,
-  chest,
-  back,
-  onHeadChange,
-  onChestChange,
-  onBackChange,
-  colorLists,
-}: BirdColorDiagramProps) {
-  const headColor = colorToSvgColor(head, "#e5e7eb");
-  const chestColor = colorToSvgColor(chest, "#e5e7eb");
-  const backColor = colorToSvgColor(back, "#e5e7eb");
-
-  const options = (items: string[]) => (
-    <>
-      <option value="">Não informado</option>
-      {items.map((item) => (
-        <option key={item} value={item}>{item}</option>
-      ))}
-    </>
-  );
-
-  return (
-    <div className="col-span-2 border-t-2 border-slate-100 pt-4">
-      <div className="flex items-center justify-between mb-2">
-        <label className="text-[10px] font-black text-slate-500 uppercase">
-          PDC · Coloração
-        </label>
-        <span className="text-[9px] text-slate-400">Cabeça · Peito · Dorso</span>
-      </div>
-
-      <div className="flex flex-col sm:flex-row items-center gap-3 rounded-2xl bg-slate-50 border border-slate-100 p-3">
-        <svg
-          viewBox="0 0 240 190"
-          className="w-36 h-28 sm:w-40 sm:h-32 shrink-0"
-          role="img"
-          aria-label="Representação da coloração da cabeça, peito e dorso do Diamante de Gould"
-        >
-          {/* corpo / peito */}
-          <path
-            d="M78 72 C57 83 54 113 69 141 C84 168 119 174 151 160 L179 143 C159 119 147 91 132 75 Z"
-            fill={chestColor}
-            stroke="#263238"
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-          />
-          {/* dorso e asas */}
-          <path
-            d="M113 55 C132 43 159 48 177 68 C192 85 201 111 203 128 C186 137 165 135 147 123 C130 112 116 91 107 72 Z"
-            fill={backColor}
-            stroke="#263238"
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-          />
-          {/* cabeça */}
-          <path
-            d="M48 42 C58 20 91 16 111 30 C128 42 130 63 118 78 C106 94 79 97 62 84 C47 73 40 57 48 42 Z"
-            fill={headColor}
-            stroke="#263238"
-            strokeWidth="2.5"
-            strokeLinejoin="round"
-          />
-          {/* bico */}
-          <path d="M48 48 L27 59 L48 67 L58 57 Z" fill="#f4e7c5" stroke="#263238" strokeWidth="2" />
-          {/* olho */}
-          <circle cx="82" cy="50" r="5" fill="#111827" />
-          <circle cx="84" cy="48" r="1.5" fill="white" />
-          {/* patas */}
-          <path d="M100 158 L97 177 M119 158 L122 177 M92 177 L103 177 M117 177 L128 177"
-            fill="none" stroke="#8b5e3c" strokeWidth="2.5" strokeLinecap="round" />
-          {/* cauda */}
-          <path d="M173 127 L222 170 L196 119 Z" fill="#e5e7eb" stroke="#263238" strokeWidth="2.5" strokeLinejoin="round" />
-        </svg>
-
-        <div className="grid grid-cols-3 gap-2 w-full">
-          <div>
-            <label className="block text-[9px] font-black text-slate-500 uppercase mb-1 text-center">Cabeça</label>
-            <select
-              name="corCabeca"
-              value={head}
-              onChange={(e) => onHeadChange(e.target.value)}
-              className="w-full border border-slate-200 bg-white rounded-lg px-1 py-2 text-[10px] font-bold outline-none focus:border-emerald-500"
-            >
-              {options(colorLists.coresCabeca)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-[9px] font-black text-slate-500 uppercase mb-1 text-center">Peito</label>
-            <select
-              name="corPeito"
-              value={chest}
-              onChange={(e) => onChestChange(e.target.value)}
-              className="w-full border border-slate-200 bg-white rounded-lg px-1 py-2 text-[10px] font-bold outline-none focus:border-emerald-500"
-            >
-              {options(colorLists.coresPeito)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-[9px] font-black text-slate-500 uppercase mb-1 text-center">Dorso</label>
-            <select
-              name="corDorso"
-              value={back}
-              onChange={(e) => onBackChange(e.target.value)}
-              className="w-full border border-slate-200 bg-white rounded-lg px-1 py-2 text-[10px] font-bold outline-none focus:border-emerald-500"
-            >
-              {options(colorLists.coresDorso)}
-            </select>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 interface ColorLists {
   coresCabeca: string[];
   coresPeito: string[];
   coresDorso: string[];
+}
+
+function corParaHex(cor: string | undefined, padrao: string) {
+  const texto = (cor || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const cores: Record<string, string> = {
+    preto: '#202124',
+    negro: '#202124',
+    vermelho: '#e85d5d',
+    laranja: '#f28c28',
+    amarelo: '#f5cf55',
+    branco: '#f5f5f5',
+    azul: '#5b8def',
+    verde: '#69b879',
+    roxo: '#9b7bd8',
+    lilas: '#b9a1e8',
+    cinza: '#9ca3af',
+    marrom: '#9a6b45',
+    rosa: '#e98bb5',
+  };
+  const encontrada = Object.keys(cores).find(nome => texto.includes(nome));
+  return encontrada ? cores[encontrada] : padrao;
+}
+
+function PassaroPDC({ cabeca, peito, dorso }: { cabeca?: string; peito?: string; dorso?: string }) {
+  const corCabeca = corParaHex(cabeca, '#f1f3f5');
+  const corPeito = corParaHex(peito, '#f1f3f5');
+  const corDorso = corParaHex(dorso, '#f1f3f5');
+
+  return (
+    <svg viewBox="0 0 240 190" className="w-full h-auto max-w-[220px]" role="img" aria-label="Representação visual das cores da ave">
+      <g stroke="#263238" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round">
+        {/* Cabeça */}
+        <path fill={corCabeca} d="M45 62 C43 31 68 12 99 19 C121 24 132 43 126 66 C119 88 94 98 70 91 C55 87 47 77 45 62 Z" />
+        {/* Bico */}
+        <path fill="#f4e6d2" d="M45 49 L18 61 L46 72 L58 62 Z" />
+        {/* Dorso e asa */}
+        <path fill={corDorso} d="M112 31 C145 36 170 61 190 91 L214 132 C195 139 171 132 149 119 C130 108 112 92 104 72 C99 57 103 42 112 31 Z" />
+        {/* Peito */}
+        <path fill={corPeito} d="M68 87 C82 94 99 91 108 78 C116 96 130 116 151 129 C134 151 106 157 80 144 C59 133 50 110 52 91 C57 91 63 90 68 87 Z" />
+        {/* Barriga */}
+        <path fill="#f7f7f7" d="M80 144 C106 157 134 151 151 129 L174 151 C146 172 108 177 79 160 Z" />
+        {/* Asa clara */}
+        <path fill="#ffffff" d="M143 112 C165 121 187 132 205 140 L188 157 C169 148 151 137 136 125 Z" />
+        {/* Cauda */}
+        <path fill="#ffffff" d="M188 157 L221 181 L207 139 Z" />
+        {/* Pata */}
+        <path fill="#e7c7b2" d="M91 158 L88 174 M88 174 L77 181 M88 174 L91 182 M88 174 L101 179" fillOpacity="1" />
+        <path fill="#e7c7b2" d="M132 151 L130 169 M130 169 L119 177 M130 169 L134 178 M130 169 L143 174" fillOpacity="1" />
+        {/* Olho */}
+        <circle cx="87" cy="48" r="5" fill="#111827" />
+      </g>
+    </svg>
+  );
 }
 
 interface ModalProps {
@@ -175,9 +81,42 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
   const currentYear = new Date().getFullYear();
   const ave = editId && type === 'ave' ? aves.find(a => a.id === editId) : null;
   const [photoData, setPhotoData] = useState(ave?.photo || '');
-  const [corCabeca, setCorCabeca] = useState(ave?.corCabeca || '');
-  const [corPeito, setCorPeito] = useState(ave?.corPeito || '');
-  const [corDorso, setCorDorso] = useState(ave?.corDorso || '');
+  const [corCabecaVisual, setCorCabecaVisual] = useState(ave?.corCabeca || '');
+  const [corPeitoVisual, setCorPeitoVisual] = useState(ave?.corPeito || '');
+  const [corDorsoVisual, setCorDorsoVisual] = useState(ave?.corDorso || '');
+
+  // Nome da ave:
+  // - por padrão é ANILHA-ANO;
+  // - continua editável pelo usuário;
+  // - depois que o usuário digita um nome próprio, o sistema não
+  //   sobrescreve mais esse nome automaticamente.
+  const [nomeAve, setNomeAve] = useState(
+    ave?.name ||
+    (ave?.ring
+      ? `${ave.ring}-${ave.ringYear || currentYear}`
+      : '')
+  );
+  const [nomeAveManual, setNomeAveManual] = useState(
+    !!ave?.name &&
+    !/^Filhote\s+/i.test(ave.name) &&
+    (!ave.ring || ave.name !== `${ave.ring}-${ave.ringYear || currentYear}`)
+  );
+
+  const atualizarNomeAutomatico = (
+    anilha: string,
+    ano: string
+  ) => {
+    if (!nomeAveManual) {
+      const anilhaLimpa = anilha.trim();
+
+      if (anilhaLimpa) {
+        setNomeAve(`${anilhaLimpa}-${ano || currentYear}`);
+      } else {
+        setNomeAve('');
+      }
+    }
+  };
+
   const [selectedMacho, setSelectedMacho] = useState<string>('');
   const [selectedFemea, setSelectedFemea] = useState<string>('');
   const [selectedPai, setSelectedPai] = useState<string>(ave?.parentMaleId || '');
@@ -238,15 +177,15 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
       species: formData.get('species') as string,
       ring: formData.get('ring') as string,
       ringYear: Number(formData.get('ringYear')),
-      name: formData.get('name') as string,
+      name: nomeAve.trim() || `${(formData.get('ring') as string || '').trim()}-${formData.get('ringYear') || currentYear}`,
       sex: formData.get('sex') as 'Macho' | 'Fêmea' | 'Indefinido',
       status: formData.get('status') as 'Ativo' | 'Vendido' | 'Óbito',
       creator: formData.get('creator') as string,
       acqYear: Number(formData.get('acqYear')),
       photo: photoData,
-      corCabeca,
-      corPeito,
-      corDorso,
+      corCabeca: formData.get('corCabeca') as string,
+      corPeito: formData.get('corPeito') as string,
+      corDorso: formData.get('corDorso') as string,
       nota: formData.get('nota') as string,
       porta: formData.get('porta') as string,
       parentMaleId: selectedPai || undefined,
@@ -392,6 +331,16 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                     name="ring"
                     defaultValue={ave?.ring || ''}
                     placeholder="Ex: ABC-123"
+                    onChange={(e) => {
+                      const ano = (
+                        e.currentTarget.form?.elements.namedItem('ringYear') as HTMLInputElement
+                      )?.value || String(currentYear);
+
+                      atualizarNomeAutomatico(
+                        e.target.value,
+                        ano
+                      );
+                    }}
                     className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
                   />
                 </div>
@@ -402,6 +351,16 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                     type="number"
                     name="ringYear"
                     defaultValue={ave?.ringYear || currentYear}
+                    onChange={(e) => {
+                      const anilha = (
+                        e.currentTarget.form?.elements.namedItem('ring') as HTMLInputElement
+                      )?.value || '';
+
+                      atualizarNomeAutomatico(
+                        anilha,
+                        e.target.value
+                      );
+                    }}
                     className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
                   />
                 </div>
@@ -410,10 +369,17 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                   <label className="text-[10px] font-black text-slate-400 uppercase">Nome / Identificador</label>
                   <input
                     name="name"
-                    defaultValue={ave?.name || ''}
-                    placeholder="Nome para fácil identificação"
+                    value={nomeAve}
+                    onChange={(e) => {
+                      setNomeAveManual(true);
+                      setNomeAve(e.target.value);
+                    }}
+                    placeholder="Será gerado automaticamente: anilha-ano"
                     className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
                   />
+                  <p className="text-[9px] text-slate-400 mt-1">
+                    Padrão: <strong>anilha-ano</strong>. Você pode substituir por um nome próprio.
+                  </p>
                 </div>
 
                 <div>
@@ -462,15 +428,71 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                   />
                 </div>
 
-                <BirdColorDiagram
-                  head={corCabeca}
-                  chest={corPeito}
-                  back={corDorso}
-                  onHeadChange={setCorCabeca}
-                  onChestChange={setCorPeito}
-                  onBackChange={setCorDorso}
-                  colorLists={colorLists}
-                />
+                <div className="col-span-2 border-t-2 border-slate-100 pt-5">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[10px] font-black text-slate-500 uppercase">PDC · Representação visual</label>
+                    <span className="text-[9px] text-slate-400">Cabeça · Peito · Dorso</span>
+                  </div>
+                  <div className="rounded-2xl border border-slate-100 bg-slate-50 p-2 flex justify-center">
+                    <PassaroPDC
+                      cabeca={corCabecaVisual}
+                      peito={corPeitoVisual}
+                      dorso={corDorsoVisual}
+                    />
+                  </div>
+                  <p className="text-[9px] text-slate-400 mt-1">A imagem é apenas uma representação visual; os campos de cores abaixo foram mantidos.</p>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Cor da Cabeça</label>
+                  <input
+                    name="corCabeca"
+                    list="dl-cor-cabeca"
+                    value={corCabecaVisual}
+                    onChange={(e) => setCorCabecaVisual(e.target.value)}
+                    placeholder="Ex: Preto, Laranja, Vermelho..."
+                    className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
+                  />
+                  <datalist id="dl-cor-cabeca">
+                    {colorLists.coresCabeca.map(color => (
+                      <option key={color} value={color} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Cor do Peito</label>
+                  <input
+                    name="corPeito"
+                    list="dl-cor-peito"
+                    value={corPeitoVisual}
+                    onChange={(e) => setCorPeitoVisual(e.target.value)}
+                    placeholder="Ex: Roxo, Lilás, Branco..."
+                    className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
+                  />
+                  <datalist id="dl-cor-peito">
+                    {colorLists.coresPeito.map(color => (
+                      <option key={color} value={color} />
+                    ))}
+                  </datalist>
+                </div>
+
+                <div className="col-span-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Cor do Dorso</label>
+                  <input
+                    name="corDorso"
+                    list="dl-cor-dorso"
+                    value={corDorsoVisual}
+                    onChange={(e) => setCorDorsoVisual(e.target.value)}
+                    placeholder="Ex: Verde, Azul, Amarelo..."
+                    className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
+                  />
+                  <datalist id="dl-cor-dorso">
+                    {colorLists.coresDorso.map(color => (
+                      <option key={color} value={color} />
+                    ))}
+                  </datalist>
+                </div>
 
                 {/* Filiação */}
                 <div className="col-span-2 border-t-2 border-slate-100 pt-5">
