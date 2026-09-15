@@ -257,6 +257,7 @@ export default function App() {
         {activeTab === "aves" && (
           <AvesSection
             aves={db.aves}
+            config={db.config}
             onOpenModal={openModal}
             onDeleteAve={deleteAve}
             onPhotoClick={setZoomPhoto}
