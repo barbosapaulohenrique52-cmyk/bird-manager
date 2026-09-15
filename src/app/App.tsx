@@ -39,6 +39,8 @@ export interface Ave {
   birthNestId?: string;
   criadoPorAmas?: boolean;
   casalAmasId?: string;
+
+  // Cores visuais da ave
   corCabeca?: string;
   corPeito?: string;
   corDorso?: string;
@@ -117,6 +119,13 @@ export interface Config {
     [especie: string]: ParametrosEspecie;
   };
   parametrosPadrao: ParametrosEspecie;
+
+  // Paletas independentes por região da ave
+  coresCabeca?: CorAve[];
+  coresPeito?: CorAve[];
+  coresDorso?: CorAve[];
+
+  // Mantido para compatibilidade com a versão anterior
   coresAves?: CorAve[];
 }
 
