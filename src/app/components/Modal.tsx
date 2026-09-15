@@ -99,6 +99,55 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
   const [corPeitoVisual, setCorPeitoVisual] = useState(ave?.corPeito || '');
   const [corDorsoVisual, setCorDorsoVisual] = useState(ave?.corDorso || '');
 
+  const [novaCorRegiao, setNovaCorRegiao] = useState<'cabeca' | 'peito' | 'dorso' | null>(null);
+  const [novoNomeCor, setNovoNomeCor] = useState('');
+  const [novoHexCor, setNovoHexCor] = useState('#4CAF50');
+
+  const abrirCadastroCor = (regiao: 'cabeca' | 'peito' | 'dorso') => {
+    setNovaCorRegiao(regiao);
+    setNovoNomeCor('');
+    setNovoHexCor('#4CAF50');
+  };
+
+  const salvarNovaCor = () => {
+    if (!novaCorRegiao || !novoNomeCor.trim()) {
+      alert('Informe o nome da cor.');
+      return;
+    }
+
+    const campo = novaCorRegiao === 'cabeca'
+      ? 'coresCabeca'
+      : novaCorRegiao === 'peito'
+        ? 'coresPeito'
+        : 'coresDorso';
+
+    const listaAtual = config[campo] || [];
+    const nomeNormalizado = novoNomeCor.trim().toLowerCase();
+
+    if (listaAtual.some(cor => cor.nome.trim().toLowerCase() === nomeNormalizado)) {
+      alert('Já existe uma cor com esse nome nessa região.');
+      return;
+    }
+
+    const novaCor: CorAve = {
+      id: `${campo}-${Date.now()}`,
+      nome: novoNomeCor.trim(),
+      hex: novoHexCor.toUpperCase(),
+    };
+
+    onSaveConfig({
+      ...config,
+      [campo]: [...listaAtual, novaCor],
+    });
+
+    if (novaCorRegiao === 'cabeca') setCorCabecaVisual(novaCor.nome);
+    if (novaCorRegiao === 'peito') setCorPeitoVisual(novaCor.nome);
+    if (novaCorRegiao === 'dorso') setCorDorsoVisual(novaCor.nome);
+
+    setNovaCorRegiao(null);
+    setNovoNomeCor('');
+  };
+
   // As cores do diagrama são obtidas diretamente do hexadecimal cadastrado
   // para cada região. Caso a ave tenha uma cor antiga salva apenas por nome,
   // mantém-se a compatibilidade com a conversão anterior.
@@ -474,64 +523,87 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                   </div>
                   <div className="rounded-2xl border border-slate-100 bg-slate-50 p-2 flex justify-center">
                     <PassaroPDC
-                      cabeca={corCabecaVisual}
-                      peito={corPeitoVisual}
-                      dorso={corDorsoVisual}
+                      cabeca={hexCabecaVisual}
+                      peito={hexPeitoVisual}
+                      dorso={hexDorsoVisual}
                     />
                   </div>
                   <p className="text-[9px] text-slate-400 mt-1">A imagem é apenas uma representação visual; os campos de cores abaixo foram mantidos.</p>
                 </div>
 
                 <div className="col-span-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase">Cor da Cabeça</label>
-                  <input
-                    name="corCabeca"
-                    list="dl-cor-cabeca"
-                    value={corCabecaVisual}
-                    onChange={(e) => setCorCabecaVisual(e.target.value)}
-                    placeholder="Ex: Preto, Laranja, Vermelho..."
-                    className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
-                  />
-                  <datalist id="dl-cor-cabeca">
-                    {colorLists.coresCabeca.map(color => (
-                      <option key={color} value={color} />
-                    ))}
-                  </datalist>
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Cor da Cabeça</label>
+                    <button type="button" onClick={() => abrirCadastroCor('cabeca')} className="text-[10px] font-black text-emerald-600 uppercase hover:text-emerald-800">
+                      <i className="fas fa-plus mr-1"></i> Nova cor
+                    </button>
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                    <select name="corCabeca" value={corCabecaVisual} onChange={(e) => setCorCabecaVisual(e.target.value)} className="border-2 border-slate-100 p-3 rounded-xl flex-1 font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm">
+                      <option value="">Sem cor definida</option>
+                      {(config.coresCabeca || []).map(cor => <option key={cor.id} value={cor.nome}>{cor.nome} — {cor.hex}</option>)}
+                    </select>
+                    <div className="w-12 rounded-xl border-2 border-slate-100" style={{ backgroundColor: hexCabecaVisual }}></div>
+                  </div>
                 </div>
 
                 <div className="col-span-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase">Cor do Peito</label>
-                  <input
-                    name="corPeito"
-                    list="dl-cor-peito"
-                    value={corPeitoVisual}
-                    onChange={(e) => setCorPeitoVisual(e.target.value)}
-                    placeholder="Ex: Roxo, Lilás, Branco..."
-                    className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
-                  />
-                  <datalist id="dl-cor-peito">
-                    {colorLists.coresPeito.map(color => (
-                      <option key={color} value={color} />
-                    ))}
-                  </datalist>
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Cor do Peito</label>
+                    <button type="button" onClick={() => abrirCadastroCor('peito')} className="text-[10px] font-black text-emerald-600 uppercase hover:text-emerald-800">
+                      <i className="fas fa-plus mr-1"></i> Nova cor
+                    </button>
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                    <select name="corPeito" value={corPeitoVisual} onChange={(e) => setCorPeitoVisual(e.target.value)} className="border-2 border-slate-100 p-3 rounded-xl flex-1 font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm">
+                      <option value="">Sem cor definida</option>
+                      {(config.coresPeito || []).map(cor => <option key={cor.id} value={cor.nome}>{cor.nome} — {cor.hex}</option>)}
+                    </select>
+                    <div className="w-12 rounded-xl border-2 border-slate-100" style={{ backgroundColor: hexPeitoVisual }}></div>
+                  </div>
                 </div>
 
                 <div className="col-span-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase">Cor do Dorso</label>
-                  <input
-                    name="corDorso"
-                    list="dl-cor-dorso"
-                    value={corDorsoVisual}
-                    onChange={(e) => setCorDorsoVisual(e.target.value)}
-                    placeholder="Ex: Verde, Azul, Amarelo..."
-                    className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
-                  />
-                  <datalist id="dl-cor-dorso">
-                    {colorLists.coresDorso.map(color => (
-                      <option key={color} value={color} />
-                    ))}
-                  </datalist>
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-[10px] font-black text-slate-400 uppercase">Cor do Dorso</label>
+                    <button type="button" onClick={() => abrirCadastroCor('dorso')} className="text-[10px] font-black text-emerald-600 uppercase hover:text-emerald-800">
+                      <i className="fas fa-plus mr-1"></i> Nova cor
+                    </button>
+                  </div>
+                  <div className="flex gap-2 mt-1">
+                    <select name="corDorso" value={corDorsoVisual} onChange={(e) => setCorDorsoVisual(e.target.value)} className="border-2 border-slate-100 p-3 rounded-xl flex-1 font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm">
+                      <option value="">Sem cor definida</option>
+                      {(config.coresDorso || []).map(cor => <option key={cor.id} value={cor.nome}>{cor.nome} — {cor.hex}</option>)}
+                    </select>
+                    <div className="w-12 rounded-xl border-2 border-slate-100" style={{ backgroundColor: hexDorsoVisual }}></div>
+                  </div>
                 </div>
+
+                {novaCorRegiao && (
+                  <div className="col-span-2 rounded-2xl border-2 border-emerald-100 bg-emerald-50 p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-black text-emerald-700 uppercase">Cadastrar nova cor — {novaCorRegiao === 'cabeca' ? 'Cabeça' : novaCorRegiao === 'peito' ? 'Peito' : 'Dorso'}</span>
+                      <button type="button" onClick={() => setNovaCorRegiao(null)} className="text-slate-400 hover:text-slate-700"><i className="fas fa-times"></i></button>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_120px] gap-2 items-end">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-500 uppercase">Nome da cor</label>
+                        <input value={novoNomeCor} onChange={(e) => setNovoNomeCor(e.target.value)} placeholder="Ex: Azul royal" className="border-2 border-white p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 bg-white text-sm mt-1" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-500 uppercase">Seletor</label>
+                        <input type="color" value={novoHexCor} onChange={(e) => setNovoHexCor(e.target.value)} className="block h-[46px] w-14 rounded-xl border-2 border-white bg-white p-1 mt-1 cursor-pointer" />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-500 uppercase">Hexadecimal</label>
+                        <input value={novoHexCor} onChange={(e) => setNovoHexCor(e.target.value)} className="border-2 border-white p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 bg-white text-sm mt-1 uppercase" />
+                      </div>
+                    </div>
+                    <button type="button" onClick={salvarNovaCor} className="mt-3 bg-emerald-600 text-white px-4 py-3 rounded-xl font-black text-[10px] uppercase hover:bg-emerald-700">
+                      <i className="fas fa-check mr-2"></i> Salvar cor e selecionar
+                    </button>
+                  </div>
+                )}
 
                 {/* Filiação */}
                 <div className="col-span-2 border-t-2 border-slate-100 pt-5">
