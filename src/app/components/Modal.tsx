@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { CasalSelector } from './CasalSelector';
 import { AveSelector } from './AveSelector';
-import type { ModalType, Ave, Casal, Config } from '../App';
+import type { ModalType, Ave, Casal, Config, CorAve } from '../App';
 
 interface ColorLists {
   coresCabeca: string[];
@@ -28,6 +28,20 @@ function corParaHex(cor: string | undefined, padrao: string) {
   };
   const encontrada = Object.keys(cores).find(nome => texto.includes(nome));
   return encontrada ? cores[encontrada] : padrao;
+}
+
+function obterHexDaCor(
+  nome: string | undefined,
+  cores: CorAve[] | undefined,
+  padrao: string
+) {
+  if (!nome) return padrao;
+
+  const encontrada = (cores || []).find(
+    cor => cor.nome.trim().toLowerCase() === nome.trim().toLowerCase()
+  );
+
+  return encontrada?.hex || corParaHex(nome, padrao);
 }
 
 function PassaroPDC({ cabeca, peito, dorso }: { cabeca?: string; peito?: string; dorso?: string }) {
@@ -84,6 +98,31 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
   const [corCabecaVisual, setCorCabecaVisual] = useState(ave?.corCabeca || '');
   const [corPeitoVisual, setCorPeitoVisual] = useState(ave?.corPeito || '');
   const [corDorsoVisual, setCorDorsoVisual] = useState(ave?.corDorso || '');
+
+  // As cores do diagrama são obtidas diretamente do hexadecimal cadastrado
+  // para cada região. Caso a ave tenha uma cor antiga salva apenas por nome,
+  // mantém-se a compatibilidade com a conversão anterior.
+  const hexCabecaVisual = obterHexDaCor(
+    corCabecaVisual,
+    config.coresCabeca,
+    '#f1f3f5'
+  );
+
+  const hexPeitoVisual = obterHexDaCor(
+    corPeitoVisual,
+    config.coresPeito,
+    '#f1f3f5'
+  );
+
+  const hexDorsoVisual = obterHexDaCor(
+    corDorsoVisual,
+    config.coresDorso,
+    '#f1f3f5'
+  );
+
+  const nomesCoresCabeca = (config.coresCabeca || []).map(cor => cor.nome);
+  const nomesCoresPeito = (config.coresPeito || []).map(cor => cor.nome);
+  const nomesCoresDorso = (config.coresDorso || []).map(cor => cor.nome);
 
   // Nome da ave:
   // - por padrão é ANILHA-ANO;
