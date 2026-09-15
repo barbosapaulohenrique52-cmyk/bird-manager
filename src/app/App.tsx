@@ -104,6 +104,12 @@ export interface ParametrosEspecie {
   diasAnilhamento: number;
 }
 
+export interface CorAve {
+  id: string;
+  nome: string;
+  hex: string;
+}
+
 export interface Config {
   prazoAlertaPostura: number;
   especies: string[];
@@ -111,6 +117,7 @@ export interface Config {
     [especie: string]: ParametrosEspecie;
   };
   parametrosPadrao: ParametrosEspecie;
+  coresAves?: CorAve[];
 }
 
 export interface Lancamento {
