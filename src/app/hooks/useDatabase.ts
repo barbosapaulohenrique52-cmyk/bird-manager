@@ -276,6 +276,9 @@ const defaultConfig: Config = {
   ],
   parametrosEspecies: {},
   parametrosPadrao: defaultParametros,
+  coresCabeca: [],
+  coresPeito: [],
+  coresDorso: [],
   coresAves: []
 };
 
@@ -302,29 +305,74 @@ function normalizarConfig(config: Partial<Config> | null | undefined): Config {
       : defaultConfig.especies,
     parametrosEspecies: config?.parametrosEspecies || {},
     parametrosPadrao: config?.parametrosPadrao || defaultParametros,
+    coresCabeca: Array.isArray(config?.coresCabeca) ? config.coresCabeca : [],
+    coresPeito: Array.isArray(config?.coresPeito) ? config.coresPeito : [],
+    coresDorso: Array.isArray(config?.coresDorso) ? config.coresDorso : [],
     coresAves: Array.isArray(config?.coresAves) ? config.coresAves : []
   };
 }
 
 function completarCoresAves(config: Config, aves: Ave[]): Config {
-  const cores = [...(config.coresAves || [])];
-  const nomes = new Set(cores.map(c => c.nome.trim().toLowerCase()));
-  const valores = aves.flatMap(ave => [ave.corCabeca, ave.corPeito, ave.corDorso]);
+  const coresCabeca = [...(config.coresCabeca || [])];
+  const coresPeito = [...(config.coresPeito || [])];
+  const coresDorso = [...(config.coresDorso || [])];
 
-  valores.forEach(nome => {
+  // Compatibilidade: cores cadastradas na versão anterior ficam
+  // disponíveis inicialmente nas três regiões, sem apagar dados antigos.
+  const coresAntigas = config.coresAves || [];
+
+  const adicionarCor = (lista: CorAve[], cor: CorAve) => {
+    const existe = lista.some(
+      item => item.nome.trim().toLowerCase() === cor.nome.trim().toLowerCase()
+    );
+
+    if (!existe) {
+      lista.push({
+        ...cor,
+        hex: cor.hex || hexParaCorNome(cor.nome)
+      });
+    }
+  };
+
+  coresAntigas.forEach(cor => {
+    adicionarCor(coresCabeca, cor);
+    adicionarCor(coresPeito, cor);
+    adicionarCor(coresDorso, cor);
+  });
+
+  const adicionarNomeDaAve = (
+    lista: CorAve[],
+    nome: string | undefined,
+    regiao: string
+  ) => {
     if (!nome || !nome.trim()) return;
+
     const chave = nome.trim().toLowerCase();
-    if (!nomes.has(chave)) {
-      cores.push({
-        id: `cor-${Date.now()}-${cores.length}`,
+    const existe = lista.some(
+      cor => cor.nome.trim().toLowerCase() === chave
+    );
+
+    if (!existe) {
+      lista.push({
+        id: `cor-${regiao}-${Date.now()}-${lista.length}`,
         nome: nome.trim(),
         hex: hexParaCorNome(nome)
       });
-      nomes.add(chave);
     }
+  };
+
+  aves.forEach(ave => {
+    adicionarNomeDaAve(coresCabeca, ave.corCabeca, 'cabeca');
+    adicionarNomeDaAve(coresPeito, ave.corPeito, 'peito');
+    adicionarNomeDaAve(coresDorso, ave.corDorso, 'dorso');
   });
 
-  return { ...config, coresAves: cores };
+  return {
+    ...config,
+    coresCabeca,
+    coresPeito,
+    coresDorso
+  };
 }
 
 export function useDatabase() {
@@ -538,7 +586,17 @@ export function useDatabase() {
       lancamentos
     });
 
-    setColorLists(savedColors);
+    setColorLists({
+      coresCabeca: Array.isArray(savedColors?.coresCabeca)
+        ? savedColors.coresCabeca
+        : [],
+      coresPeito: Array.isArray(savedColors?.coresPeito)
+        ? savedColors.coresPeito
+        : [],
+      coresDorso: Array.isArray(savedColors?.coresDorso)
+        ? savedColors.coresDorso
+        : []
+    });
   }, []);
 
   // Save to localStorage
