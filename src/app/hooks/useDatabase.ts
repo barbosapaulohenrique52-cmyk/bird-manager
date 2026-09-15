@@ -1,12 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Ave, Casal, Ninho, Egg, Config, Lancamento, ParametrosEspecie } from '../App';
-
-declare global {
-  interface Window {
-    google?: any;
-  }
-}import { useState, useEffect, useCallback } from 'react';
-import type { Ave, Casal, Ninho, Egg, Config, Lancamento, ParametrosEspecie } from '../App';
+import type { Ave, Casal, Ninho, Egg, Config, Lancamento, ParametrosEspecie, CorAve } from '../App';
 
 declare global {
   interface Window {
@@ -282,8 +275,57 @@ const defaultConfig: Config = {
     'Agapornis'
   ],
   parametrosEspecies: {},
-  parametrosPadrao: defaultParametros
+  parametrosPadrao: defaultParametros,
+  coresAves: []
 };
+
+function hexParaCorNome(nome: string): string {
+  const mapa: Record<string, string> = {
+    preto: '#171717', branca: '#F5F5F5', branco: '#F5F5F5',
+    cinza: '#9CA3AF', vermelho: '#DC2626', vermelha: '#DC2626',
+    laranja: '#F97316', amarelo: '#FACC15', amarela: '#FACC15',
+    verde: '#22C55E', 'verde pastel': '#A7D7A9',
+    azul: '#3B82F6', 'azul claro': '#93C5FD', roxo: '#8B5CF6',
+    lilás: '#C4B5FD', rosa: '#F9A8D4', marrom: '#92400E',
+    castanho: '#92400E', bege: '#D6C19A', creme: '#FFF1C7',
+    dourado: '#D4AF37', dourada: '#D4AF37'
+  };
+  return mapa[nome.trim().toLowerCase()] || '#A3A3A3';
+}
+
+function normalizarConfig(config: Partial<Config> | null | undefined): Config {
+  return {
+    ...defaultConfig,
+    ...(config || {}),
+    especies: Array.isArray(config?.especies) && config.especies.length > 0
+      ? config.especies
+      : defaultConfig.especies,
+    parametrosEspecies: config?.parametrosEspecies || {},
+    parametrosPadrao: config?.parametrosPadrao || defaultParametros,
+    coresAves: Array.isArray(config?.coresAves) ? config.coresAves : []
+  };
+}
+
+function completarCoresAves(config: Config, aves: Ave[]): Config {
+  const cores = [...(config.coresAves || [])];
+  const nomes = new Set(cores.map(c => c.nome.trim().toLowerCase()));
+  const valores = aves.flatMap(ave => [ave.corCabeca, ave.corPeito, ave.corDorso]);
+
+  valores.forEach(nome => {
+    if (!nome || !nome.trim()) return;
+    const chave = nome.trim().toLowerCase();
+    if (!nomes.has(chave)) {
+      cores.push({
+        id: `cor-${Date.now()}-${cores.length}`,
+        nome: nome.trim(),
+        hex: hexParaCorNome(nome)
+      });
+      nomes.add(chave);
+    }
+  });
+
+  return { ...config, coresAves: cores };
+}
 
 export function useDatabase() {
   const [db, setDb] = useState<Database>({
@@ -323,6 +365,8 @@ export function useDatabase() {
       localStorage.getItem('gpro_v19_config') ||
         JSON.stringify(defaultConfig)
     );
+
+    config = normalizarConfig(config);
 
     const lancamentos = JSON.parse(
       localStorage.getItem('gpro_v19_lancamentos') || '[]'
@@ -423,6 +467,12 @@ export function useDatabase() {
         '✅ Espécies sincronizadas:',
         config.especies
       );
+    }
+
+    const configComCores = completarCoresAves(config, aves);
+    if (JSON.stringify(configComCores) !== JSON.stringify(config)) {
+      config = configComCores;
+      localStorage.setItem('gpro_v19_config', JSON.stringify(config));
     }
 
     // Migrar casais para incluir campo historico se não existir
@@ -1757,9 +1807,14 @@ export function useDatabase() {
 
   const saveConfig = useCallback(
     (config: Config) => {
+      const configNormalizada = completarCoresAves(
+        normalizarConfig(config),
+        db.aves
+      );
+
       const newDb = {
         ...db,
-        config
+        config: configNormalizada
       };
 
       save(newDb);
@@ -2023,7 +2078,11 @@ export function useDatabase() {
 
             const newDb = {
               ...db,
-              ...imported
+              ...imported,
+              config: completarCoresAves(
+                normalizarConfig(imported.config),
+                imported.aves || db.aves
+              )
             };
 
             save(newDb);
