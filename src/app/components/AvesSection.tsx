@@ -349,10 +349,20 @@ export function AvesSection({
             </button>
 
             <button
+              type="button"
               onClick={() => onOpenModal('ave')}
               className="bg-slate-800 text-white px-5 py-2.5 rounded-xl font-black text-[10px]"
             >
               ADICIONAR AVE
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onOpenModal('aves-lote')}
+              className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2"
+            >
+              <i className="fas fa-layer-group"></i>
+              ADICIONAR EM LOTE
             </button>
           </div>
         </div>
