@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import type { Ninho, Casal, Egg, ModalType, Config, Ave } from '../App';
 import { CasalSelector } from './CasalSelector';
 import { AveSelector } from './AveSelector';
@@ -207,6 +207,45 @@ interface NinhosSectionProps {
   onViewDetails?: (aveId: string) => void;
 }
 
+
+type FiltrosOvos = {
+  busca: string;
+  status: string[];
+  especies: string[];
+  locais: string[];
+  posturas: string[];
+  iniciosChoca: string[];
+  eclosoes: string[];
+  filhotes: string[];
+  portas: string[];
+};
+
+function FiltroOvosMultiplo({ label, opcoes, selecionados, aberto, onAbrir, onAlternar, onTodos }: {
+  label: string; opcoes: string[]; selecionados: string[]; aberto: boolean;
+  onAbrir: () => void; onAlternar: (valor: string) => void; onTodos: () => void;
+}) {
+  const texto = selecionados.length === 0 ? 'Todas as opções' :
+    selecionados.length === 1 ? selecionados[0] : `${selecionados.length} selecionados`;
+  const todos = opcoes.length > 0 && selecionados.length === opcoes.length;
+  return <div className="relative min-w-[145px] flex-1">
+    <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">{label}</label>
+    <button type="button" onClick={onAbrir} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[10px] font-bold text-left flex items-center justify-between gap-2">
+      <span className="truncate">{texto}</span><i className={`fas fa-chevron-down text-slate-400 ${aberto ? 'rotate-180' : ''}`}></i>
+    </button>
+    {aberto && <div className="absolute z-50 mt-1 w-full min-w-[210px] bg-white border border-slate-200 rounded-xl shadow-xl p-2 max-h-64 overflow-y-auto">
+      <label className="flex items-center gap-2 px-2 py-2 border-b border-slate-100 mb-1 cursor-pointer">
+        <input type="checkbox" checked={todos} onChange={onTodos} className="accent-emerald-600" />
+        <span className="text-[10px] font-black uppercase">Selecionar todas</span>
+      </label>
+      {opcoes.map(opcao => <label key={opcao} className="flex items-center gap-2 px-2 py-2 hover:bg-slate-50 cursor-pointer">
+        <input type="checkbox" checked={selecionados.includes(opcao)} onChange={() => onAlternar(opcao)} className="accent-emerald-600" />
+        <span className="text-[10px] font-bold">{opcao}</span>
+      </label>)}
+      {opcoes.length === 0 && <span className="text-[10px] text-slate-400 p-2 block">Nenhuma opção cadastrada.</span>}
+    </div>}
+  </div>;
+}
+
 export function NinhosSection({
   ninhos,
   casais,
@@ -282,6 +321,11 @@ export function NinhosSection({
   const [ninhosExpandidos, setNinhosExpandidos] = useState<Set<string>>(new Set());
   // Alterna entre a visualização dos ovos por casal/ninho e por local atual.
   const [visualizacaoOvos, setVisualizacaoOvos] = useState<'casal' | 'local'>('casal');
+  const [filtrosOvos, setFiltrosOvos] = useState<FiltrosOvos>({
+    busca: '', status: [], especies: [], locais: [], posturas: [], iniciosChoca: [], eclosoes: [], filhotes: [], portas: []
+  });
+  const [filtroOvoAberto, setFiltroOvoAberto] = useState<string | null>(null);
+
   // Guarda o ninho/casal de origem escolhido para adicionar ovos em cada local.
   const [ninhoSelecionadoPorLocal, setNinhoSelecionadoPorLocal] = useState<Record<string, string>>({});
 
@@ -818,53 +862,52 @@ export function NinhosSection({
     }
   };
 
-  // Agrupar todos os ovos pelo local onde estão atualmente.
-  // Mantemos ninhoId + eggIdx para que todas as ações continuem
-  // operando sobre o ovo original, sem duplicar ou mover dados.
-  const ovosPorLocal = new Map<string, Array<{ egg: Egg; ninho: Ninho; eggIdx: number }>>();
-
-  ninhos.forEach((ninho) => {
-    ninho.eggs.forEach((egg, eggIdx) => {
-      const local = egg.local?.trim() || 'Sem local definido';
-
-      if (!ovosPorLocal.has(local)) {
-        ovosPorLocal.set(local, []);
-      }
-
-      ovosPorLocal.get(local)!.push({
-        egg,
-        ninho,
-        eggIdx
-      });
-    });
+  const todosOvosBrutos = ninhos.flatMap((ninho) => ninho.eggs.map((egg, eggIdx) => ({ egg, ninho, eggIdx })));
+  const opcoesCampoOvo = (campo: keyof Egg) => Array.from(new Set(todosOvosBrutos.map(({ egg }) => {
+    const valor = egg[campo];
+    return valor === undefined || valor === null || valor === '' ? '' : String(valor);
+  }).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const alternarFiltroOvo = (campo: keyof Omit<FiltrosOvos, 'busca'>, valor: string) => {
+    setFiltrosOvos(anterior => ({ ...anterior, [campo]: anterior[campo].includes(valor) ? anterior[campo].filter(item => item !== valor) : [...anterior[campo], valor] }));
+  };
+  const todosDoFiltroOvo = (campo: keyof Omit<FiltrosOvos, 'busca'>, opcoes: string[]) => {
+    setFiltrosOvos(anterior => ({ ...anterior, [campo]: anterior[campo].length === opcoes.length && opcoes.length > 0 ? [] : opcoes }));
+  };
+  const limparFiltrosOvos = () => {
+    setFiltrosOvos({ busca: '', status: [], especies: [], locais: [], posturas: [], iniciosChoca: [], eclosoes: [], filhotes: [], portas: [] });
+    setFiltroOvoAberto(null);
+  };
+  const ovosFiltrados = todosOvosBrutos.filter(({ egg, ninho }) => {
+    const busca = filtrosOvos.busca.trim().toLowerCase();
+    const texto = [egg.species, egg.status, egg.local, egg.postura, egg.inicioChoca, egg.dataEclosao, egg.filhoteId, egg.nota, egg.porta, ninho.name].filter(Boolean).join(' ').toLowerCase();
+    return (!busca || texto.includes(busca)) &&
+      (filtrosOvos.status.length === 0 || filtrosOvos.status.includes(egg.status)) &&
+      (filtrosOvos.especies.length === 0 || filtrosOvos.especies.includes(String(egg.species || ''))) &&
+      (filtrosOvos.locais.length === 0 || filtrosOvos.locais.includes(egg.local?.trim() || 'Sem local definido')) &&
+      (filtrosOvos.posturas.length === 0 || filtrosOvos.posturas.includes(String(egg.postura || ''))) &&
+      (filtrosOvos.iniciosChoca.length === 0 || filtrosOvos.iniciosChoca.includes(String(egg.inicioChoca || ''))) &&
+      (filtrosOvos.eclosoes.length === 0 || filtrosOvos.eclosoes.includes(String(egg.dataEclosao || ''))) &&
+      (filtrosOvos.filhotes.length === 0 || filtrosOvos.filhotes.includes(String(egg.filhoteId || ''))) &&
+      (filtrosOvos.portas.length === 0 || filtrosOvos.portas.includes(String(egg.porta || '')));
   });
-
-  // Exibe somente locais que possuem pelo menos um ovo ou filhote
-  // vinculado. Locais apenas cadastrados, mas vazios, não aparecem.
-  const locaisParaExibir = new Map(
-    Array.from(ovosPorLocal.entries()).filter(([, ovos]) => ovos.length > 0)
-  );
-
-  const locaisOrdenados = Array.from(locaisParaExibir.entries()).sort((a, b) =>
-    a[0].localeCompare(b[0], 'pt-BR')
-  );
-
-  // Na visualização por casal, evita repetir um mesmo casal em um ninho
-  // vazio quando já existe outro registro desse casal com ovos.
-  // Isso corrige o caso em que o mesmo casal aparece, por exemplo,
-  // uma vez com 7 ovos e novamente sem ovos.
+  const ovosFiltradosPorChave = new Set(ovosFiltrados.map(({ ninho, egg, eggIdx }) => getChaveOvo(ninho.id, egg, eggIdx)));
   const casaisComOvos = new Set(
-    ninhos
-      .filter((ninho) => Boolean(ninho.casalId) && ninho.eggs.length > 0)
-      .map((ninho) => ninho.casalId)
+    ninhos.filter((ninho) => Boolean(ninho.casalId) && ninho.eggs.length > 0).map((ninho) => ninho.casalId)
   );
-
   const ninhosParaVisualizacaoCasal = ninhos.filter(
-    (ninho) =>
-      !(ninho.eggs.length === 0 &&
-        Boolean(ninho.casalId) &&
-        casaisComOvos.has(ninho.casalId))
+    (ninho) => !(ninho.eggs.length === 0 && Boolean(ninho.casalId) && casaisComOvos.has(ninho.casalId))
   );
+  const ninhosFiltradosParaVisualizacaoCasal = ninhosParaVisualizacaoCasal.map(ninho => ({
+    ...ninho,
+    eggs: ninho.eggs.filter((egg, eggIdx) => ovosFiltradosPorChave.has(getChaveOvo(ninho.id, egg, eggIdx)))
+  }));
+  const ovosPorLocal = new Map<string, Array<{ egg: Egg; ninho: Ninho; eggIdx: number }>>();
+  ovosFiltrados.forEach(({ egg, ninho, eggIdx }) => {
+    const local = egg.local?.trim() || 'Sem local definido';
+    if (!ovosPorLocal.has(local)) ovosPorLocal.set(local, []);
+    ovosPorLocal.get(local)!.push({ egg, ninho, eggIdx });
+  });
+  const locaisOrdenados = Array.from(ovosPorLocal.entries()).sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
 
   const adicionarOvoAoLocal = (local: string) => {
     const ninhoId = ninhoSelecionadoPorLocal[local] || ninhos[0]?.id;
@@ -940,7 +983,7 @@ export function NinhosSection({
             <p className="text-xs text-slate-400 mt-1">Crie um ninho para começar</p>
           </div>
         ) : (
-          ninhosParaVisualizacaoCasal.map((ninho) => (
+          ninhosFiltradosParaVisualizacaoCasal.map((ninho) => (
             <div
               key={ninho.id}
               className="bg-white rounded-[24px] border-2 border-slate-200 overflow-hidden shadow-sm"
@@ -1819,7 +1862,7 @@ export function NinhosSection({
                 Ovos por Local
               </h2>
               <span className="text-[10px] font-black text-slate-400 uppercase">
-                {ninhos.reduce((total, ninho) => total + ninho.eggs.length, 0)} ovos
+                {ovosFiltrados.length} ovos
               </span>
             </div>
 
