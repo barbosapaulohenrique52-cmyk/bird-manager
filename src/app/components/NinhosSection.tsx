@@ -282,6 +282,8 @@ export function NinhosSection({
   const [ninhosExpandidos, setNinhosExpandidos] = useState<Set<string>>(new Set());
   // Alterna entre a visualização dos ovos por casal/ninho e por local atual.
   const [visualizacaoOvos, setVisualizacaoOvos] = useState<'casal' | 'local'>('casal');
+  // Guarda o ninho/casal de origem escolhido para adicionar ovos em cada local.
+  const [ninhoSelecionadoPorLocal, setNinhoSelecionadoPorLocal] = useState<Record<string, string>>({});
 
   const toggleNinhoExpandido = (ninhoId: string) => {
     const novoSet = new Set(ninhosExpandidos);
@@ -837,9 +839,33 @@ export function NinhosSection({
     });
   });
 
-  const locaisOrdenados = Array.from(ovosPorLocal.entries()).sort((a, b) =>
+  // Inclui também os locais cadastrados que ainda não possuem ovos.
+  const locaisParaExibir = new Map(ovosPorLocal);
+  (config.locaisOvos || []).forEach((local) => {
+    if (!locaisParaExibir.has(local)) locaisParaExibir.set(local, []);
+  });
+
+  const locaisOrdenados = Array.from(locaisParaExibir.entries()).sort((a, b) =>
     a[0].localeCompare(b[0], 'pt-BR')
   );
+
+  const adicionarOvoAoLocal = (local: string) => {
+    const ninhoId = ninhoSelecionadoPorLocal[local] || ninhos[0]?.id;
+
+    if (!ninhoId) {
+      alert('Cadastre pelo menos um ninho/casal antes de adicionar ovos.');
+      return;
+    }
+
+    const ninho = ninhos.find((item) => item.id === ninhoId);
+    const novoEggIdx = ninho?.eggs.length ?? 0;
+
+    // Primeiro cria o ovo no ninho de origem e, em seguida, atribui o local.
+    onAddEgg(ninhoId);
+    window.setTimeout(() => {
+      onUpdateEgg(ninhoId, novoEggIdx, 'local', local === 'Sem local definido' ? '' : local);
+    }, 0);
+  };
 
   return (
     <section className="space-y-6">
@@ -1161,7 +1187,7 @@ export function NinhosSection({
       {/* ============================================================
           OVOS AGRUPADOS PELO LOCAL ATUAL
           ============================================================ */}
-      {visualizacaoOvos === 'local' && ninhos.some(n => n.eggs.length > 0) && (
+      {visualizacaoOvos === 'local' && (ninhos.length > 0 || (config.locaisOvos || []).length > 0) && (
         <div className="pt-2">
           <div className="flex flex-col gap-3 mb-4">
             <div className="flex items-center justify-between">
@@ -1221,7 +1247,7 @@ export function NinhosSection({
                 className="bg-white rounded-[24px] border-2 border-slate-200 overflow-hidden shadow-sm"
               >
                 <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 p-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="text-white">
                       <h3 className="text-sm font-black uppercase flex items-center gap-2">
                         <i className="fas fa-map-marker-alt"></i>
@@ -1231,7 +1257,37 @@ export function NinhosSection({
                         {ovos.length} {ovos.length === 1 ? 'ovo' : 'ovos'}
                       </p>
                     </div>
-                    <i className="fas fa-egg text-white text-xl opacity-80"></i>
+
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={ninhoSelecionadoPorLocal[local] || ninhos[0]?.id || ''}
+                        onChange={(e) =>
+                          setNinhoSelecionadoPorLocal((atual) => ({
+                            ...atual,
+                            [local]: e.target.value
+                          }))
+                        }
+                        className="max-w-[180px] bg-white text-emerald-700 border border-emerald-200 rounded-lg px-2 py-2 text-[9px] font-black outline-none"
+                        title="Escolha o casal/ninho de origem do novo ovo"
+                      >
+                        {ninhos.length === 0 && <option value="">Nenhum ninho</option>}
+                        {ninhos.map((ninho) => (
+                          <option key={ninho.id} value={ninho.id}>
+                            {ninho.name || 'Ninho s/ nome'}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => adicionarOvoAoLocal(local)}
+                        disabled={ninhos.length === 0}
+                        className="bg-white text-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed px-3 py-2 rounded-lg font-black text-[9px] uppercase shadow-md hover:bg-emerald-50 transition-all whitespace-nowrap"
+                        title="Adicionar ovo neste local"
+                      >
+                        <i className="fas fa-plus mr-1"></i>
+                        Ovo
+                      </button>
+                    </div>
                   </div>
                 </div>
 
