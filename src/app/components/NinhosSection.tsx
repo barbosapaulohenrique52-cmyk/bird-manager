@@ -325,6 +325,7 @@ export function NinhosSection({
     busca: '', status: [], especies: [], locais: [], posturas: [], iniciosChoca: [], eclosoes: [], filhotes: [], portas: []
   });
   const [filtroOvoAberto, setFiltroOvoAberto] = useState<string | null>(null);
+  const [filtrosOvosExpandidos, setFiltrosOvosExpandidos] = useState(false);
 
   // Guarda o ninho/casal de origem escolhido para adicionar ovos em cada local.
   const [ninhoSelecionadoPorLocal, setNinhoSelecionadoPorLocal] = useState<Record<string, string>>({});
@@ -973,25 +974,39 @@ export function NinhosSection({
       </div>
 
       {/* Filtros dos ovos e filhotes */}
-      <div className="bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <i className="fas fa-filter text-emerald-600"></i>
+      <div className="bg-white border-2 border-slate-200 rounded-2xl shadow-sm overflow-visible">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+          <button
+            type="button"
+            onClick={() => {
+              setFiltrosOvosExpandidos((atual) => !atual);
+              if (filtrosOvosExpandidos) setFiltroOvoAberto(null);
+            }}
+            className="flex items-center gap-2 text-left"
+          >
+            <i className={`fas fa-filter text-emerald-600 ${filtrosOvosExpandidos ? '' : 'opacity-80'}`}></i>
             <h3 className="text-xs font-black text-slate-700 uppercase">Filtros de ovos e filhotes</h3>
             <span className="text-[10px] font-bold text-slate-400">
               {ovosFiltrados.length} de {todosOvosBrutos.length} ovos
             </span>
-          </div>
-          <button
-            type="button"
-            onClick={limparFiltrosOvos}
-            className="text-[10px] font-black uppercase text-rose-600 hover:text-rose-800"
-          >
-            <i className="fas fa-eraser mr-1"></i>
-            Limpar filtros
+            <i className={`fas fa-chevron-down text-[10px] text-slate-400 transition-transform ${filtrosOvosExpandidos ? 'rotate-180' : ''}`}></i>
           </button>
+          <div className="flex items-center gap-3">
+            {!filtrosOvosExpandidos && (Object.values(filtrosOvos).some((valor) => Array.isArray(valor) ? valor.length > 0 : Boolean(valor)) ) && (
+              <span className="text-[9px] font-black uppercase text-emerald-600">Filtros ativos</span>
+            )}
+            <button
+              type="button"
+              onClick={limparFiltrosOvos}
+              className="text-[10px] font-black uppercase text-rose-600 hover:text-rose-800"
+            >
+              <i className="fas fa-eraser mr-1"></i>
+              Limpar filtros
+            </button>
+          </div>
         </div>
 
+        {filtrosOvosExpandidos && <div className="px-4 pb-4 space-y-3">
         <input
           type="text"
           value={filtrosOvos.busca}
@@ -1074,6 +1089,7 @@ export function NinhosSection({
             onTodos={() => todosDoFiltroOvo('portas', opcoesCampoOvo('porta'))}
           />
         </div>
+        </div>}
       </div>
 
       {visualizacaoOvos === 'casal' && (
