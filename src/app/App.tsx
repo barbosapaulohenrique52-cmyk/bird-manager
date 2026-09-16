@@ -10,6 +10,8 @@ import { ConfigSection } from "./components/ConfigSection";
 import { Modal } from "./components/Modal";
 import { PhotoZoom } from "./components/PhotoZoom";
 import { AveDetalhesModal } from "./components/AveDetalhesModal";
+import { ImportarAvesModal } from "../imports/ImportarAvesModal";
+import type { AveImportada } from "../services/excelService";
 import { useDatabase } from "./hooks/useDatabase";
 
 export type TabType =
@@ -44,13 +46,9 @@ export interface Ave {
   birthNestId?: string;
   criadoPorAmas?: boolean;
   casalAmasId?: string;
-
-  // Cores visuais da ave
   corCabeca?: string;
   corPeito?: string;
   corDorso?: string;
-
-  // Campos adicionais
   nota?: string;
   porta?: string;
 }
@@ -128,13 +126,9 @@ export interface Config {
     [especie: string]: ParametrosEspecie;
   };
   parametrosPadrao: ParametrosEspecie;
-
-  // Paletas independentes por região da ave
   coresCabeca?: CorAve[];
   coresPeito?: CorAve[];
   coresDorso?: CorAve[];
-
-  // Mantido para compatibilidade com a versão anterior
   coresAves?: CorAve[];
 }
 
@@ -155,6 +149,7 @@ export default function App() {
   const [editId, setEditId] = useState<string | null>(null);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
   const [aveDetalheId, setAveDetalheId] = useState<string | null>(null);
+  const [importarAvesAberto, setImportarAvesAberto] = useState(false);
 
   const {
     db,
@@ -204,18 +199,37 @@ export default function App() {
     setEditId(null);
   };
 
-  /**
-   * Salva várias aves em sequência.
-   *
-   * O modal em lote enviará uma lista de dados parciais.
-   * Cada ave será encaminhada para a mesma função utilizada
-   * pelo cadastro individual, preservando a lógica atual
-   * de geração de ID e persistência do banco de dados.
-   */
   const saveAvesLote = (avesLote: Partial<Ave>[]) => {
     avesLote.forEach((aveData) => {
       saveAve(aveData, null);
     });
+  };
+
+  const abrirImportacaoPlanilha = () => {
+    setImportarAvesAberto(true);
+  };
+
+  const fecharImportacaoPlanilha = () => {
+    setImportarAvesAberto(false);
+  };
+
+  const importarAvesDaPlanilha = (avesImportadas: AveImportada[]) => {
+    let quantidadeImportada = 0;
+
+    avesImportadas.forEach((aveImportada) => {
+      const { id: _id, ...dadosAve } = aveImportada;
+
+      saveAve(dadosAve, null);
+      quantidadeImportada += 1;
+    });
+
+    setImportarAvesAberto(false);
+
+    alert(
+      `${quantidadeImportada} ${
+        quantidadeImportada === 1 ? "ave foi importada" : "aves foram importadas"
+      } com sucesso.`,
+    );
   };
 
   useEffect(() => {
@@ -236,10 +250,7 @@ export default function App() {
     window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
-      window.removeEventListener(
-        "beforeunload",
-        handleBeforeUnload,
-      );
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [db]);
 
@@ -285,6 +296,7 @@ export default function App() {
             onDeleteAve={deleteAve}
             onPhotoClick={setZoomPhoto}
             onViewDetails={setAveDetalheId}
+            onOpenImportarPlanilha={abrirImportacaoPlanilha}
           />
         )}
 
@@ -359,6 +371,17 @@ export default function App() {
           onSaveNinho={saveNinho}
           onUpdateNinhoCasal={updateNinhoCasal}
           onSaveConfig={saveConfig}
+        />
+      )}
+
+      {importarAvesAberto && (
+        <ImportarAvesModal
+          aves={db.aves}
+          casais={db.casais}
+          ninhos={db.ninhos}
+          config={db.config}
+          onClose={fecharImportacaoPlanilha}
+          onImportar={importarAvesDaPlanilha}
         />
       )}
 
