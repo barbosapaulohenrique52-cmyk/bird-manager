@@ -180,7 +180,7 @@ export function AvesSection({
   const coresCabeca = (config?.coresCabeca || []).map((cor) => cor.nome);
   const coresPeito = (config?.coresPeito || []).map((cor) => cor.nome);
   const coresDorso = (config?.coresDorso || []).map((cor) => cor.nome);
-  const statusOpcoes = ['Ativo', 'Inativo'];
+  const statusOpcoes = ['Ativo', 'Vendido', 'Óbito', 'No Ninho'];
 
   const alternarFiltro = (
     campo: Exclude<keyof FiltrosAves, 'busca'>,
