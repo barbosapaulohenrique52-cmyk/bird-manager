@@ -92,19 +92,21 @@ interface ModalProps {
   config: Config;
   onClose: () => void;
   onSaveAve: (data: Partial<Ave>, editId: string | null) => void;
+  onSaveAvesLote?: (data: Partial<Ave>[]) => void;
   onSaveCasal: (data: Omit<Casal, 'id'>) => string;
   onSaveNinho: (data: { name: string; casalId: string }) => void;
   onUpdateNinhoCasal?: (ninhoId: string, casalId: string) => void;
   onSaveConfig: (config: Config) => void;
 }
 
-export function Modal({ type, editId, aves, casais, colorLists, config, onClose, onSaveAve, onSaveCasal, onSaveNinho, onUpdateNinhoCasal, onSaveConfig }: ModalProps) {
+export function Modal({ type, editId, aves, casais, colorLists, config, onClose, onSaveAve, onSaveAvesLote, onSaveCasal, onSaveNinho, onUpdateNinhoCasal, onSaveConfig }: ModalProps) {
   const currentYear = new Date().getFullYear();
   const ave = editId && type === 'ave' ? aves.find(a => a.id === editId) : null;
   const [photoData, setPhotoData] = useState(ave?.photo || '');
   const [corCabecaVisual, setCorCabecaVisual] = useState(ave?.corCabeca || '');
   const [corPeitoVisual, setCorPeitoVisual] = useState(ave?.corPeito || '');
   const [corDorsoVisual, setCorDorsoVisual] = useState(ave?.corDorso || '');
+
 
   const [novaCorRegiao, setNovaCorRegiao] = useState<'cabeca' | 'peito' | 'dorso' | null>(null);
   const [novoNomeCor, setNovoNomeCor] = useState('');
@@ -179,6 +181,108 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
   const nomesCoresCabeca = (config.coresCabeca || []).map(cor => cor.nome);
   const nomesCoresPeito = (config.coresPeito || []).map(cor => cor.nome);
   const nomesCoresDorso = (config.coresDorso || []).map(cor => cor.nome);
+  type CampoLote =
+    | 'species'
+    | 'ring'
+    | 'ringYear'
+    | 'name'
+    | 'sex'
+    | 'status'
+    | 'creator'
+    | 'acqYear'
+    | 'corCabeca'
+    | 'corPeito'
+    | 'corDorso'
+    | 'nota'
+    | 'porta';
+
+  type AveLote = Partial<Ave> & { idLote: number };
+
+  const criarAveLoteVazia = (indice: number): AveLote => ({
+    idLote: indice,
+    species: config.especies?.[0] || 'Diamante de Gould',
+    ring: '',
+    ringYear: currentYear,
+    name: '',
+    sex: 'Macho',
+    status: 'Ativo',
+    creator: 'Próprio',
+    acqYear: currentYear,
+    corCabeca: '',
+    corPeito: '',
+    corDorso: '',
+    nota: '',
+    porta: '',
+  });
+
+  const [quantidadeLote, setQuantidadeLote] = useState(5);
+  const [avesLote, setAvesLote] = useState<AveLote[]>(() =>
+    Array.from({ length: 5 }, (_, index) => criarAveLoteVazia(index + 1))
+  );
+  const [camposAplicarTodas, setCamposAplicarTodas] = useState<Partial<Record<CampoLote, boolean>>>({});
+
+  const atualizarAveLote = (indice: number, campo: CampoLote, valor: string | number) => {
+    setAvesLote(atuais => {
+      const atualizadas = atuais.map(aveAtual =>
+        aveAtual.idLote === indice ? { ...aveAtual, [campo]: valor } : aveAtual
+      );
+
+      if (camposAplicarTodas[campo]) {
+        return atualizadas.map(aveAtual => ({ ...aveAtual, [campo]: valor }));
+      }
+
+      return atualizadas;
+    });
+  };
+
+  const alternarAplicarTodas = (campo: CampoLote, marcado: boolean) => {
+    setCamposAplicarTodas(atuais => ({ ...atuais, [campo]: marcado }));
+
+    if (marcado && avesLote.length > 0) {
+      const valor = avesLote[0][campo];
+      setAvesLote(atuais => atuais.map(aveAtual => ({ ...aveAtual, [campo]: valor })));
+    }
+  };
+
+  const iniciarLote = () => {
+    const quantidadeValida = Math.max(1, Math.min(100, Math.floor(Number(quantidadeLote) || 1)));
+    setQuantidadeLote(quantidadeValida);
+    setAvesLote(Array.from({ length: quantidadeValida }, (_, index) => criarAveLoteVazia(index + 1)));
+    setCamposAplicarTodas({});
+  };
+
+  const handleAvesLoteSubmit = () => {
+    if (!onSaveAvesLote) {
+      alert('A função de salvar aves em lote não está disponível.');
+      return;
+    }
+
+    const avesParaSalvar = avesLote.map(({ idLote, ...dados }) => ({
+      ...dados,
+      name: dados.name?.trim() || `${(dados.ring || '').trim()}-${dados.ringYear || currentYear}`,
+      ring: dados.ring?.trim() || '',
+    }));
+
+    onSaveAvesLote(avesParaSalvar);
+    onClose();
+  };
+
+  const camposLote: Array<{ campo: CampoLote; label: string; tipo?: 'text' | 'number' | 'select'; opcoes?: string[] }> = [
+    { campo: 'species', label: 'Espécie', tipo: 'select', opcoes: config.especies || [] },
+    { campo: 'ring', label: 'Anilha' },
+    { campo: 'ringYear', label: 'Ano anilha', tipo: 'number' },
+    { campo: 'name', label: 'Nome' },
+    { campo: 'sex', label: 'Sexo', tipo: 'select', opcoes: ['Macho', 'Fêmea', 'Indefinido'] },
+    { campo: 'status', label: 'Status', tipo: 'select', opcoes: ['Ativo', 'No Ninho', 'Vendido', 'Óbito'] },
+    { campo: 'creator', label: 'Criador' },
+    { campo: 'acqYear', label: 'Ano aquisição', tipo: 'number' },
+    { campo: 'corCabeca', label: 'Cor cabeça', tipo: 'select', opcoes: ['', ...nomesCoresCabeca] },
+    { campo: 'corPeito', label: 'Cor peito', tipo: 'select', opcoes: ['', ...nomesCoresPeito] },
+    { campo: 'corDorso', label: 'Cor dorso', tipo: 'select', opcoes: ['', ...nomesCoresDorso] },
+    { campo: 'nota', label: 'Nota' },
+    { campo: 'porta', label: 'Porta' },
+  ];
+
 
   // Nome da ave:
   // - por padrão é ANILHA-ANO;
@@ -667,6 +771,117 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                 Salvar Cadastro
               </button>
             </form>
+          </>
+        )}
+
+
+        {type === 'aves-lote' && (
+          <>
+            <div className="p-6 bg-slate-900 text-white flex justify-between items-center sticky top-0 z-20">
+              <div>
+                <h2 className="font-black text-lg uppercase italic">Adicionar aves em lote</h2>
+                <p className="text-[10px] text-slate-300 mt-1">Todos os campos são individuais por padrão.</p>
+              </div>
+              <button type="button" onClick={onClose}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl p-4">
+                <div className="flex-1">
+                  <label className="text-[10px] font-black text-slate-500 uppercase">Quantidade de aves</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={quantidadeLote}
+                    onChange={e => setQuantidadeLote(Number(e.target.value))}
+                    className="border-2 border-white p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 bg-white text-sm mt-1"
+                  />
+                </div>
+                <button type="button" onClick={iniciarLote} className="bg-emerald-600 text-white px-5 py-3 rounded-xl font-black text-[10px] uppercase">
+                  <i className="fas fa-table mr-2"></i> Gerar prévia
+                </button>
+              </div>
+
+              <div className="rounded-2xl border-2 border-slate-100 overflow-hidden">
+                <div className="overflow-x-auto max-h-[55vh]">
+                  <table className="min-w-[1450px] w-full text-left border-collapse">
+                    <thead className="sticky top-0 z-10 bg-slate-900 text-white">
+                      <tr>
+                        <th className="p-3 text-[10px] font-black uppercase">#</th>
+                        {camposLote.map(item => (
+                          <th key={item.campo} className="p-3 min-w-[145px]">
+                            <div className="text-[10px] font-black uppercase">{item.label}</div>
+                            <label className="flex items-center gap-1 mt-2 text-[9px] font-bold normal-case text-slate-300 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={!!camposAplicarTodas[item.campo]}
+                                onChange={e => alternarAplicarTodas(item.campo, e.target.checked)}
+                              />
+                              Aplicar a todas
+                            </label>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {avesLote.map((aveLote, index) => (
+                        <tr key={aveLote.idLote} className="hover:bg-slate-50">
+                          <td className="p-3 text-xs font-black text-slate-400">{index + 1}</td>
+                          {camposLote.map(item => {
+                            const valor = aveLote[item.campo];
+                            const comum = 'border border-slate-200 p-2 rounded-lg w-full text-xs font-bold outline-none focus:border-emerald-500 bg-white';
+                            return (
+                              <td key={item.campo} className="p-2 align-top">
+                                {item.campo === 'nota' ? (
+                                  <textarea
+                                    value={String(valor ?? '')}
+                                    onChange={e => atualizarAveLote(aveLote.idLote, item.campo, e.target.value)}
+                                    rows={2}
+                                    className={comum + ' resize-none'}
+                                  />
+                                ) : item.tipo === 'select' ? (
+                                  <select
+                                    value={String(valor ?? '')}
+                                    onChange={e => atualizarAveLote(aveLote.idLote, item.campo, e.target.value)}
+                                    className={comum}
+                                  >
+                                    {item.opcoes?.map(opcao => <option key={opcao} value={opcao}>{opcao || 'Sem cor definida'}</option>)}
+                                  </select>
+                                ) : (
+                                  <input
+                                    type={item.tipo || 'text'}
+                                    value={String(valor ?? '')}
+                                    onChange={e => atualizarAveLote(aveLote.idLote, item.campo, item.tipo === 'number' ? Number(e.target.value) : e.target.value)}
+                                    className={comum}
+                                  />
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-800 font-bold">
+                <i className="fas fa-info-circle mr-1"></i>
+                Marque “Aplicar a todas” somente nos campos que devem receber o mesmo valor em todas as aves. Os demais permanecem individuais.
+              </div>
+
+              <div className="flex gap-3">
+                <button type="button" onClick={onClose} className="flex-1 bg-slate-200 text-slate-700 py-4 rounded-2xl font-black uppercase text-xs">
+                  Cancelar
+                </button>
+                <button type="button" onClick={handleAvesLoteSubmit} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-xl">
+                  <i className="fas fa-save mr-2"></i> Salvar lote ({avesLote.length})
+                </button>
+              </div>
+            </div>
           </>
         )}
 
