@@ -218,6 +218,7 @@ type FiltrosOvos = {
   eclosoes: string[];
   filhotes: string[];
   portas: string[];
+  amas: string[];
 };
 
 function FiltroOvosMultiplo({ label, opcoes, selecionados, aberto, onAbrir, onAlternar, onTodos }: {
@@ -322,7 +323,7 @@ export function NinhosSection({
   // Alterna entre a visualização dos ovos por casal/ninho e por local atual.
   const [visualizacaoOvos, setVisualizacaoOvos] = useState<'casal' | 'local'>('casal');
   const [filtrosOvos, setFiltrosOvos] = useState<FiltrosOvos>({
-    busca: '', status: [], especies: [], locais: [], posturas: [], iniciosChoca: [], eclosoes: [], filhotes: [], portas: []
+    busca: '', status: [], especies: [], locais: [], posturas: [], iniciosChoca: [], eclosoes: [], filhotes: [], portas: [], amas: []
   });
   const [filtroOvoAberto, setFiltroOvoAberto] = useState<string | null>(null);
   const [filtrosOvosExpandidos, setFiltrosOvosExpandidos] = useState(false);
@@ -875,12 +876,28 @@ export function NinhosSection({
     setFiltrosOvos(anterior => ({ ...anterior, [campo]: anterior[campo].length === opcoes.length && opcoes.length > 0 ? [] : opcoes }));
   };
   const limparFiltrosOvos = () => {
-    setFiltrosOvos({ busca: '', status: [], especies: [], locais: [], posturas: [], iniciosChoca: [], eclosoes: [], filhotes: [], portas: [] });
+    setFiltrosOvos({ busca: '', status: [], especies: [], locais: [], posturas: [], iniciosChoca: [], eclosoes: [], filhotes: [], portas: [], amas: [] });
     setFiltroOvoAberto(null);
   };
+  const nomeCasal = (casalId?: string) => {
+    if (!casalId) return 'Sem ama';
+    const casal = casais.find(c => c.id === casalId);
+    if (!casal) return 'Ama não cadastrada';
+    const macho = aves.find(a => a.id === casal.mId);
+    const femea = aves.find(a => a.id === casal.fId);
+    return `${macho?.ring || macho?.name || 'S/ anilha'} × ${femea?.ring || femea?.name || 'S/ anilha'}`;
+  };
+
+  const opcoesAmas = Array.from(new Set(todosOvosBrutos.map(({ egg, ninho }) => {
+    const eAma = Boolean(egg.casalChocandoId && egg.casalChocandoId !== ninho.casalId);
+    return eAma ? nomeCasal(egg.casalChocandoId) : 'Sem ama';
+  }))).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
   const ovosFiltrados = todosOvosBrutos.filter(({ egg, ninho }) => {
     const busca = filtrosOvos.busca.trim().toLowerCase();
-    const texto = [egg.species, egg.status, egg.local, egg.postura, egg.inicioChoca, egg.dataEclosao, egg.filhoteId, egg.nota, egg.porta, ninho.name].filter(Boolean).join(' ').toLowerCase();
+    const eAma = Boolean(egg.casalChocandoId && egg.casalChocandoId !== ninho.casalId);
+    const identificacaoAma = eAma ? nomeCasal(egg.casalChocandoId) : 'Sem ama';
+    const texto = [egg.species, egg.status, egg.local, egg.postura, egg.inicioChoca, egg.dataEclosao, egg.filhoteId, egg.nota, egg.porta, ninho.name, identificacaoAma].filter(Boolean).join(' ').toLowerCase();
     return (!busca || texto.includes(busca)) &&
       (filtrosOvos.status.length === 0 || filtrosOvos.status.includes(egg.status)) &&
       (filtrosOvos.especies.length === 0 || filtrosOvos.especies.includes(String(egg.species || ''))) &&
@@ -889,7 +906,8 @@ export function NinhosSection({
       (filtrosOvos.iniciosChoca.length === 0 || filtrosOvos.iniciosChoca.includes(String(egg.inicioChoca || ''))) &&
       (filtrosOvos.eclosoes.length === 0 || filtrosOvos.eclosoes.includes(String(egg.dataEclosao || ''))) &&
       (filtrosOvos.filhotes.length === 0 || filtrosOvos.filhotes.includes(String(egg.filhoteId || ''))) &&
-      (filtrosOvos.portas.length === 0 || filtrosOvos.portas.includes(String(egg.porta || '')));
+      (filtrosOvos.portas.length === 0 || filtrosOvos.portas.includes(String(egg.porta || ''))) &&
+      (filtrosOvos.amas.length === 0 || filtrosOvos.amas.includes(identificacaoAma));
   });
   const ovosFiltradosPorChave = new Set(ovosFiltrados.map(({ ninho, egg, eggIdx }) => getChaveOvo(ninho.id, egg, eggIdx)));
   const casaisComOvos = new Set(
@@ -1087,6 +1105,15 @@ export function NinhosSection({
             onAbrir={() => setFiltroOvoAberto(filtroOvoAberto === 'portas' ? null : 'portas')}
             onAlternar={(valor) => alternarFiltroOvo('portas', valor)}
             onTodos={() => todosDoFiltroOvo('portas', opcoesCampoOvo('porta'))}
+          />
+          <FiltroOvosMultiplo
+            label="Ama"
+            opcoes={opcoesAmas}
+            selecionados={filtrosOvos.amas}
+            aberto={filtroOvoAberto === 'amas'}
+            onAbrir={() => setFiltroOvoAberto(filtroOvoAberto === 'amas' ? null : 'amas')}
+            onAlternar={(valor) => alternarFiltroOvo('amas', valor)}
+            onTodos={() => todosDoFiltroOvo('amas', opcoesAmas)}
           />
         </div>
         </div>}
