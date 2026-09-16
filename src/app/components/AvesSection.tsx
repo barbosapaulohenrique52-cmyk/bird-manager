@@ -9,6 +9,7 @@ interface AvesSectionProps {
   onDeleteAve: (id: string) => void;
   onPhotoClick?: (photoUrl: string) => void;
   onViewDetails?: (aveId: string) => void;
+  onOpenImportarPlanilha: () => void;
 }
 
 type FiltrosAves = {
@@ -143,7 +144,8 @@ export function AvesSection({
   onOpenModal,
   onDeleteAve,
   onPhotoClick,
-  onViewDetails
+  onViewDetails,
+  onOpenImportarPlanilha
 }: AvesSectionProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [filtroAberto, setFiltroAberto] = useState<string | null>(null);
@@ -363,6 +365,15 @@ export function AvesSection({
             >
               <i className="fas fa-layer-group"></i>
               ADICIONAR EM LOTE
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenImportarPlanilha}
+              className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2"
+            >
+              <i className="fas fa-file-excel"></i>
+              IMPORTAR PLANILHA
             </button>
           </div>
         </div>

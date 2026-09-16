@@ -320,7 +320,7 @@ export default function App() {
             casais={db.casais}
             ninhos={db.ninhos}
             config={db.config}
-            onNavigate={setActiveTab}
+            onNavigate={(tab) => setActiveTab(tab as TabType)}
           />
         )}
 
