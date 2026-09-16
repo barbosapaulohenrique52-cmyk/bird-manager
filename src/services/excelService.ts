@@ -87,11 +87,15 @@ function descricaoCasal(casal: Casal, aves: Ave[]): string {
 }
 
 function nomesCasais(casais: Casal[], aves: Ave[]): string[] {
-  return valoresUnicos(casais.map((casal) => descricaoCasal(casal, aves)));
+  return valoresUnicos(
+    casais.map((casal) => descricaoCasal(casal, aves)),
+  );
 }
 
 function nomesNinhos(ninhos: Ninho[]): string[] {
-  return valoresUnicos(ninhos.map((ninho) => ninho.name || ninho.id || ""));
+  return valoresUnicos(
+    ninhos.map((ninho) => ninho.name || ninho.id || ""),
+  );
 }
 
 function nomesCores(cores?: { nome: string }[]): string[] {
@@ -136,24 +140,30 @@ function aplicarBordas(row: ExcelJS.Row) {
 }
 
 /**
- * Aplica uma lista suspensa utilizando um nome definido no Excel.
+ * Aplica uma lista suspensa utilizando uma faixa de células
+ * localizada na própria aba Aves.
  *
- * O uso de nomes definidos permite que a origem da validação
- * esteja em outra aba sem provocar o erro comum de referência
- * direta a outra planilha.
+ * Essa abordagem evita nomes definidos e referências entre abas,
+ * aumentando a compatibilidade com WPS Office e Excel.
  */
 function aplicarListaSuspensa(
   worksheet: ExcelJS.Worksheet,
   coluna: string,
   primeiraLinha: number,
   ultimaLinha: number,
-  nomeLista: string,
+  colunaAuxiliar: string,
+  quantidadeValores: number,
 ) {
+  const ultimaLinhaLista = Math.max(quantidadeValores + 1, 2);
+
   for (let linha = primeiraLinha; linha <= ultimaLinha; linha += 1) {
     worksheet.getCell(`${coluna}${linha}`).dataValidation = {
       type: "list",
       allowBlank: true,
-      formulae: [`=${nomeLista}`],
+
+      // Referência direta na própria aba Aves.
+      formulae: [`$${colunaAuxiliar}$2:$${colunaAuxiliar}$${ultimaLinhaLista}`],
+
       showErrorMessage: false,
       showInputMessage: true,
       promptTitle: "Lista de referência",
@@ -162,6 +172,9 @@ function aplicarListaSuspensa(
   }
 }
 
+/**
+ * Cria a aba visível com as listas de referência.
+ */
 function adicionarAbaListas(
   workbook: ExcelJS.Workbook,
   references: ExcelReferenceData,
@@ -225,25 +238,23 @@ function adicionarAbaListas(
 
     const titulo = worksheet.getCell(`${letra}1`);
     titulo.value = lista.titulo;
+
     titulo.font = {
       bold: true,
       color: { argb: "FFFFFFFF" },
     };
+
     titulo.fill = {
       type: "pattern",
       pattern: "solid",
       fgColor: { argb: "FF0F172A" },
     };
+
     titulo.alignment = {
       horizontal: "center",
       vertical: "middle",
     };
 
-    /*
-     * Mesmo quando a lista está vazia, escrevemos uma célula
-     * vazia em A2, B2 etc. Isso evita que o nome definido
-     * aponte para um intervalo inexistente.
-     */
     const valores = lista.valores.length > 0 ? lista.valores : [""];
 
     valores.forEach((valor, linha) => {
@@ -260,9 +271,9 @@ function adicionarAbaListas(
 
   worksheet.autoFilter = {
     from: "A1",
-    to: `${worksheet.getColumn(listas.length).letter}${Math.max(
-      ...listas.map((lista) => Math.max(lista.valores.length, 1)),
-    ) + 1}`,
+    to: `${worksheet.getColumn(listas.length).letter}${
+      Math.max(...listas.map((lista) => Math.max(lista.valores.length, 1))) + 1
+    }`,
   };
 
   return worksheet;
@@ -339,6 +350,144 @@ function adicionarAbaInstrucoes(workbook: ExcelJS.Workbook) {
   worksheet.views = [{ state: "frozen", ySplit: 3 }];
 }
 
+/**
+ * Cria as listas auxiliares nas colunas X até AH da aba Aves.
+ *
+ * Essas colunas ficam ocultas e são usadas como origem das
+ * validações de dados.
+ */
+function adicionarListasAuxiliaresNaAbaAves(
+  worksheet: ExcelJS.Worksheet,
+  references: ExcelReferenceData,
+) {
+  const criadores = valoresUnicos(
+    references.aves.map((ave) => ave.creator || ""),
+  );
+
+  const listas = [
+    {
+      titulo: "AuxEspecies",
+      valores: valoresUnicos(references.config.especies || []),
+    },
+    {
+      titulo: "AuxSexo",
+      valores: ["Macho", "Fêmea", "Indefinido"],
+    },
+    {
+      titulo: "AuxStatus",
+      valores: ["Ativo", "Vendido", "Óbito", "No Ninho"],
+    },
+    {
+      titulo: "AuxCriadores",
+      valores: criadores,
+    },
+    {
+      titulo: "AuxPais",
+      valores: nomesAves(references.aves),
+    },
+    {
+      titulo: "AuxCasais",
+      valores: nomesCasais(references.casais, references.aves),
+    },
+    {
+      titulo: "AuxNinhos",
+      valores: nomesNinhos(references.ninhos),
+    },
+    {
+      titulo: "AuxCoresCabeca",
+      valores: nomesCores(references.config.coresCabeca),
+    },
+    {
+      titulo: "AuxCoresPeito",
+      valores: nomesCores(references.config.coresPeito),
+    },
+    {
+      titulo: "AuxCoresDorso",
+      valores: nomesCores(references.config.coresDorso),
+    },
+    {
+      titulo: "AuxCriadoPorAmas",
+      valores: ["Sim", "Não"],
+    },
+  ];
+
+  const colunasAuxiliares = [
+    "X",
+    "Y",
+    "Z",
+    "AA",
+    "AB",
+    "AC",
+    "AD",
+    "AE",
+    "AF",
+    "AG",
+    "AH",
+  ];
+
+  listas.forEach((lista, indice) => {
+    const coluna = colunasAuxiliares[indice];
+
+    worksheet.getCell(`${coluna}1`).value = lista.titulo;
+
+    const valores = lista.valores.length > 0 ? lista.valores : [""];
+
+    valores.forEach((valor, linha) => {
+      worksheet.getCell(`${coluna}${linha + 2}`).value = valor;
+    });
+
+    // Oculta a coluna auxiliar.
+    worksheet.getColumn(coluna).hidden = true;
+  });
+
+  return {
+    especies: {
+      coluna: "X",
+      quantidade: listas[0].valores.length,
+    },
+    sexo: {
+      coluna: "Y",
+      quantidade: listas[1].valores.length,
+    },
+    status: {
+      coluna: "Z",
+      quantidade: listas[2].valores.length,
+    },
+    criadores: {
+      coluna: "AA",
+      quantidade: listas[3].valores.length,
+    },
+    pais: {
+      coluna: "AB",
+      quantidade: listas[4].valores.length,
+    },
+    casais: {
+      coluna: "AC",
+      quantidade: listas[5].valores.length,
+    },
+    ninhos: {
+      coluna: "AD",
+      quantidade: listas[6].valores.length,
+    },
+    coresCabeca: {
+      coluna: "AE",
+      quantidade: listas[7].valores.length,
+    },
+    coresPeito: {
+      coluna: "AF",
+      quantidade: listas[8].valores.length,
+    },
+    coresDorso: {
+      coluna: "AG",
+      quantidade: listas[9].valores.length,
+    },
+    criadoPorAmas: {
+      coluna: "AH",
+      quantidade: listas[10].valores.length,
+    },
+  };
+}
+
 export async function baixarPlanilhaModelo(
   references: ExcelReferenceData,
 ): Promise<void> {
@@ -394,59 +543,25 @@ export async function baixarPlanilhaModelo(
     aplicarBordas(worksheet.getRow(linha));
   }
 
+  // Aba visível para consulta dos valores cadastrados.
   adicionarAbaListas(workbook, references);
+
+  // Aba com instruções de preenchimento.
   adicionarAbaInstrucoes(workbook);
 
-  const especies = valoresUnicos(references.config.especies || []);
-
-  const criadores = valoresUnicos(
-    references.aves.map((ave) => ave.creator || ""),
+  // Listas auxiliares na própria aba Aves.
+  const listasAuxiliares = adicionarListasAuxiliaresNaAbaAves(
+    worksheet,
+    references,
   );
-
-  const pais = nomesAves(references.aves);
-  const casais = nomesCasais(references.casais, references.aves);
-  const ninhos = nomesNinhos(references.ninhos);
-  const coresCabeca = nomesCores(references.config.coresCabeca);
-  const coresPeito = nomesCores(references.config.coresPeito);
-  const coresDorso = nomesCores(references.config.coresDorso);
-
-  /*
-   * Cria nomes definidos válidos.
-   *
-   * A faixa mínima é sempre A2:A2, B2:B2 etc.,
-   * mesmo quando não existem dados cadastrados.
-   */
-  const definirLista = (
-    nome: string,
-    coluna: string,
-    quantidade: number,
-  ) => {
-    const ultimaLinha = Math.max(quantidade + 1, 2);
-
-    workbook.definedNames.add(
-      nome,
-      `'Listas'!$${coluna}$2:$${coluna}$${ultimaLinha}`,
-    );
-  };
-
-  definirLista("ListaEspecies", "A", especies.length);
-  definirLista("ListaSexo", "B", 3);
-  definirLista("ListaStatus", "C", 4);
-  definirLista("ListaCriadores", "D", criadores.length);
-  definirLista("ListaPais", "E", pais.length);
-  definirLista("ListaCasais", "F", casais.length);
-  definirLista("ListaNinhos", "G", ninhos.length);
-  definirLista("ListaCoresCabeca", "H", coresCabeca.length);
-  definirLista("ListaCoresPeito", "I", coresPeito.length);
-  definirLista("ListaCoresDorso", "J", coresDorso.length);
-  definirLista("ListaAmas", "K", 2);
 
   aplicarListaSuspensa(
     worksheet,
     "B",
     2,
     linhasModelo + 1,
-    "ListaEspecies",
+    listasAuxiliares.especies.coluna,
+    listasAuxiliares.especies.quantidade,
   );
 
   aplicarListaSuspensa(
@@ -454,7 +569,8 @@ export async function baixarPlanilhaModelo(
     "F",
     2,
     linhasModelo + 1,
-    "ListaSexo",
+    listasAuxiliares.sexo.coluna,
+    listasAuxiliares.sexo.quantidade,
   );
 
   aplicarListaSuspensa(
@@ -462,7 +578,8 @@ export async function baixarPlanilhaModelo(
     "G",
     2,
     linhasModelo + 1,
-    "ListaStatus",
+    listasAuxiliares.status.coluna,
+    listasAuxiliares.status.quantidade,
   );
 
   aplicarListaSuspensa(
@@ -470,7 +587,8 @@ export async function baixarPlanilhaModelo(
     "H",
     2,
     linhasModelo + 1,
-    "ListaCriadores",
+    listasAuxiliares.criadores.coluna,
+    listasAuxiliares.criadores.quantidade,
   );
 
   aplicarListaSuspensa(
@@ -478,7 +596,8 @@ export async function baixarPlanilhaModelo(
     "K",
     2,
     linhasModelo + 1,
-    "ListaPais",
+    listasAuxiliares.pais.coluna,
+    listasAuxiliares.pais.quantidade,
   );
 
   aplicarListaSuspensa(
@@ -486,7 +605,8 @@ export async function baixarPlanilhaModelo(
     "L",
     2,
     linhasModelo + 1,
-    "ListaPais",
+    listasAuxiliares.pais.coluna,
+    listasAuxiliares.pais.quantidade,
   );
 
   aplicarListaSuspensa(
@@ -494,7 +614,8 @@ export async function baixarPlanilhaModelo(
     "N",
     2,
     linhasModelo + 1,
-    "ListaNinhos",
+    listasAuxiliares.ninhos.coluna,
+    listasAuxiliares.ninhos.quantidade,
   );
 
   aplicarListaSuspensa(
@@ -502,7 +623,8 @@ export async function baixarPlanilhaModelo(
     "P",
     2,
     linhasModelo + 1,
-    "ListaCasais",
+    listasAuxiliares.casais.coluna,
+    listasAuxiliares.casais.quantidade,
   );
 
   aplicarListaSuspensa(
@@ -510,7 +632,8 @@ export async function baixarPlanilhaModelo(
     "Q",
     2,
     linhasModelo + 1,
-    "ListaCoresCabeca",
+    listasAuxiliares.coresCabeca.coluna,
+    listasAuxiliares.coresCabeca.quantidade,
   );
 
   aplicarListaSuspensa(
@@ -518,7 +641,8 @@ export async function baixarPlanilhaModelo(
     "R",
     2,
     linhasModelo + 1,
-    "ListaCoresPeito",
+    listasAuxiliares.coresPeito.coluna,
+    listasAuxiliares.coresPeito.quantidade,
   );
 
   aplicarListaSuspensa(
@@ -526,7 +650,8 @@ export async function baixarPlanilhaModelo(
     "S",
     2,
     linhasModelo + 1,
-    "ListaCoresDorso",
+    listasAuxiliares.coresDorso.coluna,
+    listasAuxiliares.coresDorso.quantidade,
   );
 
   aplicarListaSuspensa(
@@ -534,7 +659,8 @@ export async function baixarPlanilhaModelo(
     "O",
     2,
     linhasModelo + 1,
-    "ListaAmas",
+    listasAuxiliares.criadoPorAmas.coluna,
+    listasAuxiliares.criadoPorAmas.quantidade,
   );
 
   const buffer = await workbook.xlsx.writeBuffer();
