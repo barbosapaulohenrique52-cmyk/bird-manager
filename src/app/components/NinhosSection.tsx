@@ -839,11 +839,11 @@ export function NinhosSection({
     });
   });
 
-  // Inclui também os locais cadastrados que ainda não possuem ovos.
-  const locaisParaExibir = new Map(ovosPorLocal);
-  (config.locaisOvos || []).forEach((local) => {
-    if (!locaisParaExibir.has(local)) locaisParaExibir.set(local, []);
-  });
+  // Exibe somente locais que possuem pelo menos um ovo ou filhote
+  // vinculado. Locais apenas cadastrados, mas vazios, não aparecem.
+  const locaisParaExibir = new Map(
+    Array.from(ovosPorLocal.entries()).filter(([, ovos]) => ovos.length > 0)
+  );
 
   const locaisOrdenados = Array.from(locaisParaExibir.entries()).sort((a, b) =>
     a[0].localeCompare(b[0], 'pt-BR')
@@ -1794,7 +1794,7 @@ export function NinhosSection({
       {/* ============================================================
           OVOS AGRUPADOS PELO LOCAL ATUAL
           ============================================================ */}
-      {visualizacaoOvos === 'local' && (ninhos.length > 0 || (config.locaisOvos || []).length > 0) && (
+      {visualizacaoOvos === 'local' && locaisOrdenados.length > 0 && (
         <div className="pt-2">
           <div className="flex flex-col gap-3 mb-4">
             <div className="flex items-center justify-between">
