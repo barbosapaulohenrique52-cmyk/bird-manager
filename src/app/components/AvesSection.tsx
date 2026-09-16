@@ -13,7 +13,7 @@ interface AvesSectionProps {
 
 type FiltrosAves = {
   status: string;
-  especie: string;
+  especies: string[];
   sexo: string;
   corCabeca: string;
   corPeito: string;
@@ -60,10 +60,11 @@ export function AvesSection({
   onViewDetails
 }: AvesSectionProps) {
   const [showFilters, setShowFilters] = useState(false);
+  const [showSpeciesDropdown, setShowSpeciesDropdown] = useState(false);
 
   const [filtros, setFiltros] = useState<FiltrosAves>({
     status: 'todos',
-    especie: '',
+    especies: [],
     sexo: '',
     corCabeca: '',
     corPeito: '',
@@ -74,7 +75,7 @@ export function AvesSection({
 
   const atualizarFiltro = (
     campo: keyof FiltrosAves,
-    valor: string
+    valor: string | string[]
   ) => {
     setFiltros((anterior) => ({
       ...anterior,
@@ -82,10 +83,32 @@ export function AvesSection({
     }));
   };
 
+  const alternarEspecie = (especie: string) => {
+    setFiltros((anterior) => {
+      const jaSelecionada = anterior.especies.includes(especie);
+
+      return {
+        ...anterior,
+        especies: jaSelecionada
+          ? anterior.especies.filter((item) => item !== especie)
+          : [...anterior.especies, especie]
+      };
+    });
+  };
+
+  const selecionarTodasEspecies = () => {
+    setFiltros((anterior) => ({
+      ...anterior,
+      especies: anterior.especies.length === especies.length
+        ? []
+        : [...especies]
+    }));
+  };
+
   const limparFiltros = () => {
     setFiltros({
       status: 'todos',
-      especie: '',
+      especies: [],
       sexo: '',
       corCabeca: '',
       corPeito: '',
@@ -137,7 +160,6 @@ export function AvesSection({
       const anilha = (ave.ring || '').toLowerCase();
       const especie = (ave.species || '').toLowerCase();
       const status = (ave.status || '').toLowerCase();
-
       const sexo = obterValorAve(ave, 'sex').toLowerCase();
 
       const buscaMatch =
@@ -152,12 +174,14 @@ export function AvesSection({
         (filtros.status === 'inativos' && status !== 'ativo');
 
       const especieMatch =
-        !filtros.especie ||
-        ave.species === filtros.especie;
+        filtros.especies.length === 0 ||
+        filtros.especies.some(
+          (especieSelecionada) =>
+            especie === especieSelecionada.toLowerCase()
+        );
 
       const sexoMatch =
-        !filtros.sexo ||
-        sexo === filtros.sexo.toLowerCase();
+        !filtros.sexo || sexo === filtros.sexo.toLowerCase();
 
       const corCabecaMatch =
         !filtros.corCabeca ||
@@ -193,7 +217,7 @@ export function AvesSection({
 
   const quantidadeFiltrosAtivos = [
     filtros.status !== 'todos',
-    Boolean(filtros.especie),
+    filtros.especies.length > 0,
     Boolean(filtros.sexo),
     Boolean(filtros.corCabeca),
     Boolean(filtros.corPeito),
@@ -201,6 +225,18 @@ export function AvesSection({
     Boolean(filtros.anoAnilha),
     Boolean(filtros.busca)
   ].filter(Boolean).length;
+
+  const textoEspeciesSelecionadas = () => {
+    if (filtros.especies.length === 0) {
+      return 'Todas as espécies';
+    }
+
+    if (filtros.especies.length === 1) {
+      return filtros.especies[0];
+    }
+
+    return `${filtros.especies.length} espécies selecionadas`;
+  };
 
   const handleDelete = (
     e: React.MouseEvent,
@@ -321,27 +357,71 @@ export function AvesSection({
                 </select>
               </div>
 
-              {/* Espécie */}
-              <div>
+              {/* Espécies com seleção múltipla */}
+              <div className="relative">
                 <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">
                   Espécie
                 </label>
 
-                <select
-                  value={filtros.especie}
-                  onChange={(e) =>
-                    atualizarFiltro('especie', e.target.value)
-                  }
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[10px] font-bold outline-none"
+                <button
+                  type="button"
+                  onClick={() => setShowSpeciesDropdown(!showSpeciesDropdown)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[10px] font-bold outline-none text-left flex items-center justify-between gap-2"
                 >
-                  <option value="">Todas as espécies</option>
+                  <span className="truncate">
+                    {textoEspeciesSelecionadas()}
+                  </span>
 
-                  {especies.map((especie) => (
-                    <option key={especie} value={especie}>
-                      {especie}
-                    </option>
-                  ))}
-                </select>
+                  <i
+                    className={`fas fa-chevron-down text-slate-400 transition-transform ${
+                      showSpeciesDropdown ? 'rotate-180' : ''
+                    }`}
+                  ></i>
+                </button>
+
+                {showSpeciesDropdown && (
+                  <div className="absolute z-30 mt-1 w-full min-w-[230px] bg-white border border-slate-200 rounded-xl shadow-lg p-2 max-h-64 overflow-y-auto">
+                    <label className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-50 cursor-pointer border-b border-slate-100 mb-1">
+                      <input
+                        type="checkbox"
+                        checked={
+                          especies.length > 0 &&
+                          filtros.especies.length === especies.length
+                        }
+                        onChange={selecionarTodasEspecies}
+                        className="accent-emerald-600"
+                      />
+
+                      <span className="text-[10px] font-black text-slate-700 uppercase">
+                        Todas as espécies
+                      </span>
+                    </label>
+
+                    {especies.map((especie) => (
+                      <label
+                        key={especie}
+                        className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={filtros.especies.includes(especie)}
+                          onChange={() => alternarEspecie(especie)}
+                          className="accent-emerald-600"
+                        />
+
+                        <span className="text-[10px] font-bold text-slate-700">
+                          {especie}
+                        </span>
+                      </label>
+                    ))}
+
+                    {especies.length === 0 && (
+                      <p className="text-[10px] text-slate-400 font-bold p-2">
+                        Nenhuma espécie cadastrada.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Sexo */}
