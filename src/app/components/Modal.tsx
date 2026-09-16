@@ -459,8 +459,14 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
   const femeasDisponiveis = femeas.filter(f => !avesEmCasais.has(f.id));
 
   return (
-    <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-2xl rounded-[32px] overflow-y-auto max-h-[90vh] no-scrollbar">
+    <div className={`fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center ${
+      type === 'aves-lote' ? 'p-0' : 'p-4'
+    }`}>
+      <div className={`bg-white w-full no-scrollbar ${
+        type === 'aves-lote'
+          ? 'h-full max-w-none rounded-none overflow-hidden flex flex-col'
+          : 'max-w-2xl rounded-[32px] overflow-y-auto max-h-[90vh]'
+      }`}>
         {type === 'ave' && (
           <>
             <div className="p-6 bg-slate-900 text-white flex justify-between items-center sticky top-0 z-10">
@@ -787,8 +793,8 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
               </button>
             </div>
 
-            <div className="p-6 space-y-5">
-              <div className="flex flex-col sm:flex-row sm:items-end gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl p-4">
+            <div className="p-4 sm:p-6 space-y-4 flex-1 min-h-0 overflow-hidden flex flex-col">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 shrink-0">
                 <div className="flex-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase">Quantidade de aves</label>
                   <input
@@ -805,8 +811,8 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                 </button>
               </div>
 
-              <div className="rounded-2xl border-2 border-slate-100 overflow-hidden">
-                <div className="overflow-x-auto max-h-[55vh]">
+              <div className="rounded-2xl border-2 border-slate-100 overflow-hidden flex-1 min-h-0">
+                <div className="overflow-auto h-full">
                   <table className="min-w-[1450px] w-full text-left border-collapse">
                     <thead className="sticky top-0 z-10 bg-slate-900 text-white">
                       <tr>
@@ -868,12 +874,12 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                 </div>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-800 font-bold">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-800 font-bold shrink-0">
                 <i className="fas fa-info-circle mr-1"></i>
                 Marque “Aplicar a todas” somente nos campos que devem receber o mesmo valor em todas as aves. Os demais permanecem individuais.
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 shrink-0">
                 <button type="button" onClick={onClose} className="flex-1 bg-slate-200 text-slate-700 py-4 rounded-2xl font-black uppercase text-xs">
                   Cancelar
                 </button>
