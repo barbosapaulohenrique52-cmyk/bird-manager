@@ -10,7 +10,14 @@ interface ColorLists {
 }
 
 function corParaHex(cor: string | undefined, padrao: string) {
-  const texto = (cor || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const valor = (cor || '').trim();
+
+  // Quando a cor já está cadastrada como hexadecimal, utiliza diretamente o valor.
+  if (/^#[0-9a-fA-F]{6}$/.test(valor)) {
+    return valor;
+  }
+
+  const texto = valor.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const cores: Record<string, string> = {
     preto: '#202124',
     negro: '#202124',
