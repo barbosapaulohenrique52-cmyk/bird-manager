@@ -972,6 +972,110 @@ export function NinhosSection({
         </div>
       </div>
 
+      {/* Filtros dos ovos e filhotes */}
+      <div className="bg-white border-2 border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <i className="fas fa-filter text-emerald-600"></i>
+            <h3 className="text-xs font-black text-slate-700 uppercase">Filtros de ovos e filhotes</h3>
+            <span className="text-[10px] font-bold text-slate-400">
+              {ovosFiltrados.length} de {todosOvosBrutos.length} ovos
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={limparFiltrosOvos}
+            className="text-[10px] font-black uppercase text-rose-600 hover:text-rose-800"
+          >
+            <i className="fas fa-eraser mr-1"></i>
+            Limpar filtros
+          </button>
+        </div>
+
+        <input
+          type="text"
+          value={filtrosOvos.busca}
+          onChange={(e) => setFiltrosOvos(anterior => ({ ...anterior, busca: e.target.value }))}
+          placeholder="Buscar por espécie, status, local, casal, filhote, anilha, observação..."
+          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[11px] font-bold outline-none focus:border-emerald-500"
+        />
+
+        <div className="flex flex-wrap gap-2">
+          <FiltroOvosMultiplo
+            label="Status"
+            opcoes={['Em Espera', 'Chocando', 'Fértil', 'Infértil', 'Eclodido', 'Perdido']}
+            selecionados={filtrosOvos.status}
+            aberto={filtroOvoAberto === 'status'}
+            onAbrir={() => setFiltroOvoAberto(filtroOvoAberto === 'status' ? null : 'status')}
+            onAlternar={(valor) => alternarFiltroOvo('status', valor)}
+            onTodos={() => todosDoFiltroOvo('status', ['Em Espera', 'Chocando', 'Fértil', 'Infértil', 'Eclodido', 'Perdido'])}
+          />
+          <FiltroOvosMultiplo
+            label="Espécie"
+            opcoes={opcoesCampoOvo('species')}
+            selecionados={filtrosOvos.especies}
+            aberto={filtroOvoAberto === 'especies'}
+            onAbrir={() => setFiltroOvoAberto(filtroOvoAberto === 'especies' ? null : 'especies')}
+            onAlternar={(valor) => alternarFiltroOvo('especies', valor)}
+            onTodos={() => todosDoFiltroOvo('especies', opcoesCampoOvo('species'))}
+          />
+          <FiltroOvosMultiplo
+            label="Local"
+            opcoes={Array.from(new Set(todosOvosBrutos.map(({ egg }) => egg.local?.trim() || 'Sem local definido'))).sort((a, b) => a.localeCompare(b, 'pt-BR'))}
+            selecionados={filtrosOvos.locais}
+            aberto={filtroOvoAberto === 'locais'}
+            onAbrir={() => setFiltroOvoAberto(filtroOvoAberto === 'locais' ? null : 'locais')}
+            onAlternar={(valor) => alternarFiltroOvo('locais', valor)}
+            onTodos={() => todosDoFiltroOvo('locais', Array.from(new Set(todosOvosBrutos.map(({ egg }) => egg.local?.trim() || 'Sem local definido'))).sort((a, b) => a.localeCompare(b, 'pt-BR')))}
+          />
+          <FiltroOvosMultiplo
+            label="Postura"
+            opcoes={opcoesCampoOvo('postura')}
+            selecionados={filtrosOvos.posturas}
+            aberto={filtroOvoAberto === 'posturas'}
+            onAbrir={() => setFiltroOvoAberto(filtroOvoAberto === 'posturas' ? null : 'posturas')}
+            onAlternar={(valor) => alternarFiltroOvo('posturas', valor)}
+            onTodos={() => todosDoFiltroOvo('posturas', opcoesCampoOvo('postura'))}
+          />
+          <FiltroOvosMultiplo
+            label="Início da choca"
+            opcoes={opcoesCampoOvo('inicioChoca')}
+            selecionados={filtrosOvos.iniciosChoca}
+            aberto={filtroOvoAberto === 'iniciosChoca'}
+            onAbrir={() => setFiltroOvoAberto(filtroOvoAberto === 'iniciosChoca' ? null : 'iniciosChoca')}
+            onAlternar={(valor) => alternarFiltroOvo('iniciosChoca', valor)}
+            onTodos={() => todosDoFiltroOvo('iniciosChoca', opcoesCampoOvo('inicioChoca'))}
+          />
+          <FiltroOvosMultiplo
+            label="Eclosão"
+            opcoes={opcoesCampoOvo('dataEclosao')}
+            selecionados={filtrosOvos.eclosoes}
+            aberto={filtroOvoAberto === 'eclosoes'}
+            onAbrir={() => setFiltroOvoAberto(filtroOvoAberto === 'eclosoes' ? null : 'eclosoes')}
+            onAlternar={(valor) => alternarFiltroOvo('eclosoes', valor)}
+            onTodos={() => todosDoFiltroOvo('eclosoes', opcoesCampoOvo('dataEclosao'))}
+          />
+          <FiltroOvosMultiplo
+            label="Filhote"
+            opcoes={opcoesCampoOvo('filhoteId')}
+            selecionados={filtrosOvos.filhotes}
+            aberto={filtroOvoAberto === 'filhotes'}
+            onAbrir={() => setFiltroOvoAberto(filtroOvoAberto === 'filhotes' ? null : 'filhotes')}
+            onAlternar={(valor) => alternarFiltroOvo('filhotes', valor)}
+            onTodos={() => todosDoFiltroOvo('filhotes', opcoesCampoOvo('filhoteId'))}
+          />
+          <FiltroOvosMultiplo
+            label="Porta"
+            opcoes={opcoesCampoOvo('porta')}
+            selecionados={filtrosOvos.portas}
+            aberto={filtroOvoAberto === 'portas'}
+            onAbrir={() => setFiltroOvoAberto(filtroOvoAberto === 'portas' ? null : 'portas')}
+            onAlternar={(valor) => alternarFiltroOvo('portas', valor)}
+            onTodos={() => todosDoFiltroOvo('portas', opcoesCampoOvo('porta'))}
+          />
+        </div>
+      </div>
+
       {visualizacaoOvos === 'casal' && (
         <>
           {/* Ninhos continuam sendo usados para definir a origem dos ovos. */}
