@@ -705,7 +705,7 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                     <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_120px] gap-2 items-end">
                       <div>
                         <label className="text-[10px] font-black text-slate-500 uppercase">Nome da cor</label>
-                        <input value={novoNomeCor} onChange={(e) => setNovoNomeCor(e.target.value)} placeholder="Ex: Azul royal" className="border-2 border-white p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 bg-white text-sm mt-1" />
+                        <input value={novoNomeCor} onChange={(e) => setNovoNomeCor(e.target.value)} placeholder="Ex: Azul royal" className="border border-white px-3 py-2 rounded-lg w-full font-bold outline-none focus:border-emerald-500 bg-white text-sm mt-1 h-9" />
                       </div>
                       <div>
                         <label className="text-[10px] font-black text-slate-500 uppercase">Seletor</label>
@@ -793,20 +793,20 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
               </button>
             </div>
 
-            <div className="p-3 sm:p-4 space-y-3 flex-1 min-h-0 overflow-hidden flex flex-col">
-              <div className="flex flex-col sm:flex-row sm:items-end gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl p-3 shrink-0">
-                <div className="flex-1">
-                  <label className="text-[10px] font-black text-slate-500 uppercase">Quantidade de aves</label>
+            <div className="p-2 sm:p-3 space-y-2 flex-1 min-h-0 overflow-hidden flex flex-col">
+              <div className="flex flex-row items-end gap-2 bg-slate-50 border border-slate-100 rounded-xl p-2 shrink-0">
+                <div className="flex-1 min-w-0">
+                  <label className="text-[9px] font-black text-slate-500 uppercase">Quantidade de aves</label>
                   <input
                     type="number"
                     min="1"
                     max="100"
                     value={quantidadeLote}
                     onChange={e => setQuantidadeLote(Number(e.target.value))}
-                    className="border-2 border-white p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 bg-white text-sm mt-1"
+                    className="border border-white px-3 py-2 rounded-lg w-full font-bold outline-none focus:border-emerald-500 bg-white text-sm mt-1 h-9"
                   />
                 </div>
-                <button type="button" onClick={iniciarLote} className="bg-emerald-600 text-white px-5 py-3 rounded-xl font-black text-[10px] uppercase">
+                <button type="button" onClick={iniciarLote} className="bg-emerald-600 text-white px-4 py-2 rounded-lg font-black text-[9px] uppercase whitespace-nowrap h-9">
                   <i className="fas fa-table mr-2"></i> Gerar prévia
                 </button>
               </div>
@@ -874,16 +874,16 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                 </div>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 font-bold shrink-0">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 text-[9px] text-amber-800 font-bold shrink-0">
                 <i className="fas fa-info-circle mr-1"></i>
                 Marque “Aplicar a todas” somente nos campos que devem receber o mesmo valor em todas as aves. Os demais permanecem individuais.
               </div>
 
-              <div className="flex gap-3 shrink-0">
-                <button type="button" onClick={onClose} className="flex-1 bg-slate-200 text-slate-700 py-3 rounded-2xl font-black uppercase text-xs">
+              <div className="flex gap-2 shrink-0">
+                <button type="button" onClick={onClose} className="flex-1 bg-slate-200 text-slate-700 py-2 rounded-xl font-black uppercase text-[10px] h-10">
                   Cancelar
                 </button>
-                <button type="button" onClick={handleAvesLoteSubmit} className="flex-1 bg-emerald-600 text-white py-3 rounded-2xl font-black uppercase text-xs shadow-xl">
+                <button type="button" onClick={handleAvesLoteSubmit} className="flex-1 bg-emerald-600 text-white py-2 rounded-xl font-black uppercase text-[10px] h-10 shadow-lg">
                   <i className="fas fa-save mr-2"></i> Salvar lote ({avesLote.length})
                 </button>
               </div>
@@ -931,7 +931,7 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                 <button 
                   type="button"
                   onClick={() => setCriandoCasalNoNinho(!criandoCasalNoNinho)}
-                  className="flex-1 bg-slate-200 text-slate-700 py-3 rounded-2xl font-black uppercase text-xs"
+                  className="flex-1 bg-slate-200 text-slate-700 py-2 rounded-xl font-black uppercase text-[10px] h-10"
                 >
                   {criandoCasalNoNinho ? 'Cancelar' : 'Criar Novo Casal'}
                 </button>
@@ -1313,7 +1313,7 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                 <button 
                   type="button"
                   onClick={onClose}
-                  className="flex-1 bg-slate-200 text-slate-700 py-3 rounded-2xl font-black uppercase text-xs"
+                  className="flex-1 bg-slate-200 text-slate-700 py-2 rounded-xl font-black uppercase text-[10px] h-10"
                 >
                   Cancelar
                 </button>
