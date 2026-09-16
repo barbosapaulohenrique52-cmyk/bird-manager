@@ -20,7 +20,12 @@ export type TabType =
   | "financeiro"
   | "config";
 
-export type ModalType = "ave" | "ninho" | "casal" | null;
+export type ModalType =
+  | "ave"
+  | "aves-lote"
+  | "ninho"
+  | "casal"
+  | null;
 
 export interface Ave {
   id: string;
@@ -44,6 +49,10 @@ export interface Ave {
   corCabeca?: string;
   corPeito?: string;
   corDorso?: string;
+
+  // Campos adicionais
+  nota?: string;
+  porta?: string;
 }
 
 export interface Filhote {
@@ -195,6 +204,20 @@ export default function App() {
     setEditId(null);
   };
 
+  /**
+   * Salva várias aves em sequência.
+   *
+   * O modal em lote enviará uma lista de dados parciais.
+   * Cada ave será encaminhada para a mesma função utilizada
+   * pelo cadastro individual, preservando a lógica atual
+   * de geração de ID e persistência do banco de dados.
+   */
+  const saveAvesLote = (avesLote: Partial<Ave>[]) => {
+    avesLote.forEach((aveData) => {
+      saveAve(aveData, null);
+    });
+  };
+
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (
@@ -331,6 +354,7 @@ export default function App() {
           config={db.config}
           onClose={closeModal}
           onSaveAve={saveAve}
+          onSaveAvesLote={saveAvesLote}
           onSaveCasal={saveCasal}
           onSaveNinho={saveNinho}
           onUpdateNinhoCasal={updateNinhoCasal}
