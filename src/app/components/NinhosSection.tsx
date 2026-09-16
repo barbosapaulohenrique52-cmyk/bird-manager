@@ -280,7 +280,9 @@ export function NinhosSection({
 
   // Estado para controlar quais ninhos estão expandidos
   const [ninhosExpandidos, setNinhosExpandidos] = useState<Set<string>>(new Set());
-  // Alterna entre a visualização dos ovos por casal/ninho e por local atual.\n  const [visualizacaoOvos, setVisualizacaoOvos] = useState<'casal' | 'local'>('casal');\n
+  // Alterna entre a visualização dos ovos por casal/ninho e por local atual.
+  const [visualizacaoOvos, setVisualizacaoOvos] = useState<'casal' | 'local'>('casal');
+
   const toggleNinhoExpandido = (ninhoId: string) => {
     const novoSet = new Set(ninhosExpandidos);
     if (novoSet.has(ninhoId)) {
