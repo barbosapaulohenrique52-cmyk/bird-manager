@@ -849,6 +849,23 @@ export function NinhosSection({
     a[0].localeCompare(b[0], 'pt-BR')
   );
 
+  // Na visualização por casal, evita repetir um mesmo casal em um ninho
+  // vazio quando já existe outro registro desse casal com ovos.
+  // Isso corrige o caso em que o mesmo casal aparece, por exemplo,
+  // uma vez com 7 ovos e novamente sem ovos.
+  const casaisComOvos = new Set(
+    ninhos
+      .filter((ninho) => Boolean(ninho.casalId) && ninho.eggs.length > 0)
+      .map((ninho) => ninho.casalId)
+  );
+
+  const ninhosParaVisualizacaoCasal = ninhos.filter(
+    (ninho) =>
+      !(ninho.eggs.length === 0 &&
+        Boolean(ninho.casalId) &&
+        casaisComOvos.has(ninho.casalId))
+  );
+
   const adicionarOvoAoLocal = (local: string) => {
     const ninhoId = ninhoSelecionadoPorLocal[local] || ninhos[0]?.id;
 
@@ -916,14 +933,14 @@ export function NinhosSection({
         <>
           {/* Ninhos continuam sendo usados para definir a origem dos ovos. */}
           <div className="space-y-4">
-        {ninhos.length === 0 ? (
+        {ninhosParaVisualizacaoCasal.length === 0 ? (
           <div className="bg-white p-12 rounded-3xl text-center border-2 border-slate-100">
             <i className="fas fa-dove text-5xl text-slate-200 mb-4"></i>
             <p className="text-slate-500 font-bold">Nenhum ninho ativo</p>
             <p className="text-xs text-slate-400 mt-1">Crie um ninho para começar</p>
           </div>
         ) : (
-          ninhos.map((ninho) => (
+          ninhosParaVisualizacaoCasal.map((ninho) => (
             <div
               key={ninho.id}
               className="bg-white rounded-[24px] border-2 border-slate-200 overflow-hidden shadow-sm"
