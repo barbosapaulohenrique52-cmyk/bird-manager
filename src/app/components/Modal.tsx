@@ -460,11 +460,11 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
 
   return (
     <div className={`fixed inset-0 bg-slate-900/90 backdrop-blur-sm z-50 flex items-center justify-center ${
-      type === 'aves-lote' ? 'p-0' : 'p-4'
+      type === 'aves-lote' ? 'p-0 overflow-hidden' : 'p-4'
     }`}>
       <div className={`bg-white w-full no-scrollbar ${
         type === 'aves-lote'
-          ? 'h-full max-w-none rounded-none overflow-hidden flex flex-col'
+          ? 'h-[100dvh] max-h-[100dvh] max-w-none rounded-none overflow-hidden flex flex-col'
           : 'max-w-2xl rounded-[32px] overflow-y-auto max-h-[90vh]'
       }`}>
         {type === 'ave' && (
@@ -783,7 +783,7 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
 
         {type === 'aves-lote' && (
           <>
-            <div className="p-6 bg-slate-900 text-white flex justify-between items-center sticky top-0 z-20">
+            <div className="p-4 sm:p-5 bg-slate-900 text-white flex justify-between items-center shrink-0">
               <div>
                 <h2 className="font-black text-lg uppercase italic">Adicionar aves em lote</h2>
                 <p className="text-[10px] text-slate-300 mt-1">Todos os campos são individuais por padrão.</p>
@@ -793,8 +793,8 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
               </button>
             </div>
 
-            <div className="p-4 sm:p-6 space-y-4 flex-1 min-h-0 overflow-hidden flex flex-col">
-              <div className="flex flex-col sm:flex-row sm:items-end gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 shrink-0">
+            <div className="p-3 sm:p-4 space-y-3 flex-1 min-h-0 overflow-hidden flex flex-col">
+              <div className="flex flex-col sm:flex-row sm:items-end gap-3 bg-slate-50 border-2 border-slate-100 rounded-2xl p-3 shrink-0">
                 <div className="flex-1">
                   <label className="text-[10px] font-black text-slate-500 uppercase">Quantidade de aves</label>
                   <input
@@ -811,8 +811,8 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                 </button>
               </div>
 
-              <div className="rounded-2xl border-2 border-slate-100 overflow-hidden flex-1 min-h-0">
-                <div className="overflow-auto h-full">
+              <div className="rounded-2xl border-2 border-slate-100 overflow-hidden flex-1 min-h-[220px] h-full">
+                <div className="overflow-auto h-full overscroll-contain">
                   <table className="min-w-[1450px] w-full text-left border-collapse">
                     <thead className="sticky top-0 z-10 bg-slate-900 text-white">
                       <tr>
@@ -835,12 +835,12 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                     <tbody className="divide-y divide-slate-100">
                       {avesLote.map((aveLote, index) => (
                         <tr key={aveLote.idLote} className="hover:bg-slate-50">
-                          <td className="p-3 text-xs font-black text-slate-400">{index + 1}</td>
+                          <td className="p-2 text-xs font-black text-slate-400">{index + 1}</td>
                           {camposLote.map(item => {
                             const valor = aveLote[item.campo];
                             const comum = 'border border-slate-200 p-2 rounded-lg w-full text-xs font-bold outline-none focus:border-emerald-500 bg-white';
                             return (
-                              <td key={item.campo} className="p-2 align-top">
+                              <td key={item.campo} className="p-1.5 align-top">
                                 {item.campo === 'nota' ? (
                                   <textarea
                                     value={String(valor ?? '')}
@@ -874,16 +874,16 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                 </div>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-800 font-bold shrink-0">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-[10px] text-amber-800 font-bold shrink-0">
                 <i className="fas fa-info-circle mr-1"></i>
                 Marque “Aplicar a todas” somente nos campos que devem receber o mesmo valor em todas as aves. Os demais permanecem individuais.
               </div>
 
               <div className="flex gap-3 shrink-0">
-                <button type="button" onClick={onClose} className="flex-1 bg-slate-200 text-slate-700 py-4 rounded-2xl font-black uppercase text-xs">
+                <button type="button" onClick={onClose} className="flex-1 bg-slate-200 text-slate-700 py-3 rounded-2xl font-black uppercase text-xs">
                   Cancelar
                 </button>
-                <button type="button" onClick={handleAvesLoteSubmit} className="flex-1 bg-emerald-600 text-white py-4 rounded-2xl font-black uppercase text-xs shadow-xl">
+                <button type="button" onClick={handleAvesLoteSubmit} className="flex-1 bg-emerald-600 text-white py-3 rounded-2xl font-black uppercase text-xs shadow-xl">
                   <i className="fas fa-save mr-2"></i> Salvar lote ({avesLote.length})
                 </button>
               </div>
@@ -931,7 +931,7 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                 <button 
                   type="button"
                   onClick={() => setCriandoCasalNoNinho(!criandoCasalNoNinho)}
-                  className="flex-1 bg-slate-200 text-slate-700 py-4 rounded-2xl font-black uppercase text-xs"
+                  className="flex-1 bg-slate-200 text-slate-700 py-3 rounded-2xl font-black uppercase text-xs"
                 >
                   {criandoCasalNoNinho ? 'Cancelar' : 'Criar Novo Casal'}
                 </button>
@@ -1313,7 +1313,7 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                 <button 
                   type="button"
                   onClick={onClose}
-                  className="flex-1 bg-slate-200 text-slate-700 py-4 rounded-2xl font-black uppercase text-xs"
+                  className="flex-1 bg-slate-200 text-slate-700 py-3 rounded-2xl font-black uppercase text-xs"
                 >
                   Cancelar
                 </button>
