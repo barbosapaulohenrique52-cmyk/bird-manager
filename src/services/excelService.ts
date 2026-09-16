@@ -56,10 +56,24 @@ const CABECALHOS = [
   "porta",
 ] as const;
 
+function textoLista(valor: unknown): string {
+  return String(valor ?? "").trim();
+}
+
+function valoresUnicos(valores: unknown[]): string[] {
+  return [
+    ...new Set(
+      valores
+        .map((valor) => textoLista(valor))
+        .filter((valor) => valor.length > 0),
+    ),
+  ];
+}
+
 function nomesAves(aves: Ave[]): string[] {
-  return aves
-    .map((ave) => ave.ring || ave.name || ave.id)
-    .filter(Boolean);
+  return valoresUnicos(
+    aves.map((ave) => ave.ring || ave.name || ave.id || ""),
+  );
 }
 
 function descricaoCasal(casal: Casal, aves: Ave[]): string {
@@ -73,15 +87,15 @@ function descricaoCasal(casal: Casal, aves: Ave[]): string {
 }
 
 function nomesCasais(casais: Casal[], aves: Ave[]): string[] {
-  return casais.map((casal) => descricaoCasal(casal, aves));
+  return valoresUnicos(casais.map((casal) => descricaoCasal(casal, aves)));
 }
 
 function nomesNinhos(ninhos: Ninho[]): string[] {
-  return ninhos.map((ninho) => ninho.name || ninho.id);
+  return valoresUnicos(ninhos.map((ninho) => ninho.name || ninho.id || ""));
 }
 
 function nomesCores(cores?: { nome: string }[]): string[] {
-  return (cores || []).map((cor) => cor.nome).filter(Boolean);
+  return valoresUnicos((cores || []).map((cor) => cor.nome));
 }
 
 function aplicarEstiloCabecalho(row: ExcelJS.Row) {
@@ -89,16 +103,19 @@ function aplicarEstiloCabecalho(row: ExcelJS.Row) {
     bold: true,
     color: { argb: "FFFFFFFF" },
   };
+
   row.fill = {
     type: "pattern",
     pattern: "solid",
     fgColor: { argb: "FF0F172A" },
   };
+
   row.alignment = {
     vertical: "middle",
     horizontal: "center",
     wrapText: true,
   };
+
   row.height = 30;
 }
 
@@ -110,6 +127,7 @@ function aplicarBordas(row: ExcelJS.Row) {
       bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
       right: { style: "thin", color: { argb: "FFE2E8F0" } },
     };
+
     cell.alignment = {
       vertical: "top",
       wrapText: true,
@@ -117,17 +135,25 @@ function aplicarBordas(row: ExcelJS.Row) {
   });
 }
 
+/**
+ * Aplica uma lista suspensa utilizando um nome definido no Excel.
+ *
+ * O uso de nomes definidos permite que a origem da validação
+ * esteja em outra aba sem provocar o erro comum de referência
+ * direta a outra planilha.
+ */
 function aplicarListaSuspensa(
   worksheet: ExcelJS.Worksheet,
   coluna: string,
+  primeiraLinha: number,
   ultimaLinha: number,
-  referencia: string,
+  nomeLista: string,
 ) {
-  for (let linha = 2; linha <= ultimaLinha; linha += 1) {
+  for (let linha = primeiraLinha; linha <= ultimaLinha; linha += 1) {
     worksheet.getCell(`${coluna}${linha}`).dataValidation = {
       type: "list",
       allowBlank: true,
-      formulae: [`=${referencia}`],
+      formulae: [`=${nomeLista}`],
       showErrorMessage: false,
       showInputMessage: true,
       promptTitle: "Lista de referência",
@@ -142,8 +168,15 @@ function adicionarAbaListas(
 ) {
   const worksheet = workbook.addWorksheet("Listas");
 
+  const criadores = valoresUnicos(
+    references.aves.map((ave) => ave.creator || ""),
+  );
+
   const listas: Array<{ titulo: string; valores: string[] }> = [
-    { titulo: "Especies", valores: references.config.especies || [] },
+    {
+      titulo: "Especies",
+      valores: valoresUnicos(references.config.especies || []),
+    },
     {
       titulo: "Sexo",
       valores: ["Macho", "Fêmea", "Indefinido"],
@@ -152,7 +185,10 @@ function adicionarAbaListas(
       titulo: "Status",
       valores: ["Ativo", "Vendido", "Óbito", "No Ninho"],
     },
-    { titulo: "Criadores", valores: references.aves.map((ave) => ave.creator).filter(Boolean) },
+    {
+      titulo: "Criadores",
+      valores: criadores,
+    },
     {
       titulo: "Pais",
       valores: nomesAves(references.aves),
@@ -183,21 +219,34 @@ function adicionarAbaListas(
     },
   ];
 
-  const maiorQuantidade = Math.max(...listas.map((lista) => lista.valores.length), 1);
-
   listas.forEach((lista, indice) => {
     const coluna = indice + 1;
     const letra = worksheet.getColumn(coluna).letter;
 
-    worksheet.getCell(`${letra}1`).value = lista.titulo;
-    worksheet.getCell(`${letra}1`).font = { bold: true, color: { argb: "FFFFFFFF" } };
-    worksheet.getCell(`${letra}1`).fill = {
+    const titulo = worksheet.getCell(`${letra}1`);
+    titulo.value = lista.titulo;
+    titulo.font = {
+      bold: true,
+      color: { argb: "FFFFFFFF" },
+    };
+    titulo.fill = {
       type: "pattern",
       pattern: "solid",
       fgColor: { argb: "FF0F172A" },
     };
+    titulo.alignment = {
+      horizontal: "center",
+      vertical: "middle",
+    };
 
-    lista.valores.forEach((valor, linha) => {
+    /*
+     * Mesmo quando a lista está vazia, escrevemos uma célula
+     * vazia em A2, B2 etc. Isso evita que o nome definido
+     * aponte para um intervalo inexistente.
+     */
+    const valores = lista.valores.length > 0 ? lista.valores : [""];
+
+    valores.forEach((valor, linha) => {
       worksheet.getCell(`${letra}${linha + 2}`).value = valor;
     });
 
@@ -208,9 +257,12 @@ function adicionarAbaListas(
   });
 
   worksheet.views = [{ state: "frozen", ySplit: 1 }];
+
   worksheet.autoFilter = {
     from: "A1",
-    to: `${worksheet.getColumn(listas.length).letter}${maiorQuantidade + 1}`,
+    to: `${worksheet.getColumn(listas.length).letter}${Math.max(
+      ...listas.map((lista) => Math.max(lista.valores.length, 1)),
+    ) + 1}`,
   };
 
   return worksheet;
@@ -225,9 +277,15 @@ function adicionarAbaInstrucoes(workbook: ExcelJS.Workbook) {
     ["Como utilizar"],
     ["1. Preencha uma linha para cada ave."],
     ["2. O campo id deve ficar vazio para aves novas."],
-    ["3. Campos com lista suspensa aceitam também valores digitados manualmente."],
-    ["4. Valores novos de espécie, cor ou criador serão analisados durante a importação."],
-    ["5. Para pai e mãe, informe a anilha, o nome ou o ID da ave já cadastrada."],
+    [
+      "3. Campos com lista suspensa aceitam também valores digitados manualmente.",
+    ],
+    [
+      "4. Valores novos de espécie, cor ou criador serão analisados durante a importação.",
+    ],
+    [
+      "5. Para pai e mãe, informe a anilha, o nome ou o ID da ave já cadastrada.",
+    ],
     ["6. Para ninho, informe o nome ou o ID do ninho já cadastrado."],
     ["7. Para casal de amas, informe a descrição do casal ou seu ID."],
     ["8. A importação será revisada antes de alterar os dados do sistema."],
@@ -258,6 +316,7 @@ function adicionarAbaInstrucoes(workbook: ExcelJS.Workbook) {
 
   linhas.forEach((linha, indice) => {
     const row = worksheet.getRow(indice + 1);
+
     linha.forEach((valor, coluna) => {
       row.getCell(coluna + 1).value = valor;
     });
@@ -268,9 +327,15 @@ function adicionarAbaInstrucoes(workbook: ExcelJS.Workbook) {
     size: 16,
     color: { argb: "FF0F172A" },
   };
-  worksheet.getCell("A3").font = { bold: true, size: 13 };
+
+  worksheet.getCell("A3").font = {
+    bold: true,
+    size: 13,
+  };
+
   worksheet.getColumn(1).width = 25;
   worksheet.getColumn(2).width = 90;
+
   worksheet.views = [{ state: "frozen", ySplit: 3 }];
 }
 
@@ -278,6 +343,7 @@ export async function baixarPlanilhaModelo(
   references: ExcelReferenceData,
 ): Promise<void> {
   const workbook = new ExcelJS.Workbook();
+
   workbook.creator = "Bird Manager";
   workbook.created = new Date();
 
@@ -315,24 +381,28 @@ export async function baixarPlanilhaModelo(
   });
 
   worksheet.views = [{ state: "frozen", ySplit: 1 }];
+
   worksheet.autoFilter = {
     from: "A1",
-    to: `U1`,
+    to: "U1",
   };
 
   const linhasModelo = 200;
+
   for (let linha = 2; linha <= linhasModelo + 1; linha += 1) {
     worksheet.addRow([]);
     aplicarBordas(worksheet.getRow(linha));
   }
 
   adicionarAbaListas(workbook, references);
+  adicionarAbaInstrucoes(workbook);
 
-  // Nomes definidos permitem que as listas funcionem no Excel
-  // mesmo estando em outra aba. A validação permanece livre:
-  // showErrorMessage: false permite digitar um valor novo.
-  const especies = references.config.especies || [];
-  const criadores = [...new Set(references.aves.map((ave) => ave.creator).filter(Boolean))];
+  const especies = valoresUnicos(references.config.especies || []);
+
+  const criadores = valoresUnicos(
+    references.aves.map((ave) => ave.creator || ""),
+  );
+
   const pais = nomesAves(references.aves);
   const casais = nomesCasais(references.casais, references.aves);
   const ninhos = nomesNinhos(references.ninhos);
@@ -340,8 +410,19 @@ export async function baixarPlanilhaModelo(
   const coresPeito = nomesCores(references.config.coresPeito);
   const coresDorso = nomesCores(references.config.coresDorso);
 
-  const definirLista = (nome: string, coluna: string, quantidade: number) => {
+  /*
+   * Cria nomes definidos válidos.
+   *
+   * A faixa mínima é sempre A2:A2, B2:B2 etc.,
+   * mesmo quando não existem dados cadastrados.
+   */
+  const definirLista = (
+    nome: string,
+    coluna: string,
+    quantidade: number,
+  ) => {
     const ultimaLinha = Math.max(quantidade + 1, 2);
+
     workbook.definedNames.add(
       nome,
       `'Listas'!$${coluna}$2:$${coluna}$${ultimaLinha}`,
@@ -360,29 +441,115 @@ export async function baixarPlanilhaModelo(
   definirLista("ListaCoresDorso", "J", coresDorso.length);
   definirLista("ListaAmas", "K", 2);
 
-  aplicarListaSuspensa(worksheet, "B", linhasModelo + 1, "ListaEspecies");
-  aplicarListaSuspensa(worksheet, "F", linhasModelo + 1, "ListaSexo");
-  aplicarListaSuspensa(worksheet, "G", linhasModelo + 1, "ListaStatus");
-  aplicarListaSuspensa(worksheet, "H", linhasModelo + 1, "ListaCriadores");
-  aplicarListaSuspensa(worksheet, "K", linhasModelo + 1, "ListaPais");
-  aplicarListaSuspensa(worksheet, "L", linhasModelo + 1, "ListaPais");
-  aplicarListaSuspensa(worksheet, "N", linhasModelo + 1, "ListaNinhos");
-  aplicarListaSuspensa(worksheet, "P", linhasModelo + 1, "ListaCasais");
-  aplicarListaSuspensa(worksheet, "Q", linhasModelo + 1, "ListaCoresCabeca");
-  aplicarListaSuspensa(worksheet, "R", linhasModelo + 1, "ListaCoresPeito");
-  aplicarListaSuspensa(worksheet, "S", linhasModelo + 1, "ListaCoresDorso");
-  aplicarListaSuspensa(worksheet, "O", linhasModelo + 1, "ListaAmas");
+  aplicarListaSuspensa(
+    worksheet,
+    "B",
+    2,
+    linhasModelo + 1,
+    "ListaEspecies",
+  );
+
+  aplicarListaSuspensa(
+    worksheet,
+    "F",
+    2,
+    linhasModelo + 1,
+    "ListaSexo",
+  );
+
+  aplicarListaSuspensa(
+    worksheet,
+    "G",
+    2,
+    linhasModelo + 1,
+    "ListaStatus",
+  );
+
+  aplicarListaSuspensa(
+    worksheet,
+    "H",
+    2,
+    linhasModelo + 1,
+    "ListaCriadores",
+  );
+
+  aplicarListaSuspensa(
+    worksheet,
+    "K",
+    2,
+    linhasModelo + 1,
+    "ListaPais",
+  );
+
+  aplicarListaSuspensa(
+    worksheet,
+    "L",
+    2,
+    linhasModelo + 1,
+    "ListaPais",
+  );
+
+  aplicarListaSuspensa(
+    worksheet,
+    "N",
+    2,
+    linhasModelo + 1,
+    "ListaNinhos",
+  );
+
+  aplicarListaSuspensa(
+    worksheet,
+    "P",
+    2,
+    linhasModelo + 1,
+    "ListaCasais",
+  );
+
+  aplicarListaSuspensa(
+    worksheet,
+    "Q",
+    2,
+    linhasModelo + 1,
+    "ListaCoresCabeca",
+  );
+
+  aplicarListaSuspensa(
+    worksheet,
+    "R",
+    2,
+    linhasModelo + 1,
+    "ListaCoresPeito",
+  );
+
+  aplicarListaSuspensa(
+    worksheet,
+    "S",
+    2,
+    linhasModelo + 1,
+    "ListaCoresDorso",
+  );
+
+  aplicarListaSuspensa(
+    worksheet,
+    "O",
+    2,
+    linhasModelo + 1,
+    "ListaAmas",
+  );
 
   const buffer = await workbook.xlsx.writeBuffer();
+
   const blob = new Blob([buffer], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   });
 
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
+
   link.href = url;
   link.download = "modelo_importacao_aves_bird_manager.xlsx";
   link.click();
+
   URL.revokeObjectURL(url);
 }
 
@@ -414,6 +581,7 @@ function converterNumero(valor: unknown): number | undefined {
   }
 
   const numero = Number(valor);
+
   return Number.isFinite(numero) ? numero : undefined;
 }
 
@@ -423,6 +591,7 @@ function textoOuUndefined(valor: unknown): string | undefined {
   }
 
   const texto = String(valor).trim();
+
   return texto || undefined;
 }
 
@@ -443,7 +612,8 @@ export async function lerPlanilhaAves(
 
   await workbook.xlsx.load(buffer);
 
-  const worksheet = workbook.getWorksheet("Aves") || workbook.worksheets[0];
+  const worksheet =
+    workbook.getWorksheet("Aves") || workbook.worksheets[0];
 
   if (!worksheet) {
     throw new Error("A planilha não possui uma aba válida.");
@@ -454,30 +624,50 @@ export async function lerPlanilhaAves(
 
   primeiraLinha.eachCell((cell, coluna) => {
     const nome = normalizarCabecalho(cell.value);
+
     if (nome) {
       mapaColunas.set(nome, coluna);
     }
   });
 
-  if (!mapaColunas.has("especie") && !mapaColunas.has("anilha") && !mapaColunas.has("nome")) {
+  if (
+    !mapaColunas.has("especie") &&
+    !mapaColunas.has("anilha") &&
+    !mapaColunas.has("nome")
+  ) {
     throw new Error(
       "Não foi possível identificar os cabeçalhos. Use a planilha modelo do Bird Manager.",
     );
   }
 
-  const valor = (linha: ExcelJS.Row, coluna: string): unknown => {
+  const valor = (
+    linha: ExcelJS.Row,
+    coluna: string,
+  ): unknown => {
     const numeroColuna = mapaColunas.get(coluna);
-    return numeroColuna ? linha.getCell(numeroColuna).value : undefined;
+
+    return numeroColuna
+      ? linha.getCell(numeroColuna).value
+      : undefined;
   };
 
   const resultado: AveImportada[] = [];
 
-  for (let numeroLinha = 2; numeroLinha <= worksheet.rowCount; numeroLinha += 1) {
+  for (
+    let numeroLinha = 2;
+    numeroLinha <= worksheet.rowCount;
+    numeroLinha += 1
+  ) {
     const linha = worksheet.getRow(numeroLinha);
 
     const possuiDados = CABECALHOS.some((cabecalho) => {
       const dado = valor(linha, cabecalho);
-      return dado !== undefined && dado !== null && String(dado).trim() !== "";
+
+      return (
+        dado !== undefined &&
+        dado !== null &&
+        String(dado).trim() !== ""
+      );
     });
 
     if (!possuiDados) {
@@ -490,20 +680,36 @@ export async function lerPlanilhaAves(
       ring: textoOuUndefined(valor(linha, "anilha")),
       ringYear: converterNumero(valor(linha, "ano_anilha")),
       name: textoOuUndefined(valor(linha, "nome")),
-      sex: textoOuUndefined(valor(linha, "sexo")) as Ave["sex"] | undefined,
-      status: textoOuUndefined(valor(linha, "status")) as Ave["status"] | undefined,
+      sex: textoOuUndefined(valor(linha, "sexo")) as
+        | Ave["sex"]
+        | undefined,
+      status: textoOuUndefined(valor(linha, "status")) as
+        | Ave["status"]
+        | undefined,
       creator: textoOuUndefined(valor(linha, "criador")),
       acqYear: converterNumero(valor(linha, "ano_aquisicao")),
       photo: textoOuUndefined(valor(linha, "foto")),
       parentMaleId: textoOuUndefined(valor(linha, "pai")),
       parentFemaleId: textoOuUndefined(valor(linha, "mae")),
       birthDate: textoOuUndefined(valor(linha, "data_nascimento")),
-      birthNestId: textoOuUndefined(valor(linha, "ninho_nascimento")),
-      criadoPorAmas: converterBooleano(valor(linha, "criado_por_amas")),
-      casalAmasId: textoOuUndefined(valor(linha, "casal_amas")),
-      corCabeca: textoOuUndefined(valor(linha, "cor_cabeca")),
-      corPeito: textoOuUndefined(valor(linha, "cor_peito")),
-      corDorso: textoOuUndefined(valor(linha, "cor_dorso")),
+      birthNestId: textoOuUndefined(
+        valor(linha, "ninho_nascimento"),
+      ),
+      criadoPorAmas: converterBooleano(
+        valor(linha, "criado_por_amas"),
+      ),
+      casalAmasId: textoOuUndefined(
+        valor(linha, "casal_amas"),
+      ),
+      corCabeca: textoOuUndefined(
+        valor(linha, "cor_cabeca"),
+      ),
+      corPeito: textoOuUndefined(
+        valor(linha, "cor_peito"),
+      ),
+      corDorso: textoOuUndefined(
+        valor(linha, "cor_dorso"),
+      ),
       nota: textoOuUndefined(valor(linha, "nota")),
       porta: textoOuUndefined(valor(linha, "porta")),
     });
