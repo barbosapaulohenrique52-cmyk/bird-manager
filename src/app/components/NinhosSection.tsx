@@ -280,7 +280,7 @@ export function NinhosSection({
 
   // Estado para controlar quais ninhos estão expandidos
   const [ninhosExpandidos, setNinhosExpandidos] = useState<Set<string>>(new Set());
-
+  // Alterna entre a visualização dos ovos por casal/ninho e por local atual.\n  const [visualizacaoOvos, setVisualizacaoOvos] = useState<'casal' | 'local'>('casal');\n
   const toggleNinhoExpandido = (ninhoId: string) => {
     const novoSet = new Set(ninhosExpandidos);
     if (novoSet.has(ninhoId)) {
@@ -841,22 +841,53 @@ export function NinhosSection({
 
   return (
     <section className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase italic">
           Ninhos Ativos
         </h2>
-        <button
-          onClick={() => onOpenModal('ninho')}
-          className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] shadow-lg"
-        >
-          <i className="fas fa-plus mr-1"></i>
-          NOVO NINHO
-        </button>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-slate-100 border border-slate-200 rounded-xl p-1">
+            <button
+              type="button"
+              onClick={() => setVisualizacaoOvos('casal')}
+              className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${
+                visualizacaoOvos === 'casal'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <i className="fas fa-heart mr-1"></i>
+              Por casal
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisualizacaoOvos('local')}
+              className={`px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${
+                visualizacaoOvos === 'local'
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <i className="fas fa-map-marker-alt mr-1"></i>
+              Por local
+            </button>
+          </div>
+
+          <button
+            onClick={() => onOpenModal('ninho')}
+            className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] shadow-lg"
+          >
+            <i className="fas fa-plus mr-1"></i>
+            NOVO NINHO
+          </button>
+        </div>
       </div>
 
-      {/* Ninhos continuam sendo usados para definir a origem dos ovos.
-          A visualização dos ovos abaixo é agrupada pelo local atual. */}
-      <div className="space-y-4">
+      {visualizacaoOvos === 'casal' && (
+        <>
+          {/* Ninhos continuam sendo usados para definir a origem dos ovos. */}
+          <div className="space-y-4">
         {ninhos.length === 0 ? (
           <div className="bg-white p-12 rounded-3xl text-center border-2 border-slate-100">
             <i className="fas fa-dove text-5xl text-slate-200 mb-4"></i>
@@ -1121,12 +1152,14 @@ export function NinhosSection({
             </div>
           ))
         )}
-      </div>
+          </div>
+        </>
+      )}
 
       {/* ============================================================
           OVOS AGRUPADOS PELO LOCAL ATUAL
           ============================================================ */}
-      {ninhos.some(n => n.eggs.length > 0) && (
+      {visualizacaoOvos === 'local' && ninhos.some(n => n.eggs.length > 0) && (
         <div className="pt-2">
           <div className="flex flex-col gap-3 mb-4">
             <div className="flex items-center justify-between">
@@ -1912,7 +1945,7 @@ export function NinhosSection({
       {/* ============================================================
           OVOS SEM LOCAL CADASTRADO
           ============================================================ */}
-      {ovosPorLocal.has('Sem local definido') && (
+      {visualizacaoOvos === 'local' && ovosPorLocal.has('Sem local definido') && (
         <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
           <div className="flex items-center gap-2 text-amber-700">
             <i className="fas fa-exclamation-triangle"></i>
