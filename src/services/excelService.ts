@@ -408,12 +408,10 @@ function aplicarValidacaoLista(
       type: 'list',
       allowBlank: true,
       formulae: [referenciaLista],
-      showErrorMessage: true,
-      errorTitle: 'Valor inválido',
-      error: 'Selecione um valor da lista suspensa.',
-      showInputMessage: true,
+      showErrorMessage: false,
       promptTitle: 'Lista de opções',
-      prompt: 'Selecione uma opção da lista.',
+      prompt: 'Escolha uma opção ou digite um novo valor.',
+      showInputMessage: true,
     };
   }
 }
