@@ -340,16 +340,43 @@ export function NinhosSection({
     inicioChoca: '', casalChocandoId: '', localChoca: '', dataEclosao: '', filhoteId: '',
   });
 
+  // Um filhote que foi marcado como Óbito na aba Plantel não deve mais
+  // aparecer na listagem de ovos/ninhos. O registro do ovo permanece salvo
+  // no banco de dados para preservar o histórico, mas fica oculto na tela.
+  const filhoteEstaEmObito = (egg: Egg): boolean => {
+    if (!egg.filhoteId) return false;
+
+    const identificador = String(egg.filhoteId).trim().toLowerCase();
+
+    const aveFilhote = aves.find((ave) => {
+      const id = String(ave.id || '').trim().toLowerCase();
+      const anilha = String(ave.ring || '').trim().toLowerCase();
+      const anilhaComAno = `${anilha}-${ave.ringYear || ''}`.replace(/-$/, '');
+
+      return (
+        id === identificador ||
+        anilha === identificador ||
+        anilhaComAno === identificador
+      );
+    });
+
+    return aveFilhote?.status === 'Óbito';
+  };
+
+  const ovoDeveSerExibido = (egg: Egg): boolean => !filhoteEstaEmObito(egg);
+
   const getChaveOvo = (ninhoId: string, egg: Egg, eggIdx: number) =>
     `${ninhoId}::${egg.id || `idx-${eggIdx}`}`;
 
   const todosOvos = ninhos.flatMap((ninho) =>
-    ninho.eggs.map((egg, eggIdx) => ({
-      ninho,
-      egg,
-      eggIdx,
-      chave: getChaveOvo(ninho.id, egg, eggIdx),
-    }))
+    ninho.eggs
+      .map((egg, eggIdx) => ({
+        ninho,
+        egg,
+        eggIdx,
+        chave: getChaveOvo(ninho.id, egg, eggIdx),
+      }))
+      .filter(({ egg }) => ovoDeveSerExibido(egg))
   );
 
   const toggleOvoSelecionado = (chave: string) => {
@@ -774,6 +801,8 @@ export function NinhosSection({
 
   ninhos.forEach((ninho) => {
     ninho.eggs.forEach((egg, eggIdx) => {
+      if (!ovoDeveSerExibido(egg)) return;
+
       const local = egg.local?.trim() || 'Sem local definido';
 
       if (!ovosPorLocal.has(local)) {
@@ -797,6 +826,8 @@ export function NinhosSection({
 
   ninhos.forEach((ninho) => {
     ninho.eggs.forEach((egg, eggIdx) => {
+      if (!ovoDeveSerExibido(egg)) return;
+
       const casal = casais.find((item) => item.id === ninho.casalId);
       const macho = casal ? aves.find((ave) => ave.id === casal.mId) : undefined;
       const femea = casal ? aves.find((ave) => ave.id === casal.fId) : undefined;
@@ -1131,7 +1162,7 @@ export function NinhosSection({
       {/* ============================================================
           OVOS AGRUPADOS PELO MODO SELECIONADO
           ============================================================ */}
-      {ninhos.some(n => n.eggs.length > 0) && (
+      {todosOvos.length > 0 && (
         <div className="pt-2">
           <div className="flex flex-col gap-3 mb-4">
             <div className="flex items-center justify-between gap-2">
@@ -1139,7 +1170,7 @@ export function NinhosSection({
                 Ovos por {modoVisualizacao === 'local' ? 'Local' : 'Casal'}
               </h2>
               <span className="text-[10px] font-black text-slate-400 uppercase whitespace-nowrap">
-                {ninhos.reduce((total, ninho) => total + ninho.eggs.length, 0)} ovos
+                {todosOvos.length} ovos
               </span>
             </div>
 
