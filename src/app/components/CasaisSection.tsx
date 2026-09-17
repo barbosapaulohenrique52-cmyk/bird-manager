@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Casal, Ave, ModalType, Filhote } from '../App';
+import type { Casal, Ave, ModalType, Filhote, Ninho } from '../App';
 import { CasalHistoricoModal } from './CasalHistoricoModal';
 import { PhotoZoom } from './PhotoZoom';
 
@@ -13,6 +13,8 @@ interface CasaisSectionProps {
   onUpdateFilhote: (casalId: string, filhoteId: string, updates: Partial<Filhote>) => void;
   onDeleteFilhote: (casalId: string, filhoteId: string) => void;
   onViewDetails?: (aveId: string) => void;
+  ninhos: Ninho[];
+  onDesfazerSaidaDoNinho?: (ninhoId: string, eggIdx: number) => void;
 }
 
 export function CasaisSection({
@@ -24,7 +26,9 @@ export function CasaisSection({
   onAddFilhote,
   onUpdateFilhote,
   onDeleteFilhote,
-  onViewDetails
+  onViewDetails,
+  ninhos,
+  onDesfazerSaidaDoNinho
 }: CasaisSectionProps) {
   const [selectedCasalId, setSelectedCasalId] = useState<string | null>(null);
   const [editandoGaiola, setEditandoGaiola] = useState<string | null>(null);
@@ -351,6 +355,27 @@ export function CasaisSection({
             onAddFilhote={onAddFilhote}
             onUpdateFilhote={onUpdateFilhote}
             onDeleteFilhote={onDeleteFilhote}
+            onRetornarAoNinho={(aveId) => {
+              const ninhoEncontrado = ninhos.find(ninho =>
+                ninho.eggs.some(egg => egg.filhoteId === aveId)
+              );
+
+              if (!ninhoEncontrado || !onDesfazerSaidaDoNinho) {
+                alert('Não foi possível localizar o registro original do filhote no ninho.');
+                return;
+              }
+
+              const eggIdx = ninhoEncontrado.eggs.findIndex(
+                egg => egg.filhoteId === aveId
+              );
+
+              if (eggIdx < 0) {
+                alert('Não foi possível localizar o ovo correspondente.');
+                return;
+              }
+
+              onDesfazerSaidaDoNinho(ninhoEncontrado.id, eggIdx);
+            }}
           />
         )}
       </section>
