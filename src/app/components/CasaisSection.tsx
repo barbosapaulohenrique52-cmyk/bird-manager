@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { MouseEvent } from 'react';
 import type { Casal, Ave, ModalType, Filhote, Ninho } from '../App';
 import { CasalHistoricoModal } from './CasalHistoricoModal';
 import { PhotoZoom } from './PhotoZoom';
@@ -36,7 +37,7 @@ export function CasaisSection({
   const [fotoZoom, setFotoZoom] = useState<string | null>(null);
 
   const abrirFoto = (
-    event: React.MouseEvent,
+    event: MouseEvent,
     photo: string
   ) => {
     event.preventDefault();
@@ -70,7 +71,6 @@ export function CasaisSection({
                 key={casal.id}
                 className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
               >
-                {/* Header com número da gaiola */}
                 <div className="bg-indigo-600 text-white px-4 py-2 flex justify-between items-center">
                   <div className="flex items-center gap-2">
                     <i className="fas fa-heart text-xs"></i>
@@ -116,12 +116,8 @@ export function CasaisSection({
                     <i className="fas fa-trash-alt text-[10px]"></i>
                   </button>
                 </div>
-
-                {/* Conteúdo do casal */}
                 <div className="p-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
-
-                    {/* Macho */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-3">
 
@@ -213,8 +209,6 @@ export function CasaisSection({
                         </select>
                       )}
                     </div>
-
-                    {/* Fêmea */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-3">
 
@@ -307,8 +301,6 @@ export function CasaisSection({
                       )}
                     </div>
                   </div>
-
-                  {/* Botão de histórico */}
                   <button
                     onClick={() =>
                       setSelectedCasalId(casal.id)
@@ -379,8 +371,6 @@ export function CasaisSection({
           />
         )}
       </section>
-
-      {/* Foto ampliada */}
       {fotoZoom && (
         <PhotoZoom
           src={fotoZoom}
