@@ -630,7 +630,11 @@ export function AvesSection({
                               onPhotoClick?.(ave.photo);
                             }
                           }}
-                          title={ave.photo ? 'Clique para ampliar a foto' : 'Ave sem foto'}
+                          title={
+                            ave.photo
+                              ? 'Clique para ampliar a foto'
+                              : 'Representação visual das cores da ave'
+                          }
                         >
                           {ave.photo ? (
                             <img
@@ -645,7 +649,12 @@ export function AvesSection({
                               }}
                             />
                           ) : (
-                            <i className="fas fa-dove text-emerald-500"></i>
+                            <BirdColorDiagram
+                              corCabeca={ave.corCabeca}
+                              corPeito={ave.corPeito}
+                              corDorso={ave.corDorso}
+                              className="w-full h-full"
+                            />
                           )}
                         </div>
 
@@ -692,17 +701,7 @@ export function AvesSection({
                     </td>
 
                     <td className="px-4 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-16 shrink-0">
-                          <BirdColorDiagram
-                            corCabeca={ave.corCabeca}
-                            corPeito={ave.corPeito}
-                            corDorso={ave.corDorso}
-                            className="w-full h-full"
-                          />
-                        </div>
-
-                        <div className="text-[10px] text-slate-500 leading-4">
+                      <div className="text-[10px] text-slate-500 leading-4">
                           <p>
                             <strong>C:</strong>{' '}
                             {ave.corCabeca || '-'}
