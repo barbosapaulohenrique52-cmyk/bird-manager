@@ -13,7 +13,61 @@ interface CasalHistoricoModalProps {
 }
 
 export function CasalHistoricoModal({ casal, macho, femea, onClose, onAddFilhote, onUpdateFilhote, onDeleteFilhote }: CasalHistoricoModalProps) {
-  const filhotes = casal.historico || [];
+  /*
+   * O histórico antigo pode não ter sido gravado no campo casal.historico,
+   * embora os filhotes estejam corretamente vinculados aos pais no Plantel
+   * por parentMaleId e parentFemaleId.
+   *
+   * Por isso, reunimos:
+   * 1. os registros já existentes no histórico do casal; e
+   * 2. as aves do Plantel que possuem os dois pais deste casal.
+   *
+   * A união evita duplicações usando aveId ou anilha + ano.
+   */
+  const avesDoPlantel: Ave[] = (() => {
+    try {
+      const armazenadas = JSON.parse(
+        localStorage.getItem('gpro_v19_aves') || '[]'
+      );
+      return Array.isArray(armazenadas) ? armazenadas : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const historicoExistente = casal.historico || [];
+
+  const filhotesDoPlantel: Filhote[] = avesDoPlantel
+    .filter(
+      ave =>
+        ave.parentMaleId === casal.mId &&
+        ave.parentFemaleId === casal.fId
+    )
+    .map(ave => ({
+      id: `ave-${ave.id}`,
+      aveId: ave.id,
+      anilha: ave.ring || 'Sem anilha',
+      anoAnilha: ave.ringYear || new Date().getFullYear(),
+      status: ave.status === 'Vendido' ? 'Vendido' : 'Ativo'
+    }));
+
+  const filhotes = [
+    ...historicoExistente,
+    ...filhotesDoPlantel.filter(plantelFilhote => {
+      const jaExiste = historicoExistente.some(historico => {
+        if (historico.aveId && plantelFilhote.aveId) {
+          return historico.aveId === plantelFilhote.aveId;
+        }
+
+        return (
+          historico.anilha === plantelFilhote.anilha &&
+          historico.anoAnilha === plantelFilhote.anoAnilha
+        );
+      });
+
+      return !jaExiste;
+    })
+  ];
 
   const [showAddFilhote, setShowAddFilhote] = useState(false);
   const [fotoZoom, setFotoZoom] = useState<string | null>(null);
