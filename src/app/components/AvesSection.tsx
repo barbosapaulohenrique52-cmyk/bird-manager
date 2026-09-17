@@ -587,26 +587,34 @@ export function AvesSection({
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left">
+            <table className="w-full table-fixed text-left">
+              <colgroup>
+                <col className="w-[36%]" />
+                <col className="w-[8%]" />
+                <col className="w-[14%]" />
+                <col className="w-[24%]" />
+                <col className="w-[18%]" />
+              </colgroup>
+
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
+                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
                     Ave
                   </th>
 
-                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
+                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
                     Sexo
                   </th>
 
-                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
+                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
                     Status
                   </th>
 
-                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
+                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
                     Cores
                   </th>
 
-                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500 text-center">
+                  <th className="px-1 sm:px-2 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500 text-center">
                     Ações
                   </th>
                 </tr>
@@ -618,14 +626,14 @@ export function AvesSection({
                     key={ave.id}
                     className="hover:bg-slate-50 transition"
                   >
-                    <td className="px-4 py-4">
+                    <td className="px-2 sm:px-3 py-3 align-middle">
                       <button
                         type="button"
                         onClick={() => onViewDetails?.(ave.id)}
-                        className="flex items-center gap-3 text-left"
+                        className="flex items-center gap-2 text-left min-w-0 w-full"
                       >
                         <div
-                          className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer"
+                          className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-emerald-50 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer"
                           onClick={event => {
                             event.stopPropagation();
                             if (ave.photo) {
@@ -660,19 +668,19 @@ export function AvesSection({
                           )}
                         </div>
 
-                        <div>
-                          <p className="font-black text-sm text-slate-800">
+                        <div className="min-w-0">
+                          <p className="font-black text-xs sm:text-sm text-slate-800 truncate">
                             {ave.name || 'Sem nome'}
                           </p>
 
-                          <p className="text-[11px] text-slate-500">
+                          <p className="text-[10px] sm:text-[11px] text-slate-500 truncate">
                             {ave.species || '-'}
                           </p>
                         </div>
                       </button>
                     </td>
 
-                    <td className="px-4 py-4 text-center">
+                    <td className="px-1 sm:px-2 py-3 text-center align-middle">
                       <span
                         className={`inline-flex items-center justify-center text-lg font-black leading-none ${
                           ave.sex?.trim().toLowerCase() === 'macho'
@@ -689,9 +697,9 @@ export function AvesSection({
                       </span>
                     </td>
 
-                    <td className="px-4 py-4">
+                    <td className="px-2 sm:px-3 py-3 align-middle">
                       <span
-                        className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black ${obterClasseStatus(
+                        className={`inline-flex px-2 py-1 rounded-full text-[9px] sm:text-[10px] font-black ${obterClasseStatus(
                           ave.status
                         )}`}
                       >
@@ -699,8 +707,8 @@ export function AvesSection({
                       </span>
                     </td>
 
-                    <td className="px-4 py-4">
-                      <div className="text-[10px] text-slate-500 leading-4">
+                    <td className="px-2 sm:px-3 py-3 align-middle">
+                      <div className="text-[9px] sm:text-[10px] text-slate-500 leading-4 break-words">
                           <p>
                             <strong>C:</strong>{' '}
                             {ave.corCabeca || '-'}
@@ -718,13 +726,13 @@ export function AvesSection({
                         </div>
                     </td>
 
-                    <td className="px-4 py-4">
-                      <div className="flex items-center justify-center gap-1">
+                    <td className="px-2 sm:px-3 py-3 align-middle">
+                      <div className="flex items-center justify-center gap-0 sm:gap-1">
                         <button
                           type="button"
                           onClick={() => onViewDetails?.(ave.id)}
                           title="Visualizar detalhes"
-                          className="w-8 h-8 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
+                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
                         >
                           <i className="fas fa-eye text-xs"></i>
                         </button>
@@ -733,7 +741,7 @@ export function AvesSection({
                           type="button"
                           onClick={() => onOpenModal('ave', ave.id)}
                           title="Editar ave"
-                          className="w-8 h-8 rounded-lg text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition"
+                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition"
                         >
                           <i className="fas fa-pen text-xs"></i>
                         </button>
@@ -742,7 +750,7 @@ export function AvesSection({
                           type="button"
                           onClick={() => onDeleteAve(ave.id)}
                           title="Excluir ave"
-                          className="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition"
+                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition"
                         >
                           <i className="fas fa-trash text-xs"></i>
                         </button>
