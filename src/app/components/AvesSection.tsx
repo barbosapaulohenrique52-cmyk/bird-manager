@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import type { Ave, ModalType, Config } from '../App';
 import BirdColorDiagram from './BirdColorDiagram';
 import {
   gerarPlanilhaAves,
-  gerarPlanilhaModeloAves
+  gerarPlanilhaModeloAves,
+  importarPlanilhaAves
 } from '../../services/excelService';
 
 interface AvesSectionProps {
@@ -11,6 +13,7 @@ interface AvesSectionProps {
   config?: Config;
   onOpenModal: (type: ModalType, id?: string | null) => void;
   onDeleteAve: (id: string) => void;
+  onImportAves: (avesData: Array<Omit<Ave, 'id'>>) => number;
   onPhotoClick?: (photoUrl: string) => void;
   onViewDetails?: (aveId: string) => void;
 }
@@ -20,6 +23,7 @@ export function AvesSection({
   config,
   onOpenModal,
   onDeleteAve,
+  onImportAves,
   onPhotoClick,
   onViewDetails
 }: AvesSectionProps) {
@@ -32,6 +36,60 @@ export function AvesSection({
   const [filtroCorDorso, setFiltroCorDorso] = useState('');
   const [filtroPorta, setFiltroPorta] = useState('');
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const inputImportacaoRef = useRef<HTMLInputElement | null>(null);
+  const [importandoPlanilha, setImportandoPlanilha] = useState(false);
+
+  const handleImportarPlanilha = async (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const arquivo = event.target.files?.[0];
+
+    event.target.value = '';
+
+    if (!arquivo) {
+      return;
+    }
+
+    if (!arquivo.name.toLowerCase().endsWith('.xlsx')) {
+      window.alert('Selecione um arquivo Excel no formato .xlsx.');
+      return;
+    }
+
+    try {
+      setImportandoPlanilha(true);
+
+      const resultado = await importarPlanilhaAves(arquivo);
+
+      if (resultado.aves.length > 0) {
+        onImportAves(resultado.aves);
+      }
+
+      let mensagem = `${resultado.aves.length} ave(s) importada(s) com sucesso.`;
+
+      if (resultado.linhasIgnoradas > 0) {
+        mensagem += `\n${resultado.linhasIgnoradas} linha(s) ignorada(s).`;
+      }
+
+      if (resultado.erros.length > 0) {
+        mensagem += `\n\nDetalhes:\n${resultado.erros.slice(0, 5).join('\n')}`;
+
+        if (resultado.erros.length > 5) {
+          mensagem += `\n... e mais ${resultado.erros.length - 5} erro(s).`;
+        }
+      }
+
+      window.alert(mensagem);
+    } catch (error) {
+      const mensagem =
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível importar a planilha.';
+
+      window.alert(mensagem);
+    } finally {
+      setImportandoPlanilha(false);
+    }
+  };
 
   const especies = useMemo(
     () =>
@@ -306,12 +364,21 @@ export function AvesSection({
 
           <button
             type="button"
-            onClick={() => onOpenModal('lote' as ModalType)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+            onClick={() => inputImportacaoRef.current?.click()}
+            disabled={importandoPlanilha}
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
           >
-            <i className="fas fa-layer-group"></i>
-            ADICIONAR EM LOTE
+            <i className={importandoPlanilha ? 'fas fa-spinner fa-spin' : 'fas fa-file-import'}></i>
+            {importandoPlanilha ? 'IMPORTANDO...' : 'IMPORTAR PLANILHA'}
           </button>
+
+          <input
+            ref={inputImportacaoRef}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={handleImportarPlanilha}
+            className="hidden"
+          />
 
           <button
             type="button"
