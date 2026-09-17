@@ -417,7 +417,7 @@ function aplicarValidacaoLista(
        * sem o sinal de igualdade. O ExcelJS gera a referência
        * correta no XML da validação.
        */
-      formulae: [nomeLista],
+      formulae: [`=${nomeLista}`],
 
       showErrorMessage: true,
       errorTitle: 'Valor inválido',
