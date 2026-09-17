@@ -259,7 +259,15 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
 
     const avesParaSalvar = avesLote.map(({ idLote, ...dados }) => ({
       ...dados,
-      name: dados.name?.trim() || `${(dados.ring || '').trim()}-${dados.ringYear || currentYear}`,
+      name: (() => {
+        const nomeInformado = dados.name?.trim() || '';
+        const anilhaInformada = (dados.ring || '').trim();
+        const anoInformado = String(dados.ringYear || currentYear).trim();
+
+        if (nomeInformado) return nomeInformado;
+        if (anilhaInformada) return `${anilhaInformada}-${anoInformado}`;
+        return 'Sem identificação';
+      })(),
       ring: dados.ring?.trim() || '',
     }));
 
@@ -376,7 +384,15 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
       species: formData.get('species') as string,
       ring: formData.get('ring') as string,
       ringYear: Number(formData.get('ringYear')),
-      name: nomeAve.trim() || `${(formData.get('ring') as string || '').trim()}-${formData.get('ringYear') || currentYear}`,
+      name: (() => {
+        const nomeInformado = nomeAve.trim();
+        const anilhaInformada = (formData.get('ring') as string || '').trim();
+        const anoInformado = String(formData.get('ringYear') || currentYear).trim();
+
+        if (nomeInformado) return nomeInformado;
+        if (anilhaInformada) return `${anilhaInformada}-${anoInformado}`;
+        return 'Sem identificação';
+      })(),
       sex: formData.get('sex') as 'Macho' | 'Fêmea' | 'Indefinido',
       status: formData.get('status') as 'Ativo' | 'Vendido' | 'Óbito',
       creator: formData.get('creator') as string,
