@@ -196,7 +196,7 @@ interface NinhosSectionProps {
   onUpdateEgg: (ninhoId: string, eggIdx: number, field: keyof Egg, value: any) => void;
   onEclodirOvo: (ninhoId: string, eggIdx: number, dataEclosao: string) => void;
   onAnilharFilhote: (ninhoId: string, eggIdx: number, anilha: string, anoAnilha: number) => void;
-  onRegistrarSaidaDoNinho?: (ninhoId: string, eggIdx: number, dataSaidaNinho: string) => void;
+  onRegistrarSaidaDoNinho?: (ninhoId: string, eggIdx: number, dataSaidaNinho: string, novoLocal: string) => void;
   onReverterEclosao: (ninhoId: string, eggIdx: number) => void;
   onUpdateNinhoCasal: (ninhoId: string, casalId: string) => void;
   onSaveCasal: (data: Omit<Casal, 'id'>) => string;
@@ -232,6 +232,7 @@ export function NinhosSection({
   const [anilhaEditando, setAnilhaEditando] = useState(false);
   const [saidaNinhoModal, setSaidaNinhoModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
   const [dataSaidaNinho, setDataSaidaNinho] = useState(new Date().toISOString().split('T')[0]);
+  const [novoLocalSaida, setNovoLocalSaida] = useState('');
   const [editCasalNinhoId, setEditCasalNinhoId] = useState<string | null>(null);
   const [dataEclosao, setDataEclosao] = useState(new Date().toISOString().split('T')[0]);
   const [chocaData, setChocaData] = useState({
@@ -363,7 +364,8 @@ export function NinhosSection({
     return aveFilhote?.status === 'Óbito';
   };
 
-  const ovoDeveSerExibido = (egg: Egg): boolean => !filhoteEstaEmObito(egg);
+  const ovoDeveSerExibido = (egg: Egg): boolean =>
+    !filhoteEstaEmObito(egg) && !(egg as any).dataSaidaNinho;
 
   const getChaveOvo = (ninhoId: string, egg: Egg, eggIdx: number) =>
     `${ninhoId}::${egg.id || `idx-${eggIdx}`}`;
@@ -775,11 +777,13 @@ export function NinhosSection({
     onRegistrarSaidaDoNinho(
       saidaNinhoModal.ninhoId,
       saidaNinhoModal.eggIdx,
-      dataSaidaNinho
+      dataSaidaNinho,
+      novoLocalSaida
     );
 
     setSaidaNinhoModal(null);
     setDataSaidaNinho(new Date().toISOString().split('T')[0]);
+    setNovoLocalSaida('');
   };
 
   const getStatusColor = (status: string) => {
@@ -2175,6 +2179,23 @@ export function NinhosSection({
                 />
               </div>
 
+              <div className="mt-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
+                  Novo local do filhote <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={novoLocalSaida}
+                  onChange={(e) => setNovoLocalSaida(e.target.value)}
+                  className="w-full h-12 border-2 border-slate-200 p-3 rounded-xl text-sm font-bold bg-white outline-none focus:border-emerald-500"
+                >
+                  <option value="">Selecione o novo local</option>
+                  {(config.locaisOvos || []).map((local: any) => {
+                    const nome = typeof local === 'string' ? local : local.nome;
+                    return nome ? <option key={nome} value={nome}>{nome}</option> : null;
+                  })}
+                </select>
+              </div>
+
               <div className="flex gap-2 pt-4">
                 <button
                   type="button"
@@ -2189,7 +2210,7 @@ export function NinhosSection({
                   className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-black text-xs uppercase hover:bg-emerald-700"
                 >
                   <i className="fas fa-check mr-2"></i>
-                  Confirmar saída
+                  Confirmar saída e salvar
                 </button>
               </div>
             </div>
