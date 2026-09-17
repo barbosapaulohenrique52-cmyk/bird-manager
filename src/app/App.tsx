@@ -161,6 +161,7 @@ export default function App() {
     db,
     colorLists,
     saveAve,
+    importAves,
     saveCasal,
     saveNinho,
     updateNinhoCasal,
@@ -297,6 +298,7 @@ export default function App() {
             config={db.config}
             onOpenModal={openModal}
             onDeleteAve={deleteAve}
+            onImportAves={importAves}
             onPhotoClick={setZoomPhoto}
             onViewDetails={setAveDetalheId}
           />
