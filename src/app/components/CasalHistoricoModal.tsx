@@ -10,9 +10,20 @@ interface CasalHistoricoModalProps {
   onAddFilhote: (casalId: string, filhote: Omit<Filhote, 'id'>) => void;
   onUpdateFilhote: (casalId: string, filhoteId: string, updates: Partial<Filhote>) => void;
   onDeleteFilhote: (casalId: string, filhoteId: string) => void;
+  /** Retorna ao ninho uma ave que já saiu, sem apagar seu histórico. */
+  onRetornarAoNinho?: (aveId: string) => void;
 }
 
-export function CasalHistoricoModal({ casal, macho, femea, onClose, onAddFilhote, onUpdateFilhote, onDeleteFilhote }: CasalHistoricoModalProps) {
+export function CasalHistoricoModal({
+  casal,
+  macho,
+  femea,
+  onClose,
+  onAddFilhote,
+  onUpdateFilhote,
+  onDeleteFilhote,
+  onRetornarAoNinho
+}: CasalHistoricoModalProps {
   /*
    * O histórico antigo pode não ter sido gravado no campo casal.historico,
    * embora os filhotes estejam corretamente vinculados aos pais no Plantel
@@ -68,6 +79,25 @@ export function CasalHistoricoModal({ casal, macho, femea, onClose, onAddFilhote
       return !jaExiste;
     })
   ];
+
+  const avesPorId = new Map(avesDoPlantel.map(ave => [ave.id, ave]));
+
+  const filhotesComSituacao = filhotes.map(filhote => {
+    const ave = filhote.aveId ? avesPorId.get(filhote.aveId) : undefined;
+    return {
+      ...filhote,
+      saiuDoNinho: Boolean(
+        (filhote as any).saiuDoNinho ||
+        (ave as any)?.saiuDoNinho ||
+        (ave as any)?.dataSaidaNinho
+      ),
+      emObito: Boolean(
+        (filhote as any).emObito ||
+        String((ave as any)?.status || '').toLowerCase() === 'óbito' ||
+        String((ave as any)?.status || '').toLowerCase() === 'obito'
+      )
+    };
+  });
 
   const [showAddFilhote, setShowAddFilhote] = useState(false);
   const [fotoZoom, setFotoZoom] = useState<string | null>(null);
@@ -312,7 +342,7 @@ export function CasalHistoricoModal({ casal, macho, femea, onClose, onAddFilhote
                   <p className="text-sm">Nenhum filhote registrado ainda</p>
                 </div>
               ) : (
-                filhotes.map((filhote) => (
+                filhotesComSituacao.map((filhote) => (
                   <div key={filhote.id} className="bg-white border-2 border-slate-100 p-3 rounded-xl">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -333,16 +363,33 @@ export function CasalHistoricoModal({ casal, macho, femea, onClose, onAddFilhote
                           </div>
                         )}
                       </div>
-                      <button
-                        onClick={() => {
-                          if (confirm('Deseja remover este filhote do histórico?')) {
-                            onDeleteFilhote(casal.id, filhote.id);
-                          }
-                        }}
-                        className="w-8 h-8 bg-rose-50 text-rose-500 rounded-lg flex items-center justify-center hover:bg-rose-100 transition-all"
-                      >
-                        <i className="fas fa-trash text-xs"></i>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {filhote.saiuDoNinho && !filhote.emObito && filhote.aveId && onRetornarAoNinho && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm('Deseja retornar esta ave ao ninho? Ela voltará a aparecer na aba Ninhos.')) {
+                                onRetornarAoNinho(filhote.aveId!);
+                              }
+                            }}
+                            className="px-3 py-2 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-black uppercase hover:bg-amber-100 transition-all"
+                            title="Retornar ao ninho"
+                          >
+                            <i className="fas fa-rotate-left mr-1"></i>
+                            Retornar ao ninho
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (confirm('Deseja remover este filhote do histórico?')) {
+                              onDeleteFilhote(casal.id, filhote.id);
+                            }
+                          }}
+                          className="w-8 h-8 bg-rose-50 text-rose-500 rounded-lg flex items-center justify-center hover:bg-rose-100 transition-all"
+                        >
+                          <i className="fas fa-trash text-xs"></i>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
