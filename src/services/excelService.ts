@@ -41,6 +41,8 @@ interface ListasPlanilha {
   especies: string[];
   sexos: string[];
   status: string[];
+  pais: string[];
+  maes: string[];
   coresCabeca: string[];
   coresPeito: string[];
   coresDorso: string[];
@@ -111,7 +113,7 @@ function obterNomesCores(
   return obterListaUnica((cores ?? []).map((cor) => cor.nome));
 }
 
-function obterListas(config?: Config): ListasPlanilha {
+function obterListas(config?: Config, aves: Ave[] = []): ListasPlanilha {
   const especies = obterListaUnica(config?.especies ?? []);
 
   const sexos = ['Macho', 'Fêmea', 'Indefinido'];
@@ -129,10 +131,38 @@ function obterListas(config?: Config): ListasPlanilha {
   // A coluna Porta permanece disponível para digitação manual.
   const portas: string[] = [];
 
+  const pais = obterListaUnica(
+    aves
+      .filter((ave) => {
+        const sexo = valorTexto(ave.sex)
+          .normalize('NFD')
+          .replace(/[\\u0300-\\u036f]/g, '')
+          .toLowerCase();
+
+        return sexo === 'macho';
+      })
+      .map((ave) => valorTexto(ave.name).trim() || valorTexto(ave.ring).trim()),
+  );
+
+  const maes = obterListaUnica(
+    aves
+      .filter((ave) => {
+        const sexo = valorTexto(ave.sex)
+          .normalize('NFD')
+          .replace(/[\\u0300-\\u036f]/g, '')
+          .toLowerCase();
+
+        return sexo === 'femea';
+      })
+      .map((ave) => valorTexto(ave.name).trim() || valorTexto(ave.ring).trim()),
+  );
+
   return {
     especies,
     sexos,
     status,
+    pais,
+    maes,
     coresCabeca,
     coresPeito,
     coresDorso,
@@ -224,6 +254,7 @@ function configurarColunasTexto(worksheet: ExcelJS.Worksheet): void {
   worksheet.getColumn(2).numFmt = '@';
   worksheet.getColumn(3).numFmt = '@';
   worksheet.getColumn(8).numFmt = '@';
+  worksheet.getColumn(9).numFmt = '@';
 }
 
 function prepararPlanilhaAves(
@@ -268,7 +299,7 @@ function prepararPlanilhaAves(
 
   worksheet.autoFilter = {
     from: 'A1',
-    to: 'M1',
+    to: 'O1',
   };
 
   worksheet.eachRow((linha, numeroLinha) => {
@@ -296,15 +327,19 @@ function criarAbaListas(
   worksheet.getCell('A1').value = 'Espécies';
   worksheet.getCell('B1').value = 'Sexos';
   worksheet.getCell('C1').value = 'Status';
-  worksheet.getCell('D1').value = 'Cor da cabeça';
-  worksheet.getCell('E1').value = 'Cor do peito';
-  worksheet.getCell('F1').value = 'Cor do dorso';
-  worksheet.getCell('G1').value = 'Portas';
+  worksheet.getCell('D1').value = 'Pais';
+  worksheet.getCell('E1').value = 'Mães';
+  worksheet.getCell('F1').value = 'Cor da cabeça';
+  worksheet.getCell('G1').value = 'Cor do peito';
+  worksheet.getCell('H1').value = 'Cor do dorso';
+  worksheet.getCell('I1').value = 'Portas';
 
   const maiorQuantidade = Math.max(
     listas.especies.length,
     listas.sexos.length,
     listas.status.length,
+    listas.pais.length,
+    listas.maes.length,
     listas.coresCabeca.length,
     listas.coresPeito.length,
     listas.coresDorso.length,
@@ -318,16 +353,20 @@ function criarAbaListas(
     worksheet.getCell(`A${linha}`).value = listas.especies[indice] ?? '';
     worksheet.getCell(`B${linha}`).value = listas.sexos[indice] ?? '';
     worksheet.getCell(`C${linha}`).value = listas.status[indice] ?? '';
-    worksheet.getCell(`D${linha}`).value = listas.coresCabeca[indice] ?? '';
-    worksheet.getCell(`E${linha}`).value = listas.coresPeito[indice] ?? '';
-    worksheet.getCell(`F${linha}`).value = listas.coresDorso[indice] ?? '';
-    worksheet.getCell(`G${linha}`).value = listas.portas[indice] ?? '';
+    worksheet.getCell(`D${linha}`).value = listas.pais[indice] ?? '';
+    worksheet.getCell(`E${linha}`).value = listas.maes[indice] ?? '';
+    worksheet.getCell(`F${linha}`).value = listas.coresCabeca[indice] ?? '';
+    worksheet.getCell(`G${linha}`).value = listas.coresPeito[indice] ?? '';
+    worksheet.getCell(`H${linha}`).value = listas.coresDorso[indice] ?? '';
+    worksheet.getCell(`I${linha}`).value = listas.portas[indice] ?? '';
   }
 
   worksheet.columns = [
     { width: 25 },
     { width: 18 },
     { width: 20 },
+    { width: 22 },
+    { width: 22 },
     { width: 25 },
     { width: 25 },
     { width: 25 },
@@ -442,6 +481,7 @@ export async function gerarPlanilhaAves(
 export async function gerarPlanilhaModeloAves(
   config?: Config,
   quantidadeLinhas = 200,
+  aves: Ave[] = [],
 ): Promise<void> {
   const workbook = new ExcelJS.Workbook();
 
@@ -450,7 +490,7 @@ export async function gerarPlanilhaModeloAves(
   workbook.modified = new Date();
 
   const worksheetAves = workbook.addWorksheet('Aves');
-  const listas = obterListas(config);
+  const listas = obterListas(config, aves);
 
   const linhasModelo = Array.from(
     { length: quantidadeLinhas },
@@ -493,33 +533,53 @@ export async function gerarPlanilhaModeloAves(
     listas.status.length,
   );
 
-  // Cor da cabeça: coluna I da planilha principal, lista D da aba Listas.
+  // Pai: coluna H da planilha principal, lista D da aba Listas.
+  aplicarValidacaoLista(
+    worksheetAves,
+    'H',
+    linhaInicial,
+    linhaFinal,
+    'D',
+    listas.pais.length,
+  );
+
+  // Mãe: coluna I da planilha principal, lista E da aba Listas.
   aplicarValidacaoLista(
     worksheetAves,
     'I',
     linhaInicial,
     linhaFinal,
-    'D',
-    listas.coresCabeca.length,
-  );
-
-  // Cor do peito: coluna J da planilha principal, lista E da aba Listas.
-  aplicarValidacaoLista(
-    worksheetAves,
-    'J',
-    linhaInicial,
-    linhaFinal,
     'E',
-    listas.coresPeito.length,
+    listas.maes.length,
   );
 
-  // Cor do dorso: coluna K da planilha principal, lista F da aba Listas.
+  // Cor da cabeça: coluna K da planilha principal, lista F da aba Listas.
   aplicarValidacaoLista(
     worksheetAves,
     'K',
     linhaInicial,
     linhaFinal,
     'F',
+    listas.coresCabeca.length,
+  );
+
+  // Cor do peito: coluna L da planilha principal, lista G da aba Listas.
+  aplicarValidacaoLista(
+    worksheetAves,
+    'L',
+    linhaInicial,
+    linhaFinal,
+    'G',
+    listas.coresPeito.length,
+  );
+
+  // Cor do dorso: coluna M da planilha principal, lista H da aba Listas.
+  aplicarValidacaoLista(
+    worksheetAves,
+    'M',
+    linhaInicial,
+    linhaFinal,
+    'H',
     listas.coresDorso.length,
   );
 
