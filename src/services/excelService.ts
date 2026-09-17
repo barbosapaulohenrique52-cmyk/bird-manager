@@ -401,24 +401,13 @@ function aplicarValidacaoLista(
   coluna: string,
   linhaInicial: number,
   linhaFinal: number,
-  nomeLista: string,
+  referenciaLista: string,
 ): void {
-  for (
-    let linha = linhaInicial;
-    linha <= linhaFinal;
-    linha += 1
-  ) {
+  for (let linha = linhaInicial; linha <= linhaFinal; linha += 1) {
     worksheet.getCell(`${coluna}${linha}`).dataValidation = {
       type: 'list',
       allowBlank: true,
-
-      /*
-       * Para nomes definidos no ExcelJS, o nome deve ser informado
-       * sem o sinal de igualdade. O ExcelJS gera a referência
-       * correta no XML da validação.
-       */
-      formulae: [`=${nomeLista}`],
-
+      formulae: [referenciaLista],
       showErrorMessage: true,
       errorTitle: 'Valor inválido',
       error: 'Selecione um valor da lista suspensa.',
@@ -500,7 +489,6 @@ export async function gerarPlanilhaModeloAves(
   workbook.modified = new Date();
 
   const worksheetAves = workbook.addWorksheet('Aves');
-
   const listas = obterListas(config);
 
   const linhasModelo = Array.from(
@@ -512,32 +500,23 @@ export async function gerarPlanilhaModeloAves(
 
   criarAbaListas(workbook, listas);
 
-  criarNomeDefinido(
-    workbook,
-    'ListaEspecies',
-    'A',
-    listas.especies.length,
-  );
+  const linhaInicialLista = 2;
 
-  criarNomeDefinido(
-    workbook,
-    'ListaSexos',
-    'B',
-    listas.sexos.length,
+  const ultimaLinhaEspecies = Math.max(
+    listas.especies.length + linhaInicialLista - 1,
+    linhaInicialLista,
   );
-
-  criarNomeDefinido(
-    workbook,
-    'ListaStatus',
-    'C',
-    listas.status.length,
+  const ultimaLinhaSexos = Math.max(
+    listas.sexos.length + linhaInicialLista - 1,
+    linhaInicialLista,
   );
-
-  criarNomeDefinido(
-    workbook,
-    'ListaCores',
-    'D',
-    listas.cores.length,
+  const ultimaLinhaStatus = Math.max(
+    listas.status.length + linhaInicialLista - 1,
+    linhaInicialLista,
+  );
+  const ultimaLinhaCores = Math.max(
+    listas.cores.length + linhaInicialLista - 1,
+    linhaInicialLista,
   );
 
   const linhaInicial = 2;
@@ -548,7 +527,7 @@ export async function gerarPlanilhaModeloAves(
     'A',
     linhaInicial,
     linhaFinal,
-    'ListaEspecies',
+    `'Listas'!$A$${linhaInicialLista}:$A$${ultimaLinhaEspecies}`,
   );
 
   aplicarValidacaoLista(
@@ -556,7 +535,7 @@ export async function gerarPlanilhaModeloAves(
     'E',
     linhaInicial,
     linhaFinal,
-    'ListaSexos',
+    `'Listas'!$B$${linhaInicialLista}:$B$${ultimaLinhaSexos}`,
   );
 
   aplicarValidacaoLista(
@@ -564,7 +543,7 @@ export async function gerarPlanilhaModeloAves(
     'F',
     linhaInicial,
     linhaFinal,
-    'ListaStatus',
+    `'Listas'!$C$${linhaInicialLista}:$C$${ultimaLinhaStatus}`,
   );
 
   aplicarValidacaoLista(
@@ -572,7 +551,7 @@ export async function gerarPlanilhaModeloAves(
     'I',
     linhaInicial,
     linhaFinal,
-    'ListaCores',
+    `'Listas'!$D$${linhaInicialLista}:$D$${ultimaLinhaCores}`,
   );
 
   aplicarValidacaoLista(
@@ -580,7 +559,7 @@ export async function gerarPlanilhaModeloAves(
     'J',
     linhaInicial,
     linhaFinal,
-    'ListaCores',
+    `'Listas'!$D$${linhaInicialLista}:$D$${ultimaLinhaCores}`,
   );
 
   aplicarValidacaoLista(
@@ -588,15 +567,11 @@ export async function gerarPlanilhaModeloAves(
     'K',
     linhaInicial,
     linhaFinal,
-    'ListaCores',
+    `'Listas'!$D$${linhaInicialLista}:$D$${ultimaLinhaCores}`,
   );
 
-  /*
-   * A coluna M - Porta não recebe validação porque a Config atual
-   * não possui uma lista de portas cadastradas.
-   */
-
-  worksheetAves.getRow(1).height = 36;
+  // A aba Listas permanece visível nesta etapa para conferência.
+  // Depois de confirmar o funcionamento, ela poderá ser ocultada.
 
   const buffer = await workbook.xlsx.writeBuffer();
 
