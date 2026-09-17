@@ -515,3 +515,387 @@ export async function gerarPlanilhaModeloAves(
 
   baixarArquivoExcel(buffer, 'modelo_plantel_aves.xlsx');
 }
+
+export interface ResultadoImportacaoAves {
+  aves: Array<Omit<Ave, 'id'>>;
+  linhasIgnoradas: number;
+  erros: string[];
+}
+
+function normalizarCabecalho(valor: unknown): string {
+  return valorTexto(valor)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function obterValorCelula(
+  linha: ExcelJS.Row,
+  numeroColuna: number
+): unknown {
+  const valor = linha.getCell(numeroColuna).value;
+
+  if (valor === null || valor === undefined) {
+    return '';
+  }
+
+  if (
+    typeof valor === 'object' &&
+    valor !== null &&
+    'result' in valor
+  ) {
+    return valor.result;
+  }
+
+  if (
+    typeof valor === 'object' &&
+    valor !== null &&
+    'richText' in valor
+  ) {
+    const richText = valor.richText;
+
+    if (Array.isArray(richText)) {
+      return richText
+        .map((item) => item.text ?? '')
+        .join('');
+    }
+  }
+
+  if (valor instanceof Date) {
+    return valor.toISOString().slice(0, 10);
+  }
+
+  return valor;
+}
+
+function converterTextoImportacao(valor: unknown): string {
+  return valorTexto(valor).trim();
+}
+
+function converterAnoImportacao(
+  valor: unknown,
+  valorPadrao: number
+): number {
+  const texto = converterTextoImportacao(valor);
+
+  if (!texto) {
+    return valorPadrao;
+  }
+
+  const numero = Number(texto);
+
+  if (Number.isFinite(numero) && numero > 0) {
+    return Math.trunc(numero);
+  }
+
+  const data = new Date(texto);
+
+  if (!Number.isNaN(data.getTime())) {
+    return data.getFullYear();
+  }
+
+  return valorPadrao;
+}
+
+function normalizarSexoImportacao(
+  valor: unknown
+): Ave['sex'] {
+  const texto = converterTextoImportacao(valor)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (texto === 'm' || texto === 'macho') {
+    return 'Macho';
+  }
+
+  if (texto === 'f' || texto === 'femea') {
+    return 'Fêmea';
+  }
+
+  return 'Indefinido';
+}
+
+function normalizarStatusImportacao(
+  valor: unknown
+): Ave['status'] {
+  const texto = converterTextoImportacao(valor)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  if (texto === 'vendido' || texto === 'vendida') {
+    return 'Vendido';
+  }
+
+  if (
+    texto === 'obito' ||
+    texto === 'morto' ||
+    texto === 'morta' ||
+    texto === 'falecido' ||
+    texto === 'falecida'
+  ) {
+    return 'Óbito';
+  }
+
+  if (
+    texto === 'no ninho' ||
+    texto === 'ninho'
+  ) {
+    return 'No Ninho';
+  }
+
+  return 'Ativo';
+}
+
+function encontrarColunasImportacao(
+  worksheet: ExcelJS.Worksheet
+): Record<string, number> {
+  const colunas: Record<string, number> = {};
+
+  const aliases: Record<string, string[]> = {
+    especie: ['especie', 'species'],
+    anilha: [
+      'anilha',
+      'ring',
+      'numeroanilha',
+      'numerodaanilha'
+    ],
+    anoAnilha: [
+      'anodaanilha',
+      'anoanilha',
+      'ringyear'
+    ],
+    nome: ['nome', 'name'],
+    sexo: ['sexo', 'sex'],
+    status: ['status', 'situacao'],
+    criador: ['criador', 'creator', 'origem'],
+    anoAquisicao: [
+      'anodeaquisicao',
+      'anoaquisicao',
+      'acqyear',
+      'aquisicao'
+    ],
+    corCabeca: [
+      'cordacabeca',
+      'corcabeca',
+      'cabeca',
+      'headcolor'
+    ],
+    corPeito: [
+      'cordopeito',
+      'corpeito',
+      'peito',
+      'chestcolor'
+    ],
+    corDorso: [
+      'cordodorso',
+      'cordorso',
+      'dorso',
+      'backcolor'
+    ],
+    nota: [
+      'nota',
+      'observacao',
+      'observacoes',
+      'notes'
+    ],
+    porta: [
+      'porta',
+      'gaiola',
+      'box',
+      'cage'
+    ]
+  };
+
+  worksheet.getRow(1).eachCell((celula, numeroColuna) => {
+    const cabecalho = normalizarCabecalho(celula.value);
+
+    if (!cabecalho) {
+      return;
+    }
+
+    Object.entries(aliases).forEach(([campo, nomesAceitos]) => {
+      if (nomesAceitos.includes(cabecalho)) {
+        colunas[campo] = numeroColuna;
+      }
+    });
+  });
+
+  return colunas;
+}
+
+function linhaImportacaoEstaVazia(
+  linha: ExcelJS.Row
+): boolean {
+  let possuiValor = false;
+
+  linha.eachCell({ includeEmpty: false }, (celula) => {
+    if (converterTextoImportacao(celula.value)) {
+      possuiValor = true;
+    }
+  });
+
+  return !possuiValor;
+}
+
+export async function importarPlanilhaAves(
+  arquivo: File
+): Promise<ResultadoImportacaoAves> {
+  const resultado: ResultadoImportacaoAves = {
+    aves: [],
+    linhasIgnoradas: 0,
+    erros: []
+  };
+
+  try {
+    const arrayBuffer = await arquivo.arrayBuffer();
+    const workbook = new ExcelJS.Workbook();
+
+    await workbook.xlsx.load(arrayBuffer);
+
+    const worksheet =
+      workbook.getWorksheet('Aves') ??
+      workbook.worksheets[0];
+
+    if (!worksheet) {
+      throw new Error(
+        'A planilha não possui nenhuma aba válida.'
+      );
+    }
+
+    const colunas = encontrarColunasImportacao(worksheet);
+
+    if (!colunas.especie) {
+      throw new Error(
+        'A coluna "Espécie" não foi encontrada na planilha.'
+      );
+    }
+
+    if (!colunas.anilha) {
+      throw new Error(
+        'A coluna "Anilha" não foi encontrada na planilha.'
+      );
+    }
+
+    for (
+      let numeroLinha = 2;
+      numeroLinha <= worksheet.rowCount;
+      numeroLinha += 1
+    ) {
+      const linha = worksheet.getRow(numeroLinha);
+
+      if (linhaImportacaoEstaVazia(linha)) {
+        resultado.linhasIgnoradas += 1;
+        continue;
+      }
+
+      try {
+        const especie = converterTextoImportacao(
+          obterValorCelula(linha, colunas.especie)
+        );
+
+        const anilha = converterTextoImportacao(
+          obterValorCelula(linha, colunas.anilha)
+        );
+
+        if (!especie || !anilha) {
+          resultado.linhasIgnoradas += 1;
+          resultado.erros.push(
+            `Linha ${numeroLinha}: espécie ou anilha não informada.`
+          );
+          continue;
+        }
+
+        const anoAtual = new Date().getFullYear();
+
+        const ave: Omit<Ave, 'id'> = {
+          species: especie,
+          ring: anilha,
+          ringYear: colunas.anoAnilha
+            ? converterAnoImportacao(
+                obterValorCelula(linha, colunas.anoAnilha),
+                anoAtual
+              )
+            : anoAtual,
+          name: colunas.nome
+            ? converterTextoImportacao(
+                obterValorCelula(linha, colunas.nome)
+              )
+            : '',
+          sex: colunas.sexo
+            ? normalizarSexoImportacao(
+                obterValorCelula(linha, colunas.sexo)
+              )
+            : 'Indefinido',
+          status: colunas.status
+            ? normalizarStatusImportacao(
+                obterValorCelula(linha, colunas.status)
+              )
+            : 'Ativo',
+          creator: colunas.criador
+            ? converterTextoImportacao(
+                obterValorCelula(linha, colunas.criador)
+              )
+            : '',
+          acqYear: colunas.anoAquisicao
+            ? converterAnoImportacao(
+                obterValorCelula(linha, colunas.anoAquisicao),
+                anoAtual
+              )
+            : anoAtual,
+          corCabeca: colunas.corCabeca
+            ? converterTextoImportacao(
+                obterValorCelula(linha, colunas.corCabeca)
+              )
+            : '',
+          corPeito: colunas.corPeito
+            ? converterTextoImportacao(
+                obterValorCelula(linha, colunas.corPeito)
+              )
+            : '',
+          corDorso: colunas.corDorso
+            ? converterTextoImportacao(
+                obterValorCelula(linha, colunas.corDorso)
+              )
+            : '',
+          nota: colunas.nota
+            ? converterTextoImportacao(
+                obterValorCelula(linha, colunas.nota)
+              )
+            : '',
+          porta: colunas.porta
+            ? converterTextoImportacao(
+                obterValorCelula(linha, colunas.porta)
+              )
+            : ''
+        };
+
+        resultado.aves.push(ave);
+      } catch (erroLinha) {
+        resultado.linhasIgnoradas += 1;
+
+        const mensagem =
+          erroLinha instanceof Error
+            ? erroLinha.message
+            : 'Erro desconhecido';
+
+        resultado.erros.push(
+          `Linha ${numeroLinha}: ${mensagem}`
+        );
+      }
+    }
+
+    return resultado;
+  } catch (erro) {
+    const mensagem =
+      erro instanceof Error
+        ? erro.message
+        : 'Não foi possível ler a planilha.';
+
+    throw new Error(
+      `Erro ao importar a planilha: ${mensagem}`
+    );
+  }
+}
