@@ -37,7 +37,9 @@ interface ListasPlanilha {
   especies: string[];
   sexos: string[];
   status: string[];
-  cores: string[];
+  coresCabeca: string[];
+  coresPeito: string[];
+  coresDorso: string[];
   portas: string[];
 }
 
@@ -95,58 +97,42 @@ function obterListaUnica(valores: unknown[]): string[] {
   );
 }
 
-function obterCores(config?: Config): string[] {
-  if (!config) {
-    return [];
-  }
-
-  const cores = [
-    ...(config.coresCabeca ?? []),
-    ...(config.coresPeito ?? []),
-    ...(config.coresDorso ?? []),
-    ...(config.coresAves ?? []),
-  ];
-
-  return obterListaUnica(cores.map((cor) => cor.nome));
+function obterNomesCores(
+  cores: Array<{ nome: string }> | undefined,
+): string[] {
+  return obterListaUnica((cores ?? []).map((cor) => cor.nome));
 }
 
 function obterListas(config?: Config): ListasPlanilha {
   const especies = obterListaUnica(config?.especies ?? []);
 
-  const sexos = [
-    'Macho',
-    'Fêmea',
-    'Indefinido',
-  ];
+  const sexos = ['Macho', 'Fêmea', 'Indefinido'];
 
-  const status = [
-    'Ativo',
-    'Vendido',
-    'Óbito',
-    'No Ninho',
-  ];
+  const status = ['Ativo', 'Vendido', 'Óbito', 'No Ninho'];
 
-  const cores = obterCores(config);
+  // Cada parte utiliza exclusivamente sua própria lista de cores.
+  // Não utilizamos coresAves como fallback, pois isso mistura cores
+  // que podem ser válidas para uma região, mas não para outra.
+  const coresCabeca = obterNomesCores(config?.coresCabeca);
+  const coresPeito = obterNomesCores(config?.coresPeito);
+  const coresDorso = obterNomesCores(config?.coresDorso);
 
-  /*
-   * A interface Config atual não possui uma lista de portas.
-   * Por isso, a coluna Porta permanece disponível para digitação
-   * manual no modelo, sem lista suspensa.
-   */
+  // A interface Config atual não possui uma lista de portas.
+  // A coluna Porta permanece disponível para digitação manual.
   const portas: string[] = [];
 
   return {
     especies,
     sexos,
     status,
-    cores,
+    coresCabeca,
+    coresPeito,
+    coresDorso,
     portas,
   };
 }
 
-function configurarCabecalho(
-  worksheet: ExcelJS.Worksheet,
-): void {
+function configurarCabecalho(worksheet: ExcelJS.Worksheet): void {
   const linhaCabecalho = worksheet.getRow(1);
 
   linhaCabecalho.height = 30;
@@ -202,9 +188,7 @@ function configurarCabecalho(
   });
 }
 
-function configurarLarguraColunas(
-  worksheet: ExcelJS.Worksheet,
-): void {
+function configurarLarguraColunas(worksheet: ExcelJS.Worksheet): void {
   const larguras = [
     20, // Espécie
     16, // Anilha
@@ -226,16 +210,9 @@ function configurarLarguraColunas(
   });
 }
 
-function configurarColunasTexto(
-  worksheet: ExcelJS.Worksheet,
-): void {
-  // Anilha
+function configurarColunasTexto(worksheet: ExcelJS.Worksheet): void {
   worksheet.getColumn(2).numFmt = '@';
-
-  // Ano da anilha
   worksheet.getColumn(3).numFmt = '@';
-
-  // Ano de aquisição
   worksheet.getColumn(8).numFmt = '@';
 }
 
@@ -307,45 +284,40 @@ function criarAbaListas(
   worksheet.getCell('A1').value = 'Espécies';
   worksheet.getCell('B1').value = 'Sexos';
   worksheet.getCell('C1').value = 'Status';
-  worksheet.getCell('D1').value = 'Cores';
-  worksheet.getCell('E1').value = 'Portas';
+  worksheet.getCell('D1').value = 'Cor da cabeça';
+  worksheet.getCell('E1').value = 'Cor do peito';
+  worksheet.getCell('F1').value = 'Cor do dorso';
+  worksheet.getCell('G1').value = 'Portas';
 
   const maiorQuantidade = Math.max(
     listas.especies.length,
     listas.sexos.length,
     listas.status.length,
-    listas.cores.length,
+    listas.coresCabeca.length,
+    listas.coresPeito.length,
+    listas.coresDorso.length,
     listas.portas.length,
     1,
   );
 
-  for (
-    let indice = 0;
-    indice < maiorQuantidade;
-    indice += 1
-  ) {
+  for (let indice = 0; indice < maiorQuantidade; indice += 1) {
     const linha = indice + 2;
 
-    worksheet.getCell(`A${linha}`).value =
-      listas.especies[indice] ?? '';
-
-    worksheet.getCell(`B${linha}`).value =
-      listas.sexos[indice] ?? '';
-
-    worksheet.getCell(`C${linha}`).value =
-      listas.status[indice] ?? '';
-
-    worksheet.getCell(`D${linha}`).value =
-      listas.cores[indice] ?? '';
-
-    worksheet.getCell(`E${linha}`).value =
-      listas.portas[indice] ?? '';
+    worksheet.getCell(`A${linha}`).value = listas.especies[indice] ?? '';
+    worksheet.getCell(`B${linha}`).value = listas.sexos[indice] ?? '';
+    worksheet.getCell(`C${linha}`).value = listas.status[indice] ?? '';
+    worksheet.getCell(`D${linha}`).value = listas.coresCabeca[indice] ?? '';
+    worksheet.getCell(`E${linha}`).value = listas.coresPeito[indice] ?? '';
+    worksheet.getCell(`F${linha}`).value = listas.coresDorso[indice] ?? '';
+    worksheet.getCell(`G${linha}`).value = listas.portas[indice] ?? '';
   }
 
   worksheet.columns = [
     { width: 25 },
     { width: 18 },
     { width: 20 },
+    { width: 25 },
+    { width: 25 },
     { width: 25 },
     { width: 18 },
   ];
@@ -371,29 +343,12 @@ function criarAbaListas(
     celula.alignment = {
       horizontal: 'center',
       vertical: 'middle',
+      wrapText: true,
     };
   });
 
-  // Oculta a aba auxiliar no arquivo final.
-  worksheet.state = 'hidden';
-}
-
-function criarNomeDefinido(
-  workbook: ExcelJS.Workbook,
-  nome: string,
-  coluna: string,
-  quantidadeItens: number,
-): void {
-  /*
-   * Mesmo quando não há itens cadastrados, mantemos uma célula
-   * de referência para evitar um intervalo inválido.
-   */
-  const ultimaLinha = Math.max(quantidadeItens + 1, 2);
-
-  workbook.definedNames.add(
-    nome,
-    `'Listas'!$${coluna}$2:$${coluna}$${ultimaLinha}`,
-  );
+  // Mantida visível nesta etapa para permitir a conferência das listas.
+  worksheet.state = 'visible';
 }
 
 function aplicarValidacaoLista(
@@ -401,13 +356,20 @@ function aplicarValidacaoLista(
   coluna: string,
   linhaInicial: number,
   linhaFinal: number,
-  referenciaLista: string,
+  colunaLista: string,
+  quantidadeItens: number,
 ): void {
+  // O intervalo sempre terá pelo menos a célula 2, evitando referência
+  // inválida quando determinada lista estiver vazia.
+  const ultimaLinha = Math.max(quantidadeItens + 1, 2);
+  const referenciaLista = `'Listas'!$${colunaLista}$2:$${colunaLista}$${ultimaLinha}`;
+
   for (let linha = linhaInicial; linha <= linhaFinal; linha += 1) {
     worksheet.getCell(`${coluna}${linha}`).dataValidation = {
       type: 'list',
       allowBlank: true,
       formulae: [referenciaLista],
+      // Permite selecionar uma opção ou digitar livremente outro valor.
       showErrorMessage: false,
       promptTitle: 'Lista de opções',
       prompt: 'Escolha uma opção ou digite um novo valor.',
@@ -420,18 +382,8 @@ function baixarArquivoExcel(
   buffer: ArrayBuffer | Uint8Array,
   nomeArquivo: string,
 ): void {
-  /*
-   * O ExcelJS pode retornar um Uint8Array cujo buffer interno
-   * é interpretado pelo TypeScript como ArrayBufferLike,
-   * incluindo SharedArrayBuffer.
-   *
-   * Criamos uma cópia explícita em um ArrayBuffer comum para
-   * garantir compatibilidade com o construtor Blob do navegador.
-   */
   const bytes =
-    buffer instanceof Uint8Array
-      ? buffer
-      : new Uint8Array(buffer);
+    buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
 
   const arrayBuffer = new ArrayBuffer(bytes.byteLength);
   const arrayBufferView = new Uint8Array(arrayBuffer);
@@ -466,7 +418,6 @@ export async function gerarPlanilhaAves(
   workbook.modified = new Date();
 
   const worksheet = workbook.addWorksheet('Aves');
-
   const linhas = aves.map(aveParaLinhaPlanilha);
 
   prepararPlanilhaAves(worksheet, linhas);
@@ -495,81 +446,70 @@ export async function gerarPlanilhaModeloAves(
   );
 
   prepararPlanilhaAves(worksheetAves, linhasModelo);
-
   criarAbaListas(workbook, listas);
-
-  const linhaInicialLista = 2;
-
-  const ultimaLinhaEspecies = Math.max(
-    listas.especies.length + linhaInicialLista - 1,
-    linhaInicialLista,
-  );
-  const ultimaLinhaSexos = Math.max(
-    listas.sexos.length + linhaInicialLista - 1,
-    linhaInicialLista,
-  );
-  const ultimaLinhaStatus = Math.max(
-    listas.status.length + linhaInicialLista - 1,
-    linhaInicialLista,
-  );
-  const ultimaLinhaCores = Math.max(
-    listas.cores.length + linhaInicialLista - 1,
-    linhaInicialLista,
-  );
 
   const linhaInicial = 2;
   const linhaFinal = quantidadeLinhas + 1;
 
+  // Espécie: coluna A da planilha principal, lista A da aba Listas.
   aplicarValidacaoLista(
     worksheetAves,
     'A',
     linhaInicial,
     linhaFinal,
-    `'Listas'!$A$${linhaInicialLista}:$A$${ultimaLinhaEspecies}`,
+    'A',
+    listas.especies.length,
   );
 
+  // Sexo: coluna E da planilha principal, lista B da aba Listas.
   aplicarValidacaoLista(
     worksheetAves,
     'E',
     linhaInicial,
     linhaFinal,
-    `'Listas'!$B$${linhaInicialLista}:$B$${ultimaLinhaSexos}`,
+    'B',
+    listas.sexos.length,
   );
 
+  // Status: coluna F da planilha principal, lista C da aba Listas.
   aplicarValidacaoLista(
     worksheetAves,
     'F',
     linhaInicial,
     linhaFinal,
-    `'Listas'!$C$${linhaInicialLista}:$C$${ultimaLinhaStatus}`,
+    'C',
+    listas.status.length,
   );
 
+  // Cor da cabeça: coluna I da planilha principal, lista D da aba Listas.
   aplicarValidacaoLista(
     worksheetAves,
     'I',
     linhaInicial,
     linhaFinal,
-    `'Listas'!$D$${linhaInicialLista}:$D$${ultimaLinhaCores}`,
+    'D',
+    listas.coresCabeca.length,
   );
 
+  // Cor do peito: coluna J da planilha principal, lista E da aba Listas.
   aplicarValidacaoLista(
     worksheetAves,
     'J',
     linhaInicial,
     linhaFinal,
-    `'Listas'!$D$${linhaInicialLista}:$D$${ultimaLinhaCores}`,
+    'E',
+    listas.coresPeito.length,
   );
 
+  // Cor do dorso: coluna K da planilha principal, lista F da aba Listas.
   aplicarValidacaoLista(
     worksheetAves,
     'K',
     linhaInicial,
     linhaFinal,
-    `'Listas'!$D$${linhaInicialLista}:$D$${ultimaLinhaCores}`,
+    'F',
+    listas.coresDorso.length,
   );
-
-  // A aba Listas permanece visível nesta etapa para conferência.
-  // Depois de confirmar o funcionamento, ela poderá ser ocultada.
 
   const buffer = await workbook.xlsx.writeBuffer();
 
