@@ -140,9 +140,9 @@ function aplicarBordas(row: ExcelJS.Row) {
 }
 
 /**
- * Define as células como texto.
+ * Define determinadas células como texto.
  *
- * Isso é essencial para preservar identificações como:
+ * Isso é importante para preservar identificações como:
  * 072, 001, 0008 etc.
  *
  * A anilha, o pai e a mãe não devem ser tratados como números.
@@ -172,6 +172,9 @@ function aplicarFormatoTexto(
 
 /**
  * Aplica uma lista suspensa utilizando um nome definido no Excel.
+ *
+ * A validação usa nomes definidos que apontam para os intervalos
+ * existentes na aba "Listas".
  */
 function aplicarListaSuspensa(
   worksheet: ExcelJS.Worksheet,
@@ -181,10 +184,12 @@ function aplicarListaSuspensa(
   nomeLista: string,
 ) {
   for (let linha = primeiraLinha; linha <= ultimaLinha; linha += 1) {
-    worksheet.getCell(`${coluna}${linha}`).dataValidation = {
+    const cell = worksheet.getCell(`${coluna}${linha}`);
+
+    cell.dataValidation = {
       type: "list",
       allowBlank: true,
-      formulae: [`=${nomeLista}`],
+      formulae: [nomeLista],
       showErrorMessage: false,
       showInputMessage: true,
       promptTitle: "Lista de referência",
@@ -259,6 +264,7 @@ function adicionarAbaListas(
     const letra = worksheet.getColumn(coluna).letter;
 
     const titulo = worksheet.getCell(`${letra}1`);
+
     titulo.value = lista.titulo;
     titulo.font = {
       bold: true,
@@ -491,8 +497,9 @@ export async function baixarPlanilhaModelo(
   );
 
   /*
-   * Também define o formato da coluna de anilha no cabeçalho.
+   * Define o formato de texto para as colunas inteiras.
    */
+  worksheet.getColumn("A").numFmt = "@";
   worksheet.getColumn("C").numFmt = "@";
   worksheet.getColumn("K").numFmt = "@";
   worksheet.getColumn("L").numFmt = "@";
@@ -509,21 +516,32 @@ export async function baixarPlanilhaModelo(
   );
 
   const pais = nomesAves(references.aves);
+
   const casais = nomesCasais(
     references.casais,
     references.aves,
   );
+
   const ninhos = nomesNinhos(references.ninhos);
+
   const coresCabeca = nomesCores(
     references.config.coresCabeca,
   );
+
   const coresPeito = nomesCores(
     references.config.coresPeito,
   );
+
   const coresDorso = nomesCores(
     references.config.coresDorso,
   );
 
+  /*
+   * Cria nomes definidos para os intervalos da aba Listas.
+   *
+   * Exemplo:
+   * ListaEspecies -> 'Listas'!$A$2:$A$200
+   */
   const definirLista = (
     nome: string,
     coluna: string,
@@ -544,23 +562,43 @@ export async function baixarPlanilhaModelo(
   definirLista("ListaPais", "E", pais.length);
   definirLista("ListaCasais", "F", casais.length);
   definirLista("ListaNinhos", "G", ninhos.length);
+
   definirLista(
     "ListaCoresCabeca",
     "H",
     coresCabeca.length,
   );
+
   definirLista(
     "ListaCoresPeito",
     "I",
     coresPeito.length,
   );
+
   definirLista(
     "ListaCoresDorso",
     "J",
     coresDorso.length,
   );
+
   definirLista("ListaAmas", "K", 2);
 
+  /*
+   * Listas suspensas:
+   *
+   * B = Espécie
+   * F = Sexo
+   * G = Status
+   * H = Criador
+   * K = Pai
+   * L = Mãe
+   * N = Ninho
+   * O = Criado por amas
+   * P = Casal de amas
+   * Q = Cor da cabeça
+   * R = Cor do peito
+   * S = Cor do dorso
+   */
   aplicarListaSuspensa(
     worksheet,
     "B",
@@ -657,6 +695,16 @@ export async function baixarPlanilhaModelo(
     "ListaAmas",
   );
 
+  /*
+   * Mantém a aba Listas visível para facilitar a compatibilidade
+   * com diferentes versões do Excel e do WPS.
+   */
+  const abaListas = workbook.getWorksheet("Listas");
+
+  if (abaListas) {
+    abaListas.state = "visible";
+  }
+
   const buffer = await workbook.xlsx.writeBuffer();
 
   const blob = new Blob([buffer], {
@@ -669,6 +717,7 @@ export async function baixarPlanilhaModelo(
   link.href = url;
   link.download =
     "modelo_importacao_aves_bird_manager.xlsx";
+
   link.click();
 
   URL.revokeObjectURL(url);
@@ -845,7 +894,10 @@ export async function lerPlanilhaAves(
     );
 
     resultado.push({
-      id: textoOuUndefined(valor(linha, "id")),
+      id: textoOuUndefined(
+        valor(linha, "id"),
+      ),
+
       species: textoOuUndefined(
         valor(linha, "especie"),
       ),
@@ -882,6 +934,7 @@ export async function lerPlanilhaAves(
 
       /*
        * Pai e mãe permanecem como texto.
+       *
        * O App.tsx fará a conversão da referência
        * para o ID interno da ave.
        */
