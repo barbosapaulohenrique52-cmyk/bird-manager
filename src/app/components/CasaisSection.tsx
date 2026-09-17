@@ -348,26 +348,13 @@ export function CasaisSection({
             onUpdateFilhote={onUpdateFilhote}
             onDeleteFilhote={onDeleteFilhote}
             ninhos={ninhos}
-            onRetornarAoNinho={(aveId) => {
-              const ninhoEncontrado = ninhos.find(ninho =>
-                ninho.eggs.some(egg => egg.filhoteId === aveId)
-              );
-
-              if (!ninhoEncontrado || !onDesfazerSaidaDoNinho) {
-                alert('Não foi possível localizar o registro original do filhote no ninho.');
+            onRetornarAoNinho={(ninhoId, eggIdx) => {
+              if (!onDesfazerSaidaDoNinho) {
+                alert('A função de retorno ao ninho não está disponível.');
                 return;
               }
 
-              const eggIdx = ninhoEncontrado.eggs.findIndex(
-                egg => egg.filhoteId === aveId
-              );
-
-              if (eggIdx < 0) {
-                alert('Não foi possível localizar o ovo correspondente.');
-                return;
-              }
-
-              onDesfazerSaidaDoNinho(ninhoEncontrado.id, eggIdx);
+              onDesfazerSaidaDoNinho(ninhoId, eggIdx);
             }}
           />
         )}
