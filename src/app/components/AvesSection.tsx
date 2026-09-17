@@ -555,8 +555,31 @@ export function AvesSection({
                         onClick={() => onViewDetails?.(ave.id)}
                         className="flex items-center gap-3 text-left"
                       >
-                        <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center overflow-hidden shrink-0">
-                          <i className="fas fa-dove text-emerald-500"></i>
+                        <div
+                          className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer"
+                          onClick={event => {
+                            event.stopPropagation();
+                            if (ave.photo) {
+                              onPhotoClick?.(ave.photo);
+                            }
+                          }}
+                          title={ave.photo ? 'Clique para ampliar a foto' : 'Ave sem foto'}
+                        >
+                          {ave.photo ? (
+                            <img
+                              src={ave.photo}
+                              alt={ave.name || ave.ring || 'Foto da ave'}
+                              className="w-full h-full object-cover"
+                              onError={event => {
+                                event.currentTarget.style.display = 'none';
+                                event.currentTarget.parentElement?.classList.add(
+                                  'bg-emerald-50'
+                                );
+                              }}
+                            />
+                          ) : (
+                            <i className="fas fa-dove text-emerald-500"></i>
+                          )}
                         </div>
 
                         <div>
