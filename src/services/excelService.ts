@@ -136,7 +136,7 @@ function obterListas(config?: Config, aves: Ave[] = []): ListasPlanilha {
       .filter((ave) => {
         const sexo = valorTexto(ave.sex)
           .normalize('NFD')
-          .replace(/[\\u0300-\\u036f]/g, '')
+          .replace(/[\u0300-\u036f]/g, '')
           .toLowerCase();
 
         return sexo === 'macho';
@@ -149,7 +149,7 @@ function obterListas(config?: Config, aves: Ave[] = []): ListasPlanilha {
       .filter((ave) => {
         const sexo = valorTexto(ave.sex)
           .normalize('NFD')
-          .replace(/[\\u0300-\\u036f]/g, '')
+          .replace(/[\u0300-\u036f]/g, '')
           .toLowerCase();
 
         return sexo === 'femea';
