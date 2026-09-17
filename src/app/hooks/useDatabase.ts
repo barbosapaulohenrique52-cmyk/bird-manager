@@ -787,6 +787,85 @@ export function useDatabase() {
     [db, save, colorLists]
   );
 
+  const importAves = useCallback(
+    (avesData: Array<Omit<Ave, 'id'>>) => {
+      if (!avesData.length) {
+        return 0;
+      }
+
+      const newDb: Database = {
+        ...db,
+        aves: [...db.aves],
+        config: {
+          ...db.config,
+          especies: [...db.config.especies]
+        }
+      };
+
+      const newColorLists = {
+        coresCabeca: [...colorLists.coresCabeca],
+        coresPeito: [...colorLists.coresPeito],
+        coresDorso: [...colorLists.coresDorso]
+      };
+
+      const baseId = Date.now();
+
+      avesData.forEach((aveData, index) => {
+        const novaAve: Ave = {
+          id: `${baseId}-${index}`,
+          ...aveData
+        };
+
+        newDb.aves.push(novaAve);
+
+        if (
+          aveData.species &&
+          aveData.species.trim() !== '' &&
+          !newDb.config.especies.includes(aveData.species)
+        ) {
+          newDb.config.especies.push(aveData.species);
+        }
+
+        if (
+          aveData.corCabeca &&
+          aveData.corCabeca.trim() !== '' &&
+          !newColorLists.coresCabeca.includes(aveData.corCabeca)
+        ) {
+          newColorLists.coresCabeca.push(aveData.corCabeca);
+        }
+
+        if (
+          aveData.corPeito &&
+          aveData.corPeito.trim() !== '' &&
+          !newColorLists.coresPeito.includes(aveData.corPeito)
+        ) {
+          newColorLists.coresPeito.push(aveData.corPeito);
+        }
+
+        if (
+          aveData.corDorso &&
+          aveData.corDorso.trim() !== '' &&
+          !newColorLists.coresDorso.includes(aveData.corDorso)
+        ) {
+          newColorLists.coresDorso.push(aveData.corDorso);
+        }
+      });
+
+      if (JSON.stringify(newColorLists) !== JSON.stringify(colorLists)) {
+        localStorage.setItem(
+          'gpro_v19_colors',
+          JSON.stringify(newColorLists)
+        );
+        setColorLists(newColorLists);
+      }
+
+      save(newDb);
+
+      return avesData.length;
+    },
+    [db, save, colorLists]
+  );
+
   const saveCasal = useCallback(
     (casalData: Omit<Casal, 'id'>) => {
       const newDb = { ...db };
@@ -2361,6 +2440,7 @@ export function useDatabase() {
     colorLists,
 
     saveAve,
+    importAves,
     saveCasal,
     saveNinho,
 
