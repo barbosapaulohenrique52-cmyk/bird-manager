@@ -275,6 +275,9 @@ export function NinhosSection({
   const [especieDropdownAberto, setEspecieDropdownAberto] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
   const [especieBusca, setEspecieBusca] = useState('');
 
+  // Estado da forma de visualização dos ovos. Por padrão, os ovos são agrupados por local.
+  const [modoVisualizacao, setModoVisualizacao] = useState<'local' | 'casal'>('local');
+
   // Estado para controlar quais ninhos estão expandidos
   const [ninhosExpandidos, setNinhosExpandidos] = useState<Set<string>>(new Set());
 
@@ -789,6 +792,34 @@ export function NinhosSection({
     a[0].localeCompare(b[0], 'pt-BR')
   );
 
+  // Agrupa os ovos por casal quando essa visualização é selecionada.
+  const ovosPorCasal = new Map<string, Array<{ egg: Egg; ninho: Ninho; eggIdx: number }>>();
+
+  ninhos.forEach((ninho) => {
+    ninho.eggs.forEach((egg, eggIdx) => {
+      const casal = casais.find((item) => item.id === ninho.casalId);
+      const macho = casal ? aves.find((ave) => ave.id === casal.mId) : undefined;
+      const femea = casal ? aves.find((ave) => ave.id === casal.fId) : undefined;
+      const nomeMacho = macho?.name || macho?.ring || 'Macho não definido';
+      const nomeFemea = femea?.name || femea?.ring || 'Fêmea não definida';
+      const chave = casal
+        ? `${nomeMacho} × ${nomeFemea}`
+        : 'Sem casal definido';
+
+      if (!ovosPorCasal.has(chave)) {
+        ovosPorCasal.set(chave, []);
+      }
+
+      ovosPorCasal.get(chave)!.push({ egg, ninho, eggIdx });
+    });
+  });
+
+  const gruposExibicao = modoVisualizacao === 'local'
+    ? locaisOrdenados
+    : Array.from(ovosPorCasal.entries()).sort((a, b) =>
+        a[0].localeCompare(b[0], 'pt-BR')
+      );
+
   return (
     <section className="space-y-6">
       <div className="flex justify-between items-center">
@@ -1079,16 +1110,46 @@ export function NinhosSection({
       {ninhos.some(n => n.eggs.length > 0) && (
         <div className="pt-2">
           <div className="flex flex-col gap-3 mb-4">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase italic">
-                Ovos por Local
+                Ovos por {modoVisualizacao === 'local' ? 'Local' : 'Casal'}
               </h2>
-              <span className="text-[10px] font-black text-slate-400 uppercase">
+              <span className="text-[10px] font-black text-slate-400 uppercase whitespace-nowrap">
                 {ninhos.reduce((total, ninho) => total + ninho.eggs.length, 0)} ovos
               </span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 bg-white border-2 border-slate-200 rounded-2xl p-2">
+              <div className="flex items-center gap-1 mr-1">
+                <span className="text-[9px] font-black text-slate-500 uppercase mr-1">Visualizar:</span>
+                <button
+                  type="button"
+                  onClick={() => setModoVisualizacao('local')}
+                  className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase transition-colors ${
+                    modoVisualizacao === 'local'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}
+                >
+                  <i className="fas fa-map-marker-alt mr-1"></i>
+                  Por local
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModoVisualizacao('casal')}
+                  className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase transition-colors ${
+                    modoVisualizacao === 'casal'
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                  }`}
+                >
+                  <i className="fas fa-heart mr-1"></i>
+                  Por casal
+                </button>
+              </div>
+
+              <div className="h-6 w-px bg-slate-200 hidden sm:block"></div>
+
               <label className="flex items-center gap-2 px-2 py-1.5 cursor-pointer">
                 <input
                   type="checkbox"
@@ -1130,23 +1191,34 @@ export function NinhosSection({
           </div>
 
           <div className="space-y-6">
-            {locaisOrdenados.map(([local, ovos]) => (
+            {gruposExibicao.map(([grupo, ovos]) => (
               <div
-                key={local}
+                key={grupo}
                 className="bg-white rounded-[24px] border-2 border-slate-200 overflow-hidden shadow-sm"
               >
                 <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 p-4">
                   <div className="flex items-center justify-between">
                     <div className="text-white">
                       <h3 className="text-sm font-black uppercase flex items-center gap-2">
-                        <i className="fas fa-map-marker-alt"></i>
-                        {local}
+                        <i className={`fas ${modoVisualizacao === 'local' ? 'fa-map-marker-alt' : 'fa-heart'}`}></i>
+                        {grupo}
                       </h3>
                       <p className="text-[10px] font-bold text-emerald-100 mt-1 uppercase">
                         {ovos.length} {ovos.length === 1 ? 'ovo' : 'ovos'}
                       </p>
                     </div>
-                    <i className="fas fa-egg text-white text-xl opacity-80"></i>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onAddEgg(ovos[0].ninho.id)}
+                        className="bg-white text-emerald-700 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg font-black text-[9px] uppercase shadow-sm transition-colors"
+                        title={`Adicionar ovo em ${modoVisualizacao === 'local' ? 'um ninho deste local' : 'um ninho deste casal'}`}
+                      >
+                        <i className="fas fa-plus mr-1"></i>
+                        Ovo
+                      </button>
+                      <i className="fas fa-egg text-white text-xl opacity-80"></i>
+                    </div>
                   </div>
                 </div>
 
