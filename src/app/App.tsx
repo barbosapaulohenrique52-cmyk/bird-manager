@@ -143,13 +143,74 @@ export interface Lancamento {
   casalId?: string;
 }
 
+/**
+ * Procura uma ave usando qualquer uma das referências que podem
+ * aparecer na planilha:
+ * - ID interno do sistema
+ * - número da anilha
+ * - nome da ave
+ *
+ * A comparação é feita como texto, preservando zeros à esquerda
+ * da anilha, por exemplo "072".
+ */
+const encontrarAvePorReferencia = (
+  referencia: string | undefined,
+  aves: Ave[],
+): Ave | undefined => {
+  if (referencia === undefined || referencia === null) {
+    return undefined;
+  }
+
+  const valorReferencia = String(referencia)
+    .trim()
+    .toLowerCase();
+
+  if (!valorReferencia) {
+    return undefined;
+  }
+
+  return aves.find((ave) => {
+    const referenciasAve = [
+      ave.id,
+      ave.ring,
+      ave.name,
+    ];
+
+    return referenciasAve.some((referenciaAve) => {
+      if (
+        referenciaAve === undefined ||
+        referenciaAve === null
+      ) {
+        return false;
+      }
+
+      return (
+        String(referenciaAve)
+          .trim()
+          .toLowerCase() === valorReferencia
+      );
+    });
+  });
+};
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>("ninhos");
-  const [modalType, setModalType] = useState<ModalType>(null);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
-  const [aveDetalheId, setAveDetalheId] = useState<string | null>(null);
-  const [importarAvesAberto, setImportarAvesAberto] = useState(false);
+  const [activeTab, setActiveTab] =
+    useState<TabType>("ninhos");
+
+  const [modalType, setModalType] =
+    useState<ModalType>(null);
+
+  const [editId, setEditId] =
+    useState<string | null>(null);
+
+  const [zoomPhoto, setZoomPhoto] =
+    useState<string | null>(null);
+
+  const [aveDetalheId, setAveDetalheId] =
+    useState<string | null>(null);
+
+  const [importarAvesAberto, setImportarAvesAberto] =
+    useState(false);
 
   const {
     db,
@@ -199,7 +260,9 @@ export default function App() {
     setEditId(null);
   };
 
-  const saveAvesLote = (avesLote: Partial<Ave>[]) => {
+  const saveAvesLote = (
+    avesLote: Partial<Ave>[],
+  ) => {
     avesLote.forEach((aveData) => {
       saveAve(aveData, null);
     });
@@ -213,27 +276,147 @@ export default function App() {
     setImportarAvesAberto(false);
   };
 
-  const importarAvesDaPlanilha = (avesImportadas: AveImportada[]) => {
+  /**
+   * Importa as aves da planilha.
+   *
+   * Importante:
+   * A planilha utiliza a anilha/nome como referência
+   * para pai e mãe, mas o banco do Bird Manager utiliza
+   * o ID interno da ave.
+   *
+   * Portanto:
+   * 1. Todas as aves novas recebem seus próprios IDs.
+   * 2. Procuramos pai/mãe entre aves já existentes e
+   *    entre as próprias aves importadas.
+   * 3. Gravamos no parentMaleId/parentFemaleId o ID interno
+   *    correto, e não o número da anilha.
+   */
+  const importarAvesDaPlanilha = (
+    avesImportadas: AveImportada[],
+  ) => {
     let quantidadeImportada = 0;
 
-    avesImportadas.forEach((aveImportada) => {
-      const { id: _id, ...dadosAve } = aveImportada;
+    /**
+     * Primeiro criamos os IDs das aves que serão importadas.
+     *
+     * Isso permite que uma ave importada possa ser mãe/pai
+     * de outra ave que também esteja na mesma planilha.
+     */
+    const avesImportadasComIds: Array<{
+      id: string;
+      dados: AveImportada;
+    }> = avesImportadas.map((aveImportada) => {
+      const novoId = Date.now().toString() +
+        Math.random().toString(36).slice(2, 8);
 
-      saveAve(dadosAve, null);
-      quantidadeImportada += 1;
+      return {
+        id: novoId,
+        dados: aveImportada,
+      };
     });
+
+    /**
+     * Montamos uma lista temporária contendo:
+     * - aves já cadastradas no sistema;
+     * - aves que estão sendo importadas.
+     *
+     * Assim conseguimos resolver referências entre
+     * registros antigos e novos.
+     */
+    const avesDisponiveis: Ave[] = [
+      ...db.aves,
+      ...avesImportadasComIds.map(
+        ({ id: novoId, dados: dadosAve }) => {
+          return {
+            ...dadosAve,
+            id: novoId,
+            species: dadosAve.species || "",
+            ring: dadosAve.ring || "",
+            ringYear: dadosAve.ringYear || 0,
+            name: dadosAve.name || "",
+            sex:
+              dadosAve.sex ||
+              "Indefinido",
+            status:
+              dadosAve.status ||
+              "Ativo",
+            creator:
+              dadosAve.creator || "",
+            acqYear:
+              dadosAve.acqYear || 0,
+          } as Ave;
+        },
+      ),
+    ];
+
+    /**
+     * Agora cada ave é salva já com os IDs internos
+     * corretos de pai e mãe.
+     */
+    avesImportadasComIds.forEach(
+      ({ id: novoId, dados: dadosAve }) => {
+        const avePai = encontrarAvePorReferencia(
+          dadosAve.parentMaleId,
+          avesDisponiveis,
+        );
+
+        const aveMae = encontrarAvePorReferencia(
+          dadosAve.parentFemaleId,
+          avesDisponiveis,
+        );
+
+        const {
+          id: _id,
+          parentMaleId: _parentMaleId,
+          parentFemaleId: _parentFemaleId,
+          ...restante
+        } = dadosAve;
+
+        const aveParaSalvar: Partial<Ave> = {
+          ...restante,
+          parentMaleId: avePai?.id,
+          parentFemaleId: aveMae?.id,
+        };
+
+        saveAve(aveParaSalvar, null);
+
+        quantidadeImportada += 1;
+
+        /**
+         * Atualizamos também a representação temporária
+         * para que referências posteriores possam encontrar
+         * corretamente esta ave.
+         */
+        const indiceAveDisponivel =
+          avesDisponiveis.findIndex(
+            (ave) => ave.id === novoId,
+          );
+
+        if (indiceAveDisponivel !== -1) {
+          avesDisponiveis[indiceAveDisponivel] = {
+            ...avesDisponiveis[indiceAveDisponivel],
+            ...aveParaSalvar,
+            id: novoId,
+          };
+        }
+      },
+    );
 
     setImportarAvesAberto(false);
 
     alert(
       `${quantidadeImportada} ${
-        quantidadeImportada === 1 ? "ave foi importada" : "aves foram importadas"
+        quantidadeImportada === 1
+          ? "ave foi importada"
+          : "aves foram importadas"
       } com sucesso.`,
     );
   };
 
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    const handleBeforeUnload = (
+      e: BeforeUnloadEvent,
+    ) => {
       if (
         db.aves.length > 0 ||
         db.casais.length > 0 ||
@@ -241,22 +424,34 @@ export default function App() {
         db.lancamentos.length > 0
       ) {
         e.preventDefault();
+
         e.returnValue =
           "Você tem dados não salvos. Não se esqueça de fazer backup dos seus dados antes de sair!";
+
         return e.returnValue;
       }
     };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener(
+      "beforeunload",
+      handleBeforeUnload,
+    );
 
     return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener(
+        "beforeunload",
+        handleBeforeUnload,
+      );
     };
   }, [db]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <Header onConfigClick={() => setActiveTab("config")} />
+      <Header
+        onConfigClick={() =>
+          setActiveTab("config")
+        }
+      />
 
       <Navigation
         activeTab={activeTab}
@@ -276,10 +471,18 @@ export default function App() {
             onUpdateEgg={updateEgg}
             onEclodirOvo={eclodirOvo}
             onAnilharFilhote={anilharFilhote}
-            onRegistrarSaidaDoNinho={registrarSaidaDoNinho}
-            onDesfazerSaidaDoNinho={desfazerSaidaDoNinho}
-            onReverterEclosao={reverterEclosao}
-            onUpdateNinhoCasal={updateNinhoCasal}
+            onRegistrarSaidaDoNinho={
+              registrarSaidaDoNinho
+            }
+            onDesfazerSaidaDoNinho={
+              desfazerSaidaDoNinho
+            }
+            onReverterEclosao={
+              reverterEclosao
+            }
+            onUpdateNinhoCasal={
+              updateNinhoCasal
+            }
             onSaveCasal={saveCasal}
             onDeleteNinho={deleteNinho}
             onUpdateNinho={updateNinho}
@@ -296,7 +499,9 @@ export default function App() {
             onDeleteAve={deleteAve}
             onPhotoClick={setZoomPhoto}
             onViewDetails={setAveDetalheId}
-            onOpenImportarPlanilha={abrirImportacaoPlanilha}
+            onOpenImportarPlanilha={
+              abrirImportacaoPlanilha
+            }
           />
         )}
 
@@ -307,9 +512,15 @@ export default function App() {
             onOpenModal={openModal}
             onDeleteCasal={deleteCasal}
             onUpdateCasal={updateCasal}
-            onAddFilhote={addFilhoteToHistorico}
-            onUpdateFilhote={updateFilhoteHistorico}
-            onDeleteFilhote={deleteFilhoteHistorico}
+            onAddFilhote={
+              addFilhoteToHistorico
+            }
+            onUpdateFilhote={
+              updateFilhoteHistorico
+            }
+            onDeleteFilhote={
+              deleteFilhoteHistorico
+            }
             onViewDetails={setAveDetalheId}
           />
         )}
@@ -320,16 +531,24 @@ export default function App() {
             casais={db.casais}
             ninhos={db.ninhos}
             config={db.config}
-            onNavigate={(tab) => setActiveTab(tab as TabType)}
+            onNavigate={(tab) =>
+              setActiveTab(tab as TabType)
+            }
           />
         )}
 
         {activeTab === "financeiro" && (
           <FinanceiroSection
             lancamentos={db.lancamentos}
-            onSaveLancamento={saveLancamento}
-            onDeleteLancamento={deleteLancamento}
-            onDeleteMultiple={deleteMultipleLancamentos}
+            onSaveLancamento={
+              saveLancamento
+            }
+            onDeleteLancamento={
+              deleteLancamento
+            }
+            onDeleteMultiple={
+              deleteMultipleLancamentos
+            }
           />
         )}
 
@@ -340,15 +559,23 @@ export default function App() {
             onExport={exportBackup}
             onImport={importBackup}
             onClear={clearEverything}
-            onSaveToGoogleDrive={saveBackupToGoogleDrive}
-            onImportFromGoogleDrive={importBackupFromGoogleDrive}
-            lastGoogleDriveBackup={lastGoogleDriveBackup}
+            onSaveToGoogleDrive={
+              saveBackupToGoogleDrive
+            }
+            onImportFromGoogleDrive={
+              importBackupFromGoogleDrive
+            }
+            lastGoogleDriveBackup={
+              lastGoogleDriveBackup
+            }
             onRestoreBackup={(data) => {
               importBackup(
                 new File(
                   [JSON.stringify(data)],
                   "restore.json",
-                  { type: "application/json" },
+                  {
+                    type: "application/json",
+                  },
                 ),
               );
             }}
@@ -369,7 +596,9 @@ export default function App() {
           onSaveAvesLote={saveAvesLote}
           onSaveCasal={saveCasal}
           onSaveNinho={saveNinho}
-          onUpdateNinhoCasal={updateNinhoCasal}
+          onUpdateNinhoCasal={
+            updateNinhoCasal
+          }
           onSaveConfig={saveConfig}
         />
       )}
@@ -380,26 +609,40 @@ export default function App() {
           casais={db.casais}
           ninhos={db.ninhos}
           config={db.config}
-          onClose={fecharImportacaoPlanilha}
-          onImportar={importarAvesDaPlanilha}
+          onClose={
+            fecharImportacaoPlanilha
+          }
+          onImportar={
+            importarAvesDaPlanilha
+          }
         />
       )}
 
       {zoomPhoto && (
         <PhotoZoom
           src={zoomPhoto}
-          onClose={() => setZoomPhoto(null)}
+          onClose={() =>
+            setZoomPhoto(null)
+          }
         />
       )}
 
       {aveDetalheId && (
         <AveDetalhesModal
-          ave={db.aves.find((a) => a.id === aveDetalheId)!}
+          ave={
+            db.aves.find(
+              (a) => a.id === aveDetalheId,
+            )!
+          }
           aves={db.aves}
           casais={db.casais}
           ninhos={db.ninhos}
-          onClose={() => setAveDetalheId(null)}
-          onNavigate={(id) => setAveDetalheId(id)}
+          onClose={() =>
+            setAveDetalheId(null)
+          }
+          onNavigate={(id) =>
+            setAveDetalheId(id)
+          }
           onPhotoClick={setZoomPhoto}
         />
       )}
