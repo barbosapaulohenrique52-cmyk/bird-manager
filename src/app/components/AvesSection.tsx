@@ -279,6 +279,20 @@ export function AvesSection({
     return mapa[sexo.toLowerCase()] || sexo;
   }
 
+  function simboloSexo(sexo?: string) {
+    const sexoNormalizado = sexo?.trim().toLowerCase();
+
+    if (sexoNormalizado === 'macho') {
+      return '♂';
+    }
+
+    if (sexoNormalizado === 'fêmea' || sexoNormalizado === 'femea') {
+      return '♀';
+    }
+
+    return '—';
+  }
+
   function formatarStatus(statusAve?: string) {
     if (!statusAve) return '-';
 
@@ -573,15 +587,11 @@ export function AvesSection({
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1250px] text-left">
+            <table className="w-full min-w-[900px] text-left">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
                     Ave
-                  </th>
-
-                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
-                    Anilha
                   </th>
 
                   <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
@@ -594,14 +604,6 @@ export function AvesSection({
 
                   <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
                     Cores
-                  </th>
-
-                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
-                    Criador
-                  </th>
-
-                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
-                    Aquisição
                   </th>
 
                   <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500 text-center">
@@ -670,23 +672,20 @@ export function AvesSection({
                       </button>
                     </td>
 
-                    <td className="px-4 py-4">
-                      <div>
-                        <p className="font-mono font-bold text-sm text-slate-700">
-                          {ave.ring || '-'}
-                        </p>
-
-                        {ave.ringYear && (
-                          <p className="text-[10px] text-slate-400">
-                            Ano: {ave.ringYear}
-                          </p>
-                        )}
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-4">
-                      <span className="text-xs font-bold text-slate-700">
-                        {formatarSexo(ave.sex)}
+                    <td className="px-4 py-4 text-center">
+                      <span
+                        className={`inline-flex items-center justify-center text-lg font-black leading-none ${
+                          ave.sex?.trim().toLowerCase() === 'macho'
+                            ? 'text-blue-500'
+                            : ave.sex?.trim().toLowerCase() === 'fêmea' ||
+                                ave.sex?.trim().toLowerCase() === 'femea'
+                              ? 'text-pink-500'
+                              : 'text-slate-400'
+                        }`}
+                        title={`Sexo: ${formatarSexo(ave.sex)}`}
+                        aria-label={`Sexo: ${formatarSexo(ave.sex)}`}
+                      >
+                        {simboloSexo(ave.sex)}
                       </span>
                     </td>
 
@@ -717,18 +716,6 @@ export function AvesSection({
                             {ave.corDorso || '-'}
                           </p>
                         </div>
-                    </td>
-
-                    <td className="px-4 py-4">
-                      <span className="text-xs text-slate-600">
-                        {ave.creator || '-'}
-                      </span>
-                    </td>
-
-                    <td className="px-4 py-4">
-                      <span className="text-xs text-slate-600">
-                        {ave.acqYear || '-'}
-                      </span>
                     </td>
 
                     <td className="px-4 py-4">
