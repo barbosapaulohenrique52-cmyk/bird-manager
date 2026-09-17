@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react';
-import type { Ave, ModalType, Config, CorAve } from '../App';
+import type { Ave, ModalType, Config } from '../App';
 import BirdColorDiagram from './BirdColorDiagram';
-import { gerarPlanilhaAves } from '../../services/excelService';
+import {
+  gerarPlanilhaAves,
+  gerarPlanilhaModeloAves
+} from '../../services/excelService';
 
 interface AvesSectionProps {
   aves: Ave[];
@@ -12,138 +15,6 @@ interface AvesSectionProps {
   onViewDetails?: (aveId: string) => void;
 }
 
-type FiltrosAves = {
-  status: string[];
-  especies: string[];
-  sexos: string[];
-  coresCabeca: string[];
-  coresPeito: string[];
-  coresDorso: string[];
-  anosAnilha: string[];
-  busca: string;
-};
-
-function obterHexDaCor(
-  nome: string | undefined,
-  cores: CorAve[] | undefined,
-  padrao: string
-): string {
-  if (!nome || !nome.trim()) return padrao;
-
-  const nomeNormalizado = nome.trim().toLowerCase();
-  const corEncontrada = (cores || []).find(
-    (cor) => cor.nome.trim().toLowerCase() === nomeNormalizado
-  );
-
-  return corEncontrada?.hex || padrao;
-}
-
-function obterValorAve(ave: Ave, campo: string): string {
-  const registro = ave as Ave & Record<string, unknown>;
-  const valor = registro[campo];
-
-  if (valor === null || valor === undefined) return '';
-  return String(valor);
-}
-
-interface FiltroMultiploProps {
-  label: string;
-  placeholder: string;
-  opcoes: string[];
-  selecionados: string[];
-  aberto: boolean;
-  onAbrir: () => void;
-  onAlternar: (valor: string) => void;
-  onSelecionarTodos: () => void;
-}
-
-function FiltroMultiplo({
-  label,
-  placeholder,
-  opcoes,
-  selecionados,
-  aberto,
-  onAbrir,
-  onAlternar,
-  onSelecionarTodos
-}: FiltroMultiploProps) {
-  const textoSelecionados = () => {
-    if (selecionados.length === 0) return placeholder;
-    if (selecionados.length === 1) return selecionados[0];
-    if (selecionados.length === opcoes.length) {
-      return `Todas (${opcoes.length})`;
-    }
-
-    return `${selecionados.length} selecionados`;
-  };
-
-  const todosSelecionados =
-    opcoes.length > 0 && selecionados.length === opcoes.length;
-
-  return (
-    <div className="relative">
-      <label className="block text-[9px] font-black text-slate-500 uppercase mb-1">
-        {label}
-      </label>
-
-      <button
-        type="button"
-        onClick={onAbrir}
-        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[10px] font-bold outline-none text-left flex items-center justify-between gap-2"
-      >
-        <span className="truncate">{textoSelecionados()}</span>
-
-        <i
-          className={`fas fa-chevron-down text-slate-400 transition-transform ${
-            aberto ? 'rotate-180' : ''
-          }`}
-        ></i>
-      </button>
-
-      {aberto && (
-        <div className="absolute z-40 mt-1 w-full min-w-[220px] bg-white border border-slate-200 rounded-xl shadow-xl p-2 max-h-64 overflow-y-auto">
-          <label className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-50 cursor-pointer border-b border-slate-100 mb-1">
-            <input
-              type="checkbox"
-              checked={todosSelecionados}
-              onChange={onSelecionarTodos}
-              className="accent-emerald-600"
-            />
-
-            <span className="text-[10px] font-black text-slate-700 uppercase">
-              {opcoes.length > 0 ? 'Selecionar todas' : 'Nenhuma opção'}
-            </span>
-          </label>
-
-          {opcoes.map((opcao) => (
-            <label
-              key={opcao}
-              className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-50 cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                checked={selecionados.includes(opcao)}
-                onChange={() => onAlternar(opcao)}
-                className="accent-emerald-600"
-              />
-
-              <span className="text-[10px] font-bold text-slate-700">
-                {opcao}
-              </span>
-            </label>
-          ))}
-
-          {opcoes.length === 0 && (
-            <p className="text-[10px] text-slate-400 font-bold p-2">
-              Nenhuma opção cadastrada.
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function AvesSection({
   aves,
   config,
@@ -152,509 +23,663 @@ export function AvesSection({
   onPhotoClick,
   onViewDetails
 }: AvesSectionProps) {
-  const [showFilters, setShowFilters] = useState(false);
-  const [filtroAberto, setFiltroAberto] = useState<string | null>(null);
+  const [busca, setBusca] = useState('');
+  const [filtroEspecie, setFiltroEspecie] = useState('');
+  const [filtroSexo, setFiltroSexo] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('');
+  const [filtroCorCabeca, setFiltroCorCabeca] = useState('');
+  const [filtroCorPeito, setFiltroCorPeito] = useState('');
+  const [filtroCorDorso, setFiltroCorDorso] = useState('');
+  const [filtroPorta, setFiltroPorta] = useState('');
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
 
-  const [filtros, setFiltros] = useState<FiltrosAves>({
-    status: [],
-    especies: [],
-    sexos: [],
-    coresCabeca: [],
-    coresPeito: [],
-    coresDorso: [],
-    anosAnilha: [],
-    busca: ''
-  });
+  const especies = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.species)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
 
-  const especies = useMemo(() => {
-    return Array.from(
-      new Set(aves.map((ave) => ave.species).filter(Boolean))
-    ).sort((a, b) => a.localeCompare(b));
-  }, [aves]);
+  const sexos = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.sex)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
 
-  const sexos = useMemo(() => {
-    return Array.from(
-      new Set(aves.map((ave) => obterValorAve(ave, 'sex')).filter(Boolean))
-    ).sort((a, b) => a.localeCompare(b));
-  }, [aves]);
+  const status = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.status)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
 
-  const anosAnilha = useMemo(() => {
-    return Array.from(
-      new Set(aves.map((ave) => String(ave.ringYear || '')).filter(Boolean))
-    ).sort((a, b) => b.localeCompare(a));
-  }, [aves]);
+  const coresCabeca = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.corCabeca)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
 
-  const coresCabeca = (config?.coresCabeca || []).map((cor) => cor.nome);
-  const coresPeito = (config?.coresPeito || []).map((cor) => cor.nome);
-  const coresDorso = (config?.coresDorso || []).map((cor) => cor.nome);
-  const statusOpcoes = ['Ativo', 'Vendido', 'Óbito', 'No Ninho'];
+  const coresPeito = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.corPeito)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
 
-  const alternarFiltro = (
-    campo: Exclude<keyof FiltrosAves, 'busca'>,
-    valor: string
-  ) => {
-    setFiltros((anterior) => {
-      const listaAtual = anterior[campo] as string[];
-      const existe = listaAtual.includes(valor);
+  const coresDorso = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.corDorso)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
 
-      return {
-        ...anterior,
-        [campo]: existe
-          ? listaAtual.filter((item) => item !== valor)
-          : [...listaAtual, valor]
-      };
-    });
-  };
+  const portas = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.porta)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
 
-  const selecionarTodos = (
-    campo: Exclude<keyof FiltrosAves, 'busca'>,
-    opcoes: string[]
-  ) => {
-    setFiltros((anterior) => {
-      const listaAtual = anterior[campo] as string[];
-      const todosSelecionados =
-        opcoes.length > 0 && listaAtual.length === opcoes.length;
+  const avesFiltradas = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
 
-      return {
-        ...anterior,
-        [campo]: todosSelecionados ? [] : [...opcoes]
-      };
-    });
-  };
+    return aves.filter(ave => {
+      const correspondeBusca =
+        !termo ||
+        [
+          ave.species,
+          ave.ring,
+          ave.name,
+          ave.sex,
+          ave.status,
+          ave.creator,
+          ave.ringYear,
+          ave.acqYear,
+          ave.corCabeca,
+          ave.corPeito,
+          ave.corDorso,
+          ave.nota,
+          ave.porta
+        ]
+          .filter(value => value !== undefined && value !== null)
+          .some(value =>
+            String(value).toLowerCase().includes(termo)
+          );
 
-  const limparFiltros = () => {
-    setFiltros({
-      status: [],
-      especies: [],
-      sexos: [],
-      coresCabeca: [],
-      coresPeito: [],
-      coresDorso: [],
-      anosAnilha: [],
-      busca: ''
-    });
+      const correspondeEspecie =
+        !filtroEspecie || ave.species === filtroEspecie;
 
-    setFiltroAberto(null);
-  };
+      const correspondeSexo =
+        !filtroSexo || ave.sex === filtroSexo;
 
-  const filteredAves = useMemo(() => {
-    const buscaNormalizada = filtros.busca.trim().toLowerCase();
+      const correspondeStatus =
+        !filtroStatus || ave.status === filtroStatus;
 
-    return aves.filter((ave) => {
-      const nome = (ave.name || '').toLowerCase();
-      const anilha = (ave.ring || '').toLowerCase();
-      const especie = (ave.species || '').toLowerCase();
-      const status = (ave.status || '').toLowerCase();
-      const sexo = obterValorAve(ave, 'sex').toLowerCase();
+      const correspondeCorCabeca =
+        !filtroCorCabeca || ave.corCabeca === filtroCorCabeca;
 
-      const buscaMatch =
-        !buscaNormalizada ||
-        nome.includes(buscaNormalizada) ||
-        anilha.includes(buscaNormalizada) ||
-        especie.includes(buscaNormalizada);
+      const correspondeCorPeito =
+        !filtroCorPeito || ave.corPeito === filtroCorPeito;
 
-      const statusMatch =
-        filtros.status.length === 0 ||
-        filtros.status.some((item) => item.toLowerCase() === status);
+      const correspondeCorDorso =
+        !filtroCorDorso || ave.corDorso === filtroCorDorso;
 
-      const especieMatch =
-        filtros.especies.length === 0 ||
-        filtros.especies.some(
-          (item) => item.toLowerCase() === especie
-        );
-
-      const sexoMatch =
-        filtros.sexos.length === 0 ||
-        filtros.sexos.some((item) => item.toLowerCase() === sexo);
-
-      const corCabeca = (ave.corCabeca || '').toLowerCase();
-      const corPeito = (ave.corPeito || '').toLowerCase();
-      const corDorso = (ave.corDorso || '').toLowerCase();
-
-      const corCabecaMatch =
-        filtros.coresCabeca.length === 0 ||
-        filtros.coresCabeca.some(
-          (item) => item.toLowerCase() === corCabeca
-        );
-
-      const corPeitoMatch =
-        filtros.coresPeito.length === 0 ||
-        filtros.coresPeito.some(
-          (item) => item.toLowerCase() === corPeito
-        );
-
-      const corDorsoMatch =
-        filtros.coresDorso.length === 0 ||
-        filtros.coresDorso.some(
-          (item) => item.toLowerCase() === corDorso
-        );
-
-      const anoAnilhaMatch =
-        filtros.anosAnilha.length === 0 ||
-        filtros.anosAnilha.includes(String(ave.ringYear || ''));
+      const correspondePorta =
+        !filtroPorta || ave.porta === filtroPorta;
 
       return (
-        buscaMatch &&
-        statusMatch &&
-        especieMatch &&
-        sexoMatch &&
-        corCabecaMatch &&
-        corPeitoMatch &&
-        corDorsoMatch &&
-        anoAnilhaMatch
+        correspondeBusca &&
+        correspondeEspecie &&
+        correspondeSexo &&
+        correspondeStatus &&
+        correspondeCorCabeca &&
+        correspondeCorPeito &&
+        correspondeCorDorso &&
+        correspondePorta
       );
     });
-  }, [aves, filtros]);
+  }, [
+    aves,
+    busca,
+    filtroEspecie,
+    filtroSexo,
+    filtroStatus,
+    filtroCorCabeca,
+    filtroCorPeito,
+    filtroCorDorso,
+    filtroPorta
+  ]);
 
   const quantidadeFiltrosAtivos = [
-    filtros.status.length > 0,
-    filtros.especies.length > 0,
-    filtros.sexos.length > 0,
-    filtros.coresCabeca.length > 0,
-    filtros.coresPeito.length > 0,
-    filtros.coresDorso.length > 0,
-    filtros.anosAnilha.length > 0,
-    Boolean(filtros.busca)
+    filtroEspecie,
+    filtroSexo,
+    filtroStatus,
+    filtroCorCabeca,
+    filtroCorPeito,
+    filtroCorDorso,
+    filtroPorta
   ].filter(Boolean).length;
 
-  const alternarDropdown = (nome: string) => {
-    setFiltroAberto((anterior) =>
-      anterior === nome ? null : nome
-    );
-  };
+  function limparFiltros() {
+    setBusca('');
+    setFiltroEspecie('');
+    setFiltroSexo('');
+    setFiltroStatus('');
+    setFiltroCorCabeca('');
+    setFiltroCorPeito('');
+    setFiltroCorDorso('');
+    setFiltroPorta('');
+  }
 
-  const handleDelete = (e: React.MouseEvent, aveId: string) => {
-    e.stopPropagation();
-    onDeleteAve(aveId);
-  };
+  function formatarSexo(sexo?: string) {
+    if (!sexo) return '-';
 
-  const handlePhotoClick = (
-    e: React.MouseEvent,
-    photoUrl: string
-  ) => {
-    e.stopPropagation();
-    onPhotoClick?.(photoUrl);
-  };
+    const mapa: Record<string, string> = {
+      macho: 'Macho',
+      fêmea: 'Fêmea',
+      femea: 'Fêmea',
+      indefinido: 'Indefinido'
+    };
+
+    return mapa[sexo.toLowerCase()] || sexo;
+  }
+
+  function formatarStatus(statusAve?: string) {
+    if (!statusAve) return '-';
+
+    const mapa: Record<string, string> = {
+      ativo: 'Ativo',
+      vendido: 'Vendido',
+      falecido: 'Falecido',
+      doado: 'Doado',
+      perdido: 'Perdido',
+      inativo: 'Inativo'
+    };
+
+    return mapa[statusAve.toLowerCase()] || statusAve;
+  }
+
+  function obterClasseStatus(statusAve?: string) {
+    const statusNormalizado = statusAve?.toLowerCase();
+
+    if (statusNormalizado === 'ativo') {
+      return 'bg-emerald-100 text-emerald-700';
+    }
+
+    if (statusNormalizado === 'vendido') {
+      return 'bg-blue-100 text-blue-700';
+    }
+
+    if (statusNormalizado === 'falecido') {
+      return 'bg-red-100 text-red-700';
+    }
+
+    if (statusNormalizado === 'doado') {
+      return 'bg-purple-100 text-purple-700';
+    }
+
+    if (statusNormalizado === 'perdido') {
+      return 'bg-orange-100 text-orange-700';
+    }
+
+    return 'bg-slate-100 text-slate-600';
+  }
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-          <div>
-            <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase italic">
-              Plantel
-            </h2>
+    <section className="space-y-5">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-slate-800">
+            Plantel de Aves
+          </h2>
 
-            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
-              {filteredAves.length} de {aves.length} aves encontradas
-            </p>
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`px-4 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 ${
-                showFilters || quantidadeFiltrosAtivos > 0
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-slate-200 text-slate-700'
-              }`}
-            >
-              <i className="fas fa-filter"></i>
-              FILTROS
-
-              {quantidadeFiltrosAtivos > 0 && (
-                <span className="bg-white text-emerald-700 rounded-full px-1.5 py-0.5 text-[9px]">
-                  {quantidadeFiltrosAtivos}
-                </span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onOpenModal('ave')}
-              className="bg-slate-800 text-white px-5 py-2.5 rounded-xl font-black text-[10px]"
-            >
-              ADICIONAR AVE
-            </button>
-
-            <button
-              type="button"
-              onClick={() => gerarPlanilhaAves(aves, config)}
-              className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2"
-              title="Gerar planilha Excel com todas as aves"
-            >
-              <i className="fas fa-file-excel"></i>
-              GERAR PLANILHA
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onOpenModal('aves-lote')}
-              className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2"
-            >
-              <i className="fas fa-layer-group"></i>
-              ADICIONAR EM LOTE
-            </button>
-          </div>
+          <p className="text-sm text-slate-500 mt-1">
+            Gerencie, consulte e exporte os registros do seu plantel.
+          </p>
         </div>
 
-        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="relative">
-            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setMostrarFiltros(value => !value)}
+            className={`px-4 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition ${
+              mostrarFiltros || quantidadeFiltrosAtivos > 0
+                ? 'bg-slate-800 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <i className="fas fa-filter"></i>
+            FILTROS
 
-            <input
-              type="text"
-              value={filtros.busca}
-              onChange={(e) =>
-                setFiltros((anterior) => ({
-                  ...anterior,
-                  busca: e.target.value
-                }))
-              }
-              placeholder="Buscar por nome, anilha ou espécie..."
-              className="w-full bg-slate-50 rounded-xl py-3 pl-10 pr-4 text-[11px] font-bold uppercase outline-none border border-transparent focus:border-emerald-300"
-            />
-          </div>
+            {quantidadeFiltrosAtivos > 0 && (
+              <span className="bg-white text-slate-800 rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
+                {quantidadeFiltrosAtivos}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onOpenModal('ave')}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+          >
+            <i className="fas fa-plus"></i>
+            ADICIONAR AVE
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onOpenModal('lote' as ModalType)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+          >
+            <i className="fas fa-layer-group"></i>
+            ADICIONAR EM LOTE
+          </button>
+
+          <button
+            type="button"
+            onClick={() => gerarPlanilhaAves(aves, config)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+          >
+            <i className="fas fa-file-excel"></i>
+            GERAR PLANILHA
+          </button>
+
+          <button
+            type="button"
+            onClick={() => gerarPlanilhaModeloAves(config)}
+            className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+          >
+            <i className="fas fa-file-download"></i>
+            BAIXAR MODELO
+          </button>
         </div>
-
-        {showFilters && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="text-xs font-black text-slate-800 uppercase">
-                  Filtrar plantel
-                </h3>
-
-                <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">
-                  Selecione uma ou várias opções em cada filtro
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={limparFiltros}
-                className="text-[10px] font-black text-red-500 uppercase hover:text-red-700"
-              >
-                <i className="fas fa-eraser mr-1"></i>
-                Limpar filtros
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <FiltroMultiplo
-                label="Status"
-                placeholder="Todos os status"
-                opcoes={statusOpcoes}
-                selecionados={filtros.status}
-                aberto={filtroAberto === 'status'}
-                onAbrir={() => alternarDropdown('status')}
-                onAlternar={(valor) => alternarFiltro('status', valor)}
-                onSelecionarTodos={() =>
-                  selecionarTodos('status', statusOpcoes)
-                }
-              />
-
-              <FiltroMultiplo
-                label="Espécie"
-                placeholder="Todas as espécies"
-                opcoes={especies}
-                selecionados={filtros.especies}
-                aberto={filtroAberto === 'especies'}
-                onAbrir={() => alternarDropdown('especies')}
-                onAlternar={(valor) => alternarFiltro('especies', valor)}
-                onSelecionarTodos={() =>
-                  selecionarTodos('especies', especies)
-                }
-              />
-
-              <FiltroMultiplo
-                label="Sexo"
-                placeholder="Todos os sexos"
-                opcoes={sexos}
-                selecionados={filtros.sexos}
-                aberto={filtroAberto === 'sexos'}
-                onAbrir={() => alternarDropdown('sexos')}
-                onAlternar={(valor) => alternarFiltro('sexos', valor)}
-                onSelecionarTodos={() =>
-                  selecionarTodos('sexos', sexos)
-                }
-              />
-
-              <FiltroMultiplo
-                label="Ano da anilha"
-                placeholder="Todos os anos"
-                opcoes={anosAnilha}
-                selecionados={filtros.anosAnilha}
-                aberto={filtroAberto === 'anosAnilha'}
-                onAbrir={() => alternarDropdown('anosAnilha')}
-                onAlternar={(valor) =>
-                  alternarFiltro('anosAnilha', valor)
-                }
-                onSelecionarTodos={() =>
-                  selecionarTodos('anosAnilha', anosAnilha)
-                }
-              />
-
-              <FiltroMultiplo
-                label="Cor da cabeça"
-                placeholder="Todas as cores"
-                opcoes={coresCabeca}
-                selecionados={filtros.coresCabeca}
-                aberto={filtroAberto === 'coresCabeca'}
-                onAbrir={() => alternarDropdown('coresCabeca')}
-                onAlternar={(valor) =>
-                  alternarFiltro('coresCabeca', valor)
-                }
-                onSelecionarTodos={() =>
-                  selecionarTodos('coresCabeca', coresCabeca)
-                }
-              />
-
-              <FiltroMultiplo
-                label="Cor do peito"
-                placeholder="Todas as cores"
-                opcoes={coresPeito}
-                selecionados={filtros.coresPeito}
-                aberto={filtroAberto === 'coresPeito'}
-                onAbrir={() => alternarDropdown('coresPeito')}
-                onAlternar={(valor) =>
-                  alternarFiltro('coresPeito', valor)
-                }
-                onSelecionarTodos={() =>
-                  selecionarTodos('coresPeito', coresPeito)
-                }
-              />
-
-              <FiltroMultiplo
-                label="Cor do dorso"
-                placeholder="Todas as cores"
-                opcoes={coresDorso}
-                selecionados={filtros.coresDorso}
-                aberto={filtroAberto === 'coresDorso'}
-                onAbrir={() => alternarDropdown('coresDorso')}
-                onAlternar={(valor) =>
-                  alternarFiltro('coresDorso', valor)
-                }
-                onSelecionarTodos={() =>
-                  selecionarTodos('coresDorso', coresDorso)
-                }
-              />
-            </div>
-          </div>
-        )}
       </div>
 
-      <div className="space-y-2">
-        {filteredAves.map((ave) => {
-          const hexCabeca = obterHexDaCor(
-            ave.corCabeca,
-            config?.coresCabeca,
-            '#f1f3f5'
-          );
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+        <div className="relative">
+          <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
 
-          const hexPeito = obterHexDaCor(
-            ave.corPeito,
-            config?.coresPeito,
-            '#f1f3f5'
-          );
+          <input
+            type="text"
+            value={busca}
+            onChange={event => setBusca(event.target.value)}
+            placeholder="Buscar por espécie, anilha, nome, sexo, status, criador..."
+            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+          />
+        </div>
 
-          const hexDorso = obterHexDaCor(
-            ave.corDorso,
-            config?.coresDorso,
-            '#f1f3f5'
-          );
-
-          return (
-            <div
-              key={ave.id}
-              className="bg-white rounded-xl border border-slate-100 p-2 flex items-center gap-3 shadow-sm"
-            >
-              <div className="shrink-0">
-                {ave.photo ? (
-                  <img
-                    src={ave.photo}
-                    alt={ave.name}
-                    className="w-10 h-10 rounded-lg object-cover cursor-pointer"
-                    onClick={(e) => handlePhotoClick(e, ave.photo!)}
-                  />
-                ) : (
-                  <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                    <i className="fas fa-kiwi-bird text-slate-400"></i>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <button
-                  onClick={() => onViewDetails?.(ave.id)}
-                  className="font-black text-[11px] text-emerald-600 uppercase underline text-left"
-                >
-                  {ave.name || 'S/NOME'}
-                </button>
-
-                <p className="text-[8px] text-slate-400 font-bold">
-                  {ave.species} • {ave.ring || 'S/A'} •{' '}
-                  {ave.ringYear || '--'}
-                </p>
-
-                <span className="text-[8px] font-black">
-                  {ave.status}
-                </span>
-              </div>
-
-              <div
-                className="w-16 h-16 shrink-0 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-100"
-                title="Representação visual das cores"
+        {mostrarFiltros && (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+              <select
+                value={filtroEspecie}
+                onChange={event => setFiltroEspecie(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                <BirdColorDiagram
-                  corCabeca={hexCabeca}
-                  corPeito={hexPeito}
-                  corDorso={hexDorso}
-                  className="w-14 h-14"
-                />
-              </div>
+                <option value="">Todas as espécies</option>
 
-              <button
-                onClick={() => onOpenModal('ave', ave.id)}
-                className="bg-slate-100 px-2 py-1 rounded-lg shrink-0"
-                title="Editar ave"
-              >
-                <i className="fas fa-edit"></i>
-              </button>
+                {especies.map(especie => (
+                  <option key={especie} value={especie}>
+                    {especie}
+                  </option>
+                ))}
+              </select>
 
-              <button
-                onClick={(e) => handleDelete(e, ave.id)}
-                className="bg-red-500 text-white px-2 py-1 rounded-lg shrink-0"
-                title="Excluir ave"
+              <select
+                value={filtroSexo}
+                onChange={event => setFiltroSexo(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                <i className="fas fa-trash-alt"></i>
-              </button>
+                <option value="">Todos os sexos</option>
+
+                {sexos.map(sexo => (
+                  <option key={sexo} value={sexo}>
+                    {formatarSexo(sexo)}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroStatus}
+                onChange={event => setFiltroStatus(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Todos os status</option>
+
+                {status.map(statusAve => (
+                  <option key={statusAve} value={statusAve}>
+                    {formatarStatus(statusAve)}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroCorCabeca}
+                onChange={event => setFiltroCorCabeca(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Cor da cabeça</option>
+
+                {coresCabeca.map(cor => (
+                  <option key={cor} value={cor}>
+                    {cor}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroCorPeito}
+                onChange={event => setFiltroCorPeito(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Cor do peito</option>
+
+                {coresPeito.map(cor => (
+                  <option key={cor} value={cor}>
+                    {cor}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroCorDorso}
+                onChange={event => setFiltroCorDorso(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Cor do dorso</option>
+
+                {coresDorso.map(cor => (
+                  <option key={cor} value={cor}>
+                    {cor}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroPorta}
+                onChange={event => setFiltroPorta(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Todas as portas</option>
+
+                {portas.map(porta => (
+                  <option key={porta} value={porta}>
+                    {porta}
+                  </option>
+                ))}
+              </select>
             </div>
-          );
-        })}
-
-        {filteredAves.length === 0 && (
-          <div className="bg-white rounded-xl border border-dashed border-slate-200 p-8 text-center">
-            <i className="fas fa-dove text-2xl text-slate-300 mb-2"></i>
-
-            <p className="text-xs font-bold text-slate-400">
-              Nenhuma ave encontrada.
-            </p>
 
             {quantidadeFiltrosAtivos > 0 && (
               <button
                 type="button"
                 onClick={limparFiltros}
-                className="mt-3 text-[10px] font-black text-emerald-600 uppercase"
+                className="mt-3 text-xs font-bold text-red-600 hover:text-red-700"
               >
-                Limpar filtros e mostrar todas
+                <i className="fas fa-times mr-1"></i>
+                Limpar filtros
               </button>
             )}
           </div>
         )}
       </div>
+
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold text-slate-500">
+          Exibindo {avesFiltradas.length} de {aves.length} aves
+        </p>
+
+        {avesFiltradas.length > 0 && (
+          <p className="text-xs text-slate-400">
+            Clique em uma ave para visualizar os detalhes
+          </p>
+        )}
+      </div>
+
+      {avesFiltradas.length === 0 ? (
+        <div className="bg-white border border-dashed border-slate-300 rounded-2xl py-16 px-6 text-center">
+          <div className="w-16 h-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-4">
+            <i className="fas fa-dove text-2xl text-slate-400"></i>
+          </div>
+
+          <h3 className="text-lg font-black text-slate-700">
+            {aves.length === 0
+              ? 'Nenhuma ave cadastrada'
+              : 'Nenhuma ave encontrada'}
+          </h3>
+
+          <p className="text-sm text-slate-500 mt-2">
+            {aves.length === 0
+              ? 'Comece cadastrando a primeira ave do seu plantel.'
+              : 'Tente alterar os filtros ou o termo de busca.'}
+          </p>
+
+          {aves.length === 0 && (
+            <button
+              type="button"
+              onClick={() => onOpenModal('ave')}
+              className="mt-5 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black text-xs"
+            >
+              <i className="fas fa-plus mr-2"></i>
+              CADASTRAR PRIMEIRA AVE
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1250px] text-left">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
+                    Ave
+                  </th>
+
+                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
+                    Anilha
+                  </th>
+
+                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
+                    Sexo
+                  </th>
+
+                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
+                    Status
+                  </th>
+
+                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
+                    Cores
+                  </th>
+
+                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
+                    Criador
+                  </th>
+
+                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500">
+                    Aquisição
+                  </th>
+
+                  <th className="px-4 py-4 text-[10px] font-black uppercase text-slate-500 text-center">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-100">
+                {avesFiltradas.map(ave => (
+                  <tr
+                    key={ave.id}
+                    className="hover:bg-slate-50 transition"
+                  >
+                    <td className="px-4 py-4">
+                      <button
+                        type="button"
+                        onClick={() => onViewDetails?.(ave.id)}
+                        className="flex items-center gap-3 text-left"
+                      >
+                        <div className="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center overflow-hidden shrink-0">
+                          <i className="fas fa-dove text-emerald-500"></i>
+                        </div>
+
+                        <div>
+                          <p className="font-black text-sm text-slate-800">
+                            {ave.name || 'Sem nome'}
+                          </p>
+
+                          <p className="text-[11px] text-slate-500">
+                            {ave.species || '-'}
+                          </p>
+                        </div>
+                      </button>
+                    </td>
+
+                    <td className="px-4 py-4">
+                      <div>
+                        <p className="font-mono font-bold text-sm text-slate-700">
+                          {ave.ring || '-'}
+                        </p>
+
+                        {ave.ringYear && (
+                          <p className="text-[10px] text-slate-400">
+                            Ano: {ave.ringYear}
+                          </p>
+                        )}
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-4">
+                      <span className="text-xs font-bold text-slate-700">
+                        {formatarSexo(ave.sex)}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-4">
+                      <span
+                        className={`inline-flex px-2.5 py-1 rounded-full text-[10px] font-black ${obterClasseStatus(
+                          ave.status
+                        )}`}
+                      >
+                        {formatarStatus(ave.status)}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-16 h-16 shrink-0">
+                          <BirdColorDiagram
+                            corCabeca={ave.corCabeca}
+                            corPeito={ave.corPeito}
+                            corDorso={ave.corDorso}
+                            className="w-full h-full"
+                          />
+                        </div>
+
+                        <div className="text-[10px] text-slate-500 leading-4">
+                          <p>
+                            <strong>C:</strong>{' '}
+                            {ave.corCabeca || '-'}
+                          </p>
+
+                          <p>
+                            <strong>P:</strong>{' '}
+                            {ave.corPeito || '-'}
+                          </p>
+
+                          <p>
+                            <strong>D:</strong>{' '}
+                            {ave.corDorso || '-'}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-4">
+                      <span className="text-xs text-slate-600">
+                        {ave.creator || '-'}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-4">
+                      <span className="text-xs text-slate-600">
+                        {ave.acqYear || '-'}
+                      </span>
+                    </td>
+
+                    <td className="px-4 py-4">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => onViewDetails?.(ave.id)}
+                          title="Visualizar detalhes"
+                          className="w-8 h-8 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
+                        >
+                          <i className="fas fa-eye text-xs"></i>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onOpenModal('ave', ave.id)}
+                          title="Editar ave"
+                          className="w-8 h-8 rounded-lg text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition"
+                        >
+                          <i className="fas fa-pen text-xs"></i>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onDeleteAve(ave.id)}
+                          title="Excluir ave"
+                          className="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition"
+                        >
+                          <i className="fas fa-trash text-xs"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
-
-export default AvesSection;
