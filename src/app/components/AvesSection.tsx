@@ -9,7 +9,6 @@ interface AvesSectionProps {
   onDeleteAve: (id: string) => void;
   onPhotoClick?: (photoUrl: string) => void;
   onViewDetails?: (aveId: string) => void;
-  onOpenImportarPlanilha: () => void;
 }
 
 type FiltrosAves = {
@@ -70,7 +69,10 @@ function FiltroMultiplo({
   const textoSelecionados = () => {
     if (selecionados.length === 0) return placeholder;
     if (selecionados.length === 1) return selecionados[0];
-    if (selecionados.length === opcoes.length) return `Todas (${opcoes.length})`;
+    if (selecionados.length === opcoes.length) {
+      return `Todas (${opcoes.length})`;
+    }
+
     return `${selecionados.length} selecionados`;
   };
 
@@ -89,6 +91,7 @@ function FiltroMultiplo({
         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-[10px] font-bold outline-none text-left flex items-center justify-between gap-2"
       >
         <span className="truncate">{textoSelecionados()}</span>
+
         <i
           className={`fas fa-chevron-down text-slate-400 transition-transform ${
             aberto ? 'rotate-180' : ''
@@ -105,6 +108,7 @@ function FiltroMultiplo({
               onChange={onSelecionarTodos}
               className="accent-emerald-600"
             />
+
             <span className="text-[10px] font-black text-slate-700 uppercase">
               {opcoes.length > 0 ? 'Selecionar todas' : 'Nenhuma opção'}
             </span>
@@ -121,6 +125,7 @@ function FiltroMultiplo({
                 onChange={() => onAlternar(opcao)}
                 className="accent-emerald-600"
               />
+
               <span className="text-[10px] font-bold text-slate-700">
                 {opcao}
               </span>
@@ -144,8 +149,7 @@ export function AvesSection({
   onOpenModal,
   onDeleteAve,
   onPhotoClick,
-  onViewDetails,
-  onOpenImportarPlanilha
+  onViewDetails
 }: AvesSectionProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [filtroAberto, setFiltroAberto] = useState<string | null>(null);
@@ -228,6 +232,7 @@ export function AvesSection({
       anosAnilha: [],
       busca: ''
     });
+
     setFiltroAberto(null);
   };
 
@@ -267,15 +272,21 @@ export function AvesSection({
 
       const corCabecaMatch =
         filtros.coresCabeca.length === 0 ||
-        filtros.coresCabeca.some((item) => item.toLowerCase() === corCabeca);
+        filtros.coresCabeca.some(
+          (item) => item.toLowerCase() === corCabeca
+        );
 
       const corPeitoMatch =
         filtros.coresPeito.length === 0 ||
-        filtros.coresPeito.some((item) => item.toLowerCase() === corPeito);
+        filtros.coresPeito.some(
+          (item) => item.toLowerCase() === corPeito
+        );
 
       const corDorsoMatch =
         filtros.coresDorso.length === 0 ||
-        filtros.coresDorso.some((item) => item.toLowerCase() === corDorso);
+        filtros.coresDorso.some(
+          (item) => item.toLowerCase() === corDorso
+        );
 
       const anoAnilhaMatch =
         filtros.anosAnilha.length === 0 ||
@@ -306,7 +317,9 @@ export function AvesSection({
   ].filter(Boolean).length;
 
   const alternarDropdown = (nome: string) => {
-    setFiltroAberto((anterior) => (anterior === nome ? null : nome));
+    setFiltroAberto((anterior) =>
+      anterior === nome ? null : nome
+    );
   };
 
   const handleDelete = (e: React.MouseEvent, aveId: string) => {
@@ -314,7 +327,10 @@ export function AvesSection({
     onDeleteAve(aveId);
   };
 
-  const handlePhotoClick = (e: React.MouseEvent, photoUrl: string) => {
+  const handlePhotoClick = (
+    e: React.MouseEvent,
+    photoUrl: string
+  ) => {
     e.stopPropagation();
     onPhotoClick?.(photoUrl);
   };
@@ -327,6 +343,7 @@ export function AvesSection({
             <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase italic">
               Plantel
             </h2>
+
             <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">
               {filteredAves.length} de {aves.length} aves encontradas
             </p>
@@ -343,6 +360,7 @@ export function AvesSection({
             >
               <i className="fas fa-filter"></i>
               FILTROS
+
               {quantidadeFiltrosAtivos > 0 && (
                 <span className="bg-white text-emerald-700 rounded-full px-1.5 py-0.5 text-[9px]">
                   {quantidadeFiltrosAtivos}
@@ -366,21 +384,13 @@ export function AvesSection({
               <i className="fas fa-layer-group"></i>
               ADICIONAR EM LOTE
             </button>
-
-            <button
-              type="button"
-              onClick={onOpenImportarPlanilha}
-              className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2"
-            >
-              <i className="fas fa-file-excel"></i>
-              IMPORTAR PLANILHA
-            </button>
           </div>
         </div>
 
         <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
           <div className="relative">
             <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+
             <input
               type="text"
               value={filtros.busca}
@@ -403,6 +413,7 @@ export function AvesSection({
                 <h3 className="text-xs font-black text-slate-800 uppercase">
                   Filtrar plantel
                 </h3>
+
                 <p className="text-[9px] text-slate-400 font-bold uppercase mt-1">
                   Selecione uma ou várias opções em cada filtro
                 </p>
@@ -427,7 +438,9 @@ export function AvesSection({
                 aberto={filtroAberto === 'status'}
                 onAbrir={() => alternarDropdown('status')}
                 onAlternar={(valor) => alternarFiltro('status', valor)}
-                onSelecionarTodos={() => selecionarTodos('status', statusOpcoes)}
+                onSelecionarTodos={() =>
+                  selecionarTodos('status', statusOpcoes)
+                }
               />
 
               <FiltroMultiplo
@@ -438,7 +451,9 @@ export function AvesSection({
                 aberto={filtroAberto === 'especies'}
                 onAbrir={() => alternarDropdown('especies')}
                 onAlternar={(valor) => alternarFiltro('especies', valor)}
-                onSelecionarTodos={() => selecionarTodos('especies', especies)}
+                onSelecionarTodos={() =>
+                  selecionarTodos('especies', especies)
+                }
               />
 
               <FiltroMultiplo
@@ -449,7 +464,9 @@ export function AvesSection({
                 aberto={filtroAberto === 'sexos'}
                 onAbrir={() => alternarDropdown('sexos')}
                 onAlternar={(valor) => alternarFiltro('sexos', valor)}
-                onSelecionarTodos={() => selecionarTodos('sexos', sexos)}
+                onSelecionarTodos={() =>
+                  selecionarTodos('sexos', sexos)
+                }
               />
 
               <FiltroMultiplo
@@ -459,8 +476,12 @@ export function AvesSection({
                 selecionados={filtros.anosAnilha}
                 aberto={filtroAberto === 'anosAnilha'}
                 onAbrir={() => alternarDropdown('anosAnilha')}
-                onAlternar={(valor) => alternarFiltro('anosAnilha', valor)}
-                onSelecionarTodos={() => selecionarTodos('anosAnilha', anosAnilha)}
+                onAlternar={(valor) =>
+                  alternarFiltro('anosAnilha', valor)
+                }
+                onSelecionarTodos={() =>
+                  selecionarTodos('anosAnilha', anosAnilha)
+                }
               />
 
               <FiltroMultiplo
@@ -470,8 +491,12 @@ export function AvesSection({
                 selecionados={filtros.coresCabeca}
                 aberto={filtroAberto === 'coresCabeca'}
                 onAbrir={() => alternarDropdown('coresCabeca')}
-                onAlternar={(valor) => alternarFiltro('coresCabeca', valor)}
-                onSelecionarTodos={() => selecionarTodos('coresCabeca', coresCabeca)}
+                onAlternar={(valor) =>
+                  alternarFiltro('coresCabeca', valor)
+                }
+                onSelecionarTodos={() =>
+                  selecionarTodos('coresCabeca', coresCabeca)
+                }
               />
 
               <FiltroMultiplo
@@ -481,8 +506,12 @@ export function AvesSection({
                 selecionados={filtros.coresPeito}
                 aberto={filtroAberto === 'coresPeito'}
                 onAbrir={() => alternarDropdown('coresPeito')}
-                onAlternar={(valor) => alternarFiltro('coresPeito', valor)}
-                onSelecionarTodos={() => selecionarTodos('coresPeito', coresPeito)}
+                onAlternar={(valor) =>
+                  alternarFiltro('coresPeito', valor)
+                }
+                onSelecionarTodos={() =>
+                  selecionarTodos('coresPeito', coresPeito)
+                }
               />
 
               <FiltroMultiplo
@@ -492,8 +521,12 @@ export function AvesSection({
                 selecionados={filtros.coresDorso}
                 aberto={filtroAberto === 'coresDorso'}
                 onAbrir={() => alternarDropdown('coresDorso')}
-                onAlternar={(valor) => alternarFiltro('coresDorso', valor)}
-                onSelecionarTodos={() => selecionarTodos('coresDorso', coresDorso)}
+                onAlternar={(valor) =>
+                  alternarFiltro('coresDorso', valor)
+                }
+                onSelecionarTodos={() =>
+                  selecionarTodos('coresDorso', coresDorso)
+                }
               />
             </div>
           </div>
@@ -507,11 +540,13 @@ export function AvesSection({
             config?.coresCabeca,
             '#f1f3f5'
           );
+
           const hexPeito = obterHexDaCor(
             ave.corPeito,
             config?.coresPeito,
             '#f1f3f5'
           );
+
           const hexDorso = obterHexDaCor(
             ave.corDorso,
             config?.coresDorso,
@@ -545,10 +580,15 @@ export function AvesSection({
                 >
                   {ave.name || 'S/NOME'}
                 </button>
+
                 <p className="text-[8px] text-slate-400 font-bold">
-                  {ave.species} • {ave.ring || 'S/A'} • {ave.ringYear || '--'}
+                  {ave.species} • {ave.ring || 'S/A'} •{' '}
+                  {ave.ringYear || '--'}
                 </p>
-                <span className="text-[8px] font-black">{ave.status}</span>
+
+                <span className="text-[8px] font-black">
+                  {ave.status}
+                </span>
               </div>
 
               <div
@@ -585,9 +625,11 @@ export function AvesSection({
         {filteredAves.length === 0 && (
           <div className="bg-white rounded-xl border border-dashed border-slate-200 p-8 text-center">
             <i className="fas fa-dove text-2xl text-slate-300 mb-2"></i>
+
             <p className="text-xs font-bold text-slate-400">
               Nenhuma ave encontrada.
             </p>
+
             {quantidadeFiltrosAtivos > 0 && (
               <button
                 type="button"
