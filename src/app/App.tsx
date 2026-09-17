@@ -142,20 +142,11 @@ export interface Lancamento {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] =
-    useState<TabType>("ninhos");
-
-  const [modalType, setModalType] =
-    useState<ModalType>(null);
-
-  const [editId, setEditId] =
-    useState<string | null>(null);
-
-  const [zoomPhoto, setZoomPhoto] =
-    useState<string | null>(null);
-
-  const [aveDetalheId, setAveDetalheId] =
-    useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>("ninhos");
+  const [modalType, setModalType] = useState<ModalType>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+  const [aveDetalheId, setAveDetalheId] = useState<string | null>(null);
 
   const {
     db,
@@ -193,10 +184,7 @@ export default function App() {
     deleteFilhoteHistorico,
   } = useDatabase();
 
-  const openModal = (
-    type: ModalType,
-    id: string | null = null,
-  ) => {
+  const openModal = (type: ModalType, id: string | null = null) => {
     setModalType(type);
     setEditId(id);
   };
@@ -206,18 +194,14 @@ export default function App() {
     setEditId(null);
   };
 
-  const saveAvesLote = (
-    avesLote: Partial<Ave>[],
-  ) => {
+  const saveAvesLote = (avesLote: Partial<Ave>[]) => {
     avesLote.forEach((aveData) => {
       saveAve(aveData, null);
     });
   };
 
   useEffect(() => {
-    const handleBeforeUnload = (
-      e: BeforeUnloadEvent,
-    ) => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (
         db.aves.length > 0 ||
         db.casais.length > 0 ||
@@ -225,39 +209,24 @@ export default function App() {
         db.lancamentos.length > 0
       ) {
         e.preventDefault();
-
         e.returnValue =
           "Você tem dados não salvos. Não se esqueça de fazer backup dos seus dados antes de sair!";
-
         return e.returnValue;
       }
     };
 
-    window.addEventListener(
-      "beforeunload",
-      handleBeforeUnload,
-    );
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
-      window.removeEventListener(
-        "beforeunload",
-        handleBeforeUnload,
-      );
+      window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, [db]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <Header
-        onConfigClick={() =>
-          setActiveTab("config")
-        }
-      />
+      <Header onConfigClick={() => setActiveTab("config")} />
 
-      <Navigation
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-      />
+      <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <main className="flex-1 w-full px-2 sm:px-4 lg:px-5 pb-32">
         {activeTab === "ninhos" && (
@@ -272,18 +241,10 @@ export default function App() {
             onUpdateEgg={updateEgg}
             onEclodirOvo={eclodirOvo}
             onAnilharFilhote={anilharFilhote}
-            onRegistrarSaidaDoNinho={
-              registrarSaidaDoNinho
-            }
-            onDesfazerSaidaDoNinho={
-              desfazerSaidaDoNinho
-            }
-            onReverterEclosao={
-              reverterEclosao
-            }
-            onUpdateNinhoCasal={
-              updateNinhoCasal
-            }
+            onRegistrarSaidaDoNinho={registrarSaidaDoNinho}
+            onDesfazerSaidaDoNinho={desfazerSaidaDoNinho}
+            onReverterEclosao={reverterEclosao}
+            onUpdateNinhoCasal={updateNinhoCasal}
             onSaveCasal={saveCasal}
             onDeleteNinho={deleteNinho}
             onUpdateNinho={updateNinho}
@@ -308,19 +269,15 @@ export default function App() {
           <CasaisSection
             casais={db.casais}
             aves={db.aves}
+            ninhos={db.ninhos}
             onOpenModal={openModal}
             onDeleteCasal={deleteCasal}
             onUpdateCasal={updateCasal}
-            onAddFilhote={
-              addFilhoteToHistorico
-            }
-            onUpdateFilhote={
-              updateFilhoteHistorico
-            }
-            onDeleteFilhote={
-              deleteFilhoteHistorico
-            }
+            onAddFilhote={addFilhoteToHistorico}
+            onUpdateFilhote={updateFilhoteHistorico}
+            onDeleteFilhote={deleteFilhoteHistorico}
             onViewDetails={setAveDetalheId}
+            onDesfazerSaidaDoNinho={desfazerSaidaDoNinho}
           />
         )}
 
@@ -330,24 +287,16 @@ export default function App() {
             casais={db.casais}
             ninhos={db.ninhos}
             config={db.config}
-            onNavigate={(tab) =>
-              setActiveTab(tab as TabType)
-            }
+            onNavigate={(tab) => setActiveTab(tab as TabType)}
           />
         )}
 
         {activeTab === "financeiro" && (
           <FinanceiroSection
             lancamentos={db.lancamentos}
-            onSaveLancamento={
-              saveLancamento
-            }
-            onDeleteLancamento={
-              deleteLancamento
-            }
-            onDeleteMultiple={
-              deleteMultipleLancamentos
-            }
+            onSaveLancamento={saveLancamento}
+            onDeleteLancamento={deleteLancamento}
+            onDeleteMultiple={deleteMultipleLancamentos}
           />
         )}
 
@@ -358,24 +307,14 @@ export default function App() {
             onExport={exportBackup}
             onImport={importBackup}
             onClear={clearEverything}
-            onSaveToGoogleDrive={
-              saveBackupToGoogleDrive
-            }
-            onImportFromGoogleDrive={
-              importBackupFromGoogleDrive
-            }
-            lastGoogleDriveBackup={
-              lastGoogleDriveBackup
-            }
+            onSaveToGoogleDrive={saveBackupToGoogleDrive}
+            onImportFromGoogleDrive={importBackupFromGoogleDrive}
+            lastGoogleDriveBackup={lastGoogleDriveBackup}
             onRestoreBackup={(data) => {
               importBackup(
-                new File(
-                  [JSON.stringify(data)],
-                  "restore.json",
-                  {
-                    type: "application/json",
-                  },
-                ),
+                new File([JSON.stringify(data)], "restore.json", {
+                  type: "application/json",
+                }),
               );
             }}
           />
@@ -395,38 +334,23 @@ export default function App() {
           onSaveAvesLote={saveAvesLote}
           onSaveCasal={saveCasal}
           onSaveNinho={saveNinho}
-          onUpdateNinhoCasal={
-            updateNinhoCasal
-          }
+          onUpdateNinhoCasal={updateNinhoCasal}
           onSaveConfig={saveConfig}
         />
       )}
 
       {zoomPhoto && (
-        <PhotoZoom
-          src={zoomPhoto}
-          onClose={() =>
-            setZoomPhoto(null)
-          }
-        />
+        <PhotoZoom src={zoomPhoto} onClose={() => setZoomPhoto(null)} />
       )}
 
       {aveDetalheId && (
         <AveDetalhesModal
-          ave={
-            db.aves.find(
-              (a) => a.id === aveDetalheId,
-            )!
-          }
+          ave={db.aves.find((a) => a.id === aveDetalheId)!}
           aves={db.aves}
           casais={db.casais}
           ninhos={db.ninhos}
-          onClose={() =>
-            setAveDetalheId(null)
-          }
-          onNavigate={(id) =>
-            setAveDetalheId(id)
-          }
+          onClose={() => setAveDetalheId(null)}
+          onNavigate={(id) => setAveDetalheId(id)}
           onPhotoClick={setZoomPhoto}
         />
       )}
