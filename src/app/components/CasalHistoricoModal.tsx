@@ -12,7 +12,7 @@ interface CasalHistoricoModalProps {
   onDeleteFilhote: (casalId: string, filhoteId: string) => void;
   ninhos?: Ninho[];
   /** Retorna ao ninho uma ave que já saiu, sem apagar seu histórico. */
-  onRetornarAoNinho?: (aveId: string) => void;
+  onRetornarAoNinho?: (ninhoId: string, eggIdx: number) => void;
 }
 
 export function CasalHistoricoModal({
@@ -411,12 +411,15 @@ export function CasalHistoricoModal({
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {filhote.saiuDoNinho && !filhote.emObito && filhote.aveId && onRetornarAoNinho && (
+                        {filhote.saiuDoNinho && !filhote.emObito && registroNinho && onRetornarAoNinho && (
                           <button
                             type="button"
                             onClick={() => {
-                              if (confirm('Deseja retornar esta ave ao ninho? Ela voltará a aparecer na aba Ninhos.')) {
-                                onRetornarAoNinho(filhote.aveId!);
+                              if (
+                                registroNinho &&
+                                confirm('Deseja retornar esta ave ao ninho? Ela voltará a aparecer na aba Ninhos.')
+                              ) {
+                                onRetornarAoNinho(registroNinho.ninho.id, registroNinho.eggIdx);
                               }
                             }}
                             className="px-3 py-2 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-black uppercase hover:bg-amber-100 transition-all"
