@@ -1757,8 +1757,10 @@ export function useDatabase() {
       ave.ring = egg.anilha;
       ave.ringYear = egg.anoAnilha!;
 
-      egg.dataSaidaNinho =
-        dataSaidaNinho;
+      egg.dataSaidaNinho = dataSaidaNinho;
+       (egg as any).localAtual = novoLocal;
+       (ave as any).localAtual = novoLocal;
+       (ave as any).saiuDoNinho = true;
 
       /*
        * Garantir que o histórico esteja vinculado à mesma ave.
