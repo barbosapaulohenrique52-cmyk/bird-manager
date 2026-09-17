@@ -23,7 +23,7 @@ export function CasalHistoricoModal({
   onUpdateFilhote,
   onDeleteFilhote,
   onRetornarAoNinho
-}: CasalHistoricoModalProps {
+}: CasalHistoricoModalProps) {
   /*
    * O histórico antigo pode não ter sido gravado no campo casal.historico,
    * embora os filhotes estejam corretamente vinculados aos pais no Plantel
