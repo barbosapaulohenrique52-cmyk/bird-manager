@@ -10,7 +10,7 @@ interface CasalHistoricoModalProps {
   onAddFilhote: (casalId: string, filhote: Omit<Filhote, 'id'>) => void;
   onUpdateFilhote: (casalId: string, filhoteId: string, updates: Partial<Filhote>) => void;
   onDeleteFilhote: (casalId: string, filhoteId: string) => void;
-  ninhos: Ninho[];
+  ninhos?: Ninho[];
   /** Retorna ao ninho uma ave que já saiu, sem apagar seu histórico. */
   onRetornarAoNinho?: (aveId: string) => void;
 }
@@ -23,7 +23,7 @@ export function CasalHistoricoModal({
   onAddFilhote,
   onUpdateFilhote,
   onDeleteFilhote,
-  ninhos,
+  ninhos = [],
   onRetornarAoNinho
 }: CasalHistoricoModalProps) {
   /*
@@ -86,8 +86,8 @@ export function CasalHistoricoModal({
 
   const filhotesComSituacao = filhotes.map(filhote => {
     const ave = filhote.aveId ? avesPorId.get(filhote.aveId) : undefined;
-    const registroNinho = ninhos
-      .flatMap(ninho => ninho.eggs.map((egg, eggIdx) => ({ ninho, egg, eggIdx })))
+    const registroNinho = (ninhos ?? [])
+      .flatMap(ninho => (ninho.eggs ?? []).map((egg, eggIdx) => ({ ninho, egg, eggIdx })))
       .find(({ egg }) => {
         const eggAny = egg as any;
         return (
