@@ -4,15 +4,11 @@ interface BirdColorDiagramProps {
   corCabeca?: string;
   corPeito?: string;
   corDorso?: string;
-  className?: string;
 }
 
-function obterCor(
-  valor: string | undefined,
-  corPadrao: string
-): string {
+function obterCor(valor?: string): string {
   if (!valor || !valor.trim()) {
-    return corPadrao;
+    return "transparent";
   }
 
   const valorNormalizado = valor.trim().toLowerCase();
@@ -36,6 +32,8 @@ function obterCor(
     blue: "#4285D4",
 
     verde: "#4CAF50",
+    verdeescuro: "#2E7D32",
+    "verde escuro": "#2E7D32",
     green: "#4CAF50",
 
     amarelo: "#F4D03F",
@@ -71,12 +69,12 @@ function obterCor(
     turquoise: "#4DB6AC",
   };
 
-  // Primeiro, verifica nomes de cores conhecidos.
+  // Verifica nomes de cores conhecidos.
   if (cores[valorNormalizado]) {
     return cores[valorNormalizado];
   }
 
-  // Aceita hexadecimal curto ou completo.
+  // Aceita hexadecimal curto, completo ou com transparência.
   const hexadecimalValido =
     /^#([0-9A-F]{3}|[0-9A-F]{6}|[0-9A-F]{8})$/i.test(valor.trim());
 
@@ -84,10 +82,8 @@ function obterCor(
     return valor.trim();
   }
 
-  // Mantém compatibilidade com outros valores CSS válidos.
-  // Caso o valor seja um nome personalizado não convertido,
-  // utiliza a cor padrão para evitar problemas no SVG.
-  return corPadrao;
+  // Se a cor não for reconhecida, não aplica uma cor arbitrária.
+  return "transparent";
 }
 
 export function BirdColorDiagram({
@@ -95,10 +91,10 @@ export function BirdColorDiagram({
   corPeito,
   corDorso,
   className = "",
-}: BirdColorDiagramProps) {
-  const corCabecaFinal = obterCor(corCabeca, "#E53935");
-  const corPeitoFinal = obterCor(corPeito, "#9C6ADE");
-  const corDorsoFinal = obterCor(corDorso, "#4CAF50");
+}: BirdColorDiagramProps & { className?: string }) {
+  const corCabecaFinal = obterCor(corCabeca);
+  const corPeitoFinal = obterCor(corPeito);
+  const corDorsoFinal = obterCor(corDorso);
 
   return (
     <div
