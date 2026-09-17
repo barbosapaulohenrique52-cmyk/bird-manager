@@ -102,7 +102,7 @@ function nomesCores(cores?: { nome: string }[]): string[] {
   return valoresUnicos((cores || []).map((cor) => cor.nome));
 }
 
-function aplicarEstiloCabecalho(row: ExcelJS.Row) {
+function aplicarEstiloCabecalho(row: ExcelJS.Row): void {
   row.font = {
     bold: true,
     color: { argb: "FFFFFFFF" },
@@ -123,13 +123,25 @@ function aplicarEstiloCabecalho(row: ExcelJS.Row) {
   row.height = 30;
 }
 
-function aplicarBordas(row: ExcelJS.Row) {
+function aplicarBordas(row: ExcelJS.Row): void {
   row.eachCell((cell) => {
     cell.border = {
-      top: { style: "thin", color: { argb: "FFE2E8F0" } },
-      left: { style: "thin", color: { argb: "FFE2E8F0" } },
-      bottom: { style: "thin", color: { argb: "FFE2E8F0" } },
-      right: { style: "thin", color: { argb: "FFE2E8F0" } },
+      top: {
+        style: "thin",
+        color: { argb: "FFE2E8F0" },
+      },
+      left: {
+        style: "thin",
+        color: { argb: "FFE2E8F0" },
+      },
+      bottom: {
+        style: "thin",
+        color: { argb: "FFE2E8F0" },
+      },
+      right: {
+        style: "thin",
+        color: { argb: "FFE2E8F0" },
+      },
     };
 
     cell.alignment = {
@@ -140,9 +152,9 @@ function aplicarBordas(row: ExcelJS.Row) {
 }
 
 /**
- * Define determinadas células como texto.
+ * Define as células como texto.
  *
- * Isso é importante para preservar identificações como:
+ * Isso é essencial para preservar identificações como:
  * 072, 001, 0008 etc.
  *
  * A anilha, o pai e a mãe não devem ser tratados como números.
@@ -152,7 +164,7 @@ function aplicarFormatoTexto(
   colunas: string[],
   primeiraLinha: number,
   ultimaLinha: number,
-) {
+): void {
   colunas.forEach((coluna) => {
     for (
       let linha = primeiraLinha;
@@ -173,8 +185,9 @@ function aplicarFormatoTexto(
 /**
  * Aplica uma lista suspensa utilizando um nome definido no Excel.
  *
- * A validação usa nomes definidos que apontam para os intervalos
- * existentes na aba "Listas".
+ * A validação é aplicada diretamente em cada célula.
+ * Essa forma é compatível com a versão do ExcelJS utilizada
+ * no projeto.
  */
 function aplicarListaSuspensa(
   worksheet: ExcelJS.Worksheet,
@@ -182,14 +195,14 @@ function aplicarListaSuspensa(
   primeiraLinha: number,
   ultimaLinha: number,
   nomeLista: string,
-) {
+): void {
   for (let linha = primeiraLinha; linha <= ultimaLinha; linha += 1) {
-    const cell = worksheet.getCell(`${coluna}${linha}`);
+    const celula = worksheet.getCell(`${coluna}${linha}`);
 
-    cell.dataValidation = {
+    celula.dataValidation = {
       type: "list",
       allowBlank: true,
-      formulae: [nomeLista],
+      formulae: [`=${nomeLista}`],
       showErrorMessage: false,
       showInputMessage: true,
       promptTitle: "Lista de referência",
@@ -202,17 +215,22 @@ function aplicarListaSuspensa(
 function adicionarAbaListas(
   workbook: ExcelJS.Workbook,
   references: ExcelReferenceData,
-) {
+): ExcelJS.Worksheet {
   const worksheet = workbook.addWorksheet("Listas");
 
   const criadores = valoresUnicos(
     references.aves.map((ave) => ave.creator || ""),
   );
 
-  const listas: Array<{ titulo: string; valores: string[] }> = [
+  const listas: Array<{
+    titulo: string;
+    valores: string[];
+  }> = [
     {
       titulo: "Especies",
-      valores: valoresUnicos(references.config.especies || []),
+      valores: valoresUnicos(
+        references.config.especies || [],
+      ),
     },
     {
       titulo: "Sexo",
@@ -243,15 +261,21 @@ function adicionarAbaListas(
     },
     {
       titulo: "CoresCabeca",
-      valores: nomesCores(references.config.coresCabeca),
+      valores: nomesCores(
+        references.config.coresCabeca,
+      ),
     },
     {
       titulo: "CoresPeito",
-      valores: nomesCores(references.config.coresPeito),
+      valores: nomesCores(
+        references.config.coresPeito,
+      ),
     },
     {
       titulo: "CoresDorso",
-      valores: nomesCores(references.config.coresDorso),
+      valores: nomesCores(
+        references.config.coresDorso,
+      ),
     },
     {
       titulo: "CriadoPorAmas",
@@ -266,6 +290,7 @@ function adicionarAbaListas(
     const titulo = worksheet.getCell(`${letra}1`);
 
     titulo.value = lista.titulo;
+
     titulo.font = {
       bold: true,
       color: { argb: "FFFFFFFF" },
@@ -283,7 +308,9 @@ function adicionarAbaListas(
     };
 
     const valores =
-      lista.valores.length > 0 ? lista.valores : [""];
+      lista.valores.length > 0
+        ? lista.valores
+        : [""];
 
     valores.forEach((valor, linha) => {
       const cell = worksheet.getCell(
@@ -304,7 +331,12 @@ function adicionarAbaListas(
     );
   });
 
-  worksheet.views = [{ state: "frozen", ySplit: 1 }];
+  worksheet.views = [
+    {
+      state: "frozen",
+      ySplit: 1,
+    },
+  ];
 
   worksheet.autoFilter = {
     from: "A1",
@@ -322,7 +354,9 @@ function adicionarAbaListas(
   return worksheet;
 }
 
-function adicionarAbaInstrucoes(workbook: ExcelJS.Workbook) {
+function adicionarAbaInstrucoes(
+  workbook: ExcelJS.Workbook,
+): ExcelJS.Worksheet {
   const worksheet = workbook.addWorksheet("Instruções");
 
   const linhas = [
@@ -368,19 +402,31 @@ function adicionarAbaInstrucoes(workbook: ExcelJS.Workbook) {
     ["ano_anilha", "Ano da anilha."],
     ["nome", "Nome da ave."],
     ["sexo", "Macho, Fêmea ou Indefinido."],
-    ["status", "Ativo, Vendido, Óbito ou No Ninho."],
+    [
+      "status",
+      "Ativo, Vendido, Óbito ou No Ninho.",
+    ],
     ["criador", "Criador ou origem da ave."],
     ["ano_aquisicao", "Ano de aquisição."],
-    ["foto", "URL ou referência da foto, se aplicável."],
+    [
+      "foto",
+      "URL ou referência da foto, se aplicável.",
+    ],
     ["pai", "Nome, anilha ou ID do pai."],
     ["mae", "Nome, anilha ou ID da mãe."],
-    ["data_nascimento", "Data no formato AAAA-MM-DD."],
+    [
+      "data_nascimento",
+      "Data no formato AAAA-MM-DD.",
+    ],
     [
       "ninho_nascimento",
       "Nome ou ID do ninho de nascimento.",
     ],
     ["criado_por_amas", "Use Sim ou Não."],
-    ["casal_amas", "Descrição ou ID do casal de amas."],
+    [
+      "casal_amas",
+      "Descrição ou ID do casal de amas.",
+    ],
     ["cor_cabeca", "Cor da cabeça."],
     ["cor_peito", "Cor do peito."],
     ["cor_dorso", "Cor do dorso."],
@@ -416,7 +462,14 @@ function adicionarAbaInstrucoes(workbook: ExcelJS.Workbook) {
   worksheet.getColumn(1).width = 28;
   worksheet.getColumn(2).width = 90;
 
-  worksheet.views = [{ state: "frozen", ySplit: 3 }];
+  worksheet.views = [
+    {
+      state: "frozen",
+      ySplit: 3,
+    },
+  ];
+
+  return worksheet;
 }
 
 export async function baixarPlanilhaModelo(
@@ -430,6 +483,7 @@ export async function baixarPlanilhaModelo(
   const worksheet = workbook.addWorksheet("Aves");
 
   worksheet.addRow([...CABECALHOS]);
+
   aplicarEstiloCabecalho(worksheet.getRow(1));
 
   const larguras: Record<string, number> = {
@@ -456,11 +510,18 @@ export async function baixarPlanilhaModelo(
     U: 18,
   };
 
-  Object.entries(larguras).forEach(([coluna, largura]) => {
-    worksheet.getColumn(coluna).width = largura;
-  });
+  Object.entries(larguras).forEach(
+    ([coluna, largura]) => {
+      worksheet.getColumn(coluna).width = largura;
+    },
+  );
 
-  worksheet.views = [{ state: "frozen", ySplit: 1 }];
+  worksheet.views = [
+    {
+      state: "frozen",
+      ySplit: 1,
+    },
+  ];
 
   worksheet.autoFilter = {
     from: "A1",
@@ -497,9 +558,9 @@ export async function baixarPlanilhaModelo(
   );
 
   /*
-   * Define o formato de texto para as colunas inteiras.
+   * Também define o formato das colunas de anilha,
+   * pai e mãe.
    */
-  worksheet.getColumn("A").numFmt = "@";
   worksheet.getColumn("C").numFmt = "@";
   worksheet.getColumn("K").numFmt = "@";
   worksheet.getColumn("L").numFmt = "@";
@@ -537,17 +598,20 @@ export async function baixarPlanilhaModelo(
   );
 
   /*
-   * Cria nomes definidos para os intervalos da aba Listas.
+   * Cria os nomes definidos no Excel.
    *
-   * Exemplo:
-   * ListaEspecies -> 'Listas'!$A$2:$A$200
+   * Os nomes definidos permitem que a validação de dados
+   * utilize listas localizadas na aba "Listas".
    */
   const definirLista = (
     nome: string,
     coluna: string,
     quantidade: number,
-  ) => {
-    const ultimaLinha = Math.max(quantidade + 1, 2);
+  ): void => {
+    const ultimaLinha = Math.max(
+      quantidade + 1,
+      2,
+    );
 
     workbook.definedNames.add(
       nome,
@@ -555,13 +619,47 @@ export async function baixarPlanilhaModelo(
     );
   };
 
-  definirLista("ListaEspecies", "A", especies.length);
-  definirLista("ListaSexo", "B", 3);
-  definirLista("ListaStatus", "C", 4);
-  definirLista("ListaCriadores", "D", criadores.length);
-  definirLista("ListaPais", "E", pais.length);
-  definirLista("ListaCasais", "F", casais.length);
-  definirLista("ListaNinhos", "G", ninhos.length);
+  definirLista(
+    "ListaEspecies",
+    "A",
+    especies.length,
+  );
+
+  definirLista(
+    "ListaSexo",
+    "B",
+    3,
+  );
+
+  definirLista(
+    "ListaStatus",
+    "C",
+    4,
+  );
+
+  definirLista(
+    "ListaCriadores",
+    "D",
+    criadores.length,
+  );
+
+  definirLista(
+    "ListaPais",
+    "E",
+    pais.length,
+  );
+
+  definirLista(
+    "ListaCasais",
+    "F",
+    casais.length,
+  );
+
+  definirLista(
+    "ListaNinhos",
+    "G",
+    ninhos.length,
+  );
 
   definirLista(
     "ListaCoresCabeca",
@@ -581,23 +679,14 @@ export async function baixarPlanilhaModelo(
     coresDorso.length,
   );
 
-  definirLista("ListaAmas", "K", 2);
+  definirLista(
+    "ListaAmas",
+    "K",
+    2,
+  );
 
   /*
-   * Listas suspensas:
-   *
-   * B = Espécie
-   * F = Sexo
-   * G = Status
-   * H = Criador
-   * K = Pai
-   * L = Mãe
-   * N = Ninho
-   * O = Criado por amas
-   * P = Casal de amas
-   * Q = Cor da cabeça
-   * R = Cor do peito
-   * S = Cor do dorso
+   * B - Espécie
    */
   aplicarListaSuspensa(
     worksheet,
@@ -607,6 +696,9 @@ export async function baixarPlanilhaModelo(
     "ListaEspecies",
   );
 
+  /*
+   * F - Sexo
+   */
   aplicarListaSuspensa(
     worksheet,
     "F",
@@ -615,6 +707,9 @@ export async function baixarPlanilhaModelo(
     "ListaSexo",
   );
 
+  /*
+   * G - Status
+   */
   aplicarListaSuspensa(
     worksheet,
     "G",
@@ -623,6 +718,9 @@ export async function baixarPlanilhaModelo(
     "ListaStatus",
   );
 
+  /*
+   * H - Criador
+   */
   aplicarListaSuspensa(
     worksheet,
     "H",
@@ -631,6 +729,9 @@ export async function baixarPlanilhaModelo(
     "ListaCriadores",
   );
 
+  /*
+   * K - Pai
+   */
   aplicarListaSuspensa(
     worksheet,
     "K",
@@ -639,6 +740,9 @@ export async function baixarPlanilhaModelo(
     "ListaPais",
   );
 
+  /*
+   * L - Mãe
+   */
   aplicarListaSuspensa(
     worksheet,
     "L",
@@ -647,6 +751,9 @@ export async function baixarPlanilhaModelo(
     "ListaPais",
   );
 
+  /*
+   * N - Ninho de nascimento
+   */
   aplicarListaSuspensa(
     worksheet,
     "N",
@@ -655,38 +762,9 @@ export async function baixarPlanilhaModelo(
     "ListaNinhos",
   );
 
-  aplicarListaSuspensa(
-    worksheet,
-    "P",
-    2,
-    linhasModelo + 1,
-    "ListaCasais",
-  );
-
-  aplicarListaSuspensa(
-    worksheet,
-    "Q",
-    2,
-    linhasModelo + 1,
-    "ListaCoresCabeca",
-  );
-
-  aplicarListaSuspensa(
-    worksheet,
-    "R",
-    2,
-    linhasModelo + 1,
-    "ListaCoresPeito",
-  );
-
-  aplicarListaSuspensa(
-    worksheet,
-    "S",
-    2,
-    linhasModelo + 1,
-    "ListaCoresDorso",
-  );
-
+  /*
+   * O - Criado por amas
+   */
   aplicarListaSuspensa(
     worksheet,
     "O",
@@ -696,14 +774,48 @@ export async function baixarPlanilhaModelo(
   );
 
   /*
-   * Mantém a aba Listas visível para facilitar a compatibilidade
-   * com diferentes versões do Excel e do WPS.
+   * P - Casal de amas
    */
-  const abaListas = workbook.getWorksheet("Listas");
+  aplicarListaSuspensa(
+    worksheet,
+    "P",
+    2,
+    linhasModelo + 1,
+    "ListaCasais",
+  );
 
-  if (abaListas) {
-    abaListas.state = "visible";
-  }
+  /*
+   * Q - Cor da cabeça
+   */
+  aplicarListaSuspensa(
+    worksheet,
+    "Q",
+    2,
+    linhasModelo + 1,
+    "ListaCoresCabeca",
+  );
+
+  /*
+   * R - Cor do peito
+   */
+  aplicarListaSuspensa(
+    worksheet,
+    "R",
+    2,
+    linhasModelo + 1,
+    "ListaCoresPeito",
+  );
+
+  /*
+   * S - Cor do dorso
+   */
+  aplicarListaSuspensa(
+    worksheet,
+    "S",
+    2,
+    linhasModelo + 1,
+    "ListaCoresDorso",
+  );
 
   const buffer = await workbook.xlsx.writeBuffer();
 
@@ -712,6 +824,7 @@ export async function baixarPlanilhaModelo(
   });
 
   const url = URL.createObjectURL(blob);
+
   const link = document.createElement("a");
 
   link.href = url;
@@ -738,7 +851,9 @@ function converterBooleano(
     return valor;
   }
 
-  const texto = String(valor).trim().toLowerCase();
+  const texto = String(valor)
+    .trim()
+    .toLowerCase();
 
   if (
     ["sim", "s", "true", "1", "yes"].includes(texto)
@@ -770,7 +885,9 @@ function converterNumero(
 
   const numero = Number(valor);
 
-  return Number.isFinite(numero) ? numero : undefined;
+  return Number.isFinite(numero)
+    ? numero
+    : undefined;
 }
 
 /**
@@ -784,7 +901,10 @@ function converterNumero(
 function textoOuUndefined(
   valor: unknown,
 ): string | undefined {
-  if (valor === undefined || valor === null) {
+  if (
+    valor === undefined ||
+    valor === null
+  ) {
     return undefined;
   }
 
@@ -793,7 +913,9 @@ function textoOuUndefined(
   return texto || undefined;
 }
 
-function normalizarCabecalho(valor: unknown): string {
+function normalizarCabecalho(
+  valor: unknown,
+): string {
   return String(valor || "")
     .trim()
     .toLowerCase()
@@ -806,6 +928,7 @@ export async function lerPlanilhaAves(
   arquivo: File,
 ): Promise<AveImportada[]> {
   const workbook = new ExcelJS.Workbook();
+
   const buffer = await arquivo.arrayBuffer();
 
   await workbook.xlsx.load(buffer);
@@ -821,10 +944,13 @@ export async function lerPlanilhaAves(
   }
 
   const primeiraLinha = worksheet.getRow(1);
+
   const mapaColunas = new Map<string, number>();
 
   primeiraLinha.eachCell((cell, coluna) => {
-    const nome = normalizarCabecalho(cell.value);
+    const nome = normalizarCabecalho(
+      cell.value,
+    );
 
     if (nome) {
       mapaColunas.set(nome, coluna);
@@ -845,7 +971,8 @@ export async function lerPlanilhaAves(
     linha: ExcelJS.Row,
     coluna: string,
   ): unknown => {
-    const numeroColuna = mapaColunas.get(coluna);
+    const numeroColuna =
+      mapaColunas.get(coluna);
 
     return numeroColuna
       ? linha.getCell(numeroColuna).value
@@ -861,15 +988,20 @@ export async function lerPlanilhaAves(
   ) {
     const linha = worksheet.getRow(numeroLinha);
 
-    const possuiDados = CABECALHOS.some((cabecalho) => {
-      const dado = valor(linha, cabecalho);
+    const possuiDados = CABECALHOS.some(
+      (cabecalho) => {
+        const dado = valor(
+          linha,
+          cabecalho,
+        );
 
-      return (
-        dado !== undefined &&
-        dado !== null &&
-        String(dado).trim() !== ""
-      );
-    });
+        return (
+          dado !== undefined &&
+          dado !== null &&
+          String(dado).trim() !== ""
+        );
+      },
+    );
 
     if (!possuiDados) {
       continue;
@@ -878,8 +1010,8 @@ export async function lerPlanilhaAves(
     /*
      * As anilhas são lidas como texto.
      *
-     * Se a planilha estiver corretamente formatada como texto,
-     * "072" chegará ao sistema como "072".
+     * Se a planilha estiver corretamente formatada
+     * como texto, "072" chegará ao sistema como "072".
      */
     const anilha = textoOuUndefined(
       valor(linha, "anilha"),
