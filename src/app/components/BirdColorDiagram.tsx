@@ -4,19 +4,33 @@ interface BirdColorDiagramProps {
   corCabeca?: string;
   corPeito?: string;
   corDorso?: string;
+  className?: string;
+}
+
+function normalizarTexto(valor: string): string {
+  return valor
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
 }
 
 function obterCor(valor?: string): string {
+  // Campo vazio significa que a cor não foi definida.
   if (!valor || !valor.trim()) {
     return "transparent";
   }
 
-  const valorNormalizado = valor.trim().toLowerCase();
+  const valorNormalizado = normalizarTexto(valor);
 
   const cores: Record<string, string> = {
     vermelho: "#E53935",
     vermelha: "#E53935",
     red: "#E53935",
+
+    "vermelho pastel": "#E88B8B",
+    "vermelha pastel": "#E88B8B",
 
     preto: "#202124",
     preta: "#202124",
@@ -26,19 +40,32 @@ function obterCor(valor?: string): string {
     roxa: "#9C6ADE",
     purple: "#9C6ADE",
 
+    "roxo pastel": "#C3A6E8",
+    "roxa pastel": "#C3A6E8",
+    "lilas pastel": "#D8C7F0",
+
     azul: "#4285D4",
     azulada: "#4285D4",
     azulado: "#4285D4",
     blue: "#4285D4",
 
+    "azul pastel": "#9CC9F5",
+    "azul claro": "#9CC9F5",
+
     verde: "#4CAF50",
-    verdeescuro: "#2E7D32",
-    "verde escuro": "#2E7D32",
     green: "#4CAF50",
+
+    "verde pastel": "#8BCF8B",
+    "verde claro": "#8BCF8B",
+    "verde oliva": "#808000",
+    oliva: "#808000",
 
     amarelo: "#F4D03F",
     amarela: "#F4D03F",
     yellow: "#F4D03F",
+
+    "amarelo pastel": "#F6E58D",
+    "amarela pastel": "#F6E58D",
 
     branco: "#FFFFFF",
     branca: "#FFFFFF",
@@ -53,23 +80,26 @@ function obterCor(valor?: string): string {
     laranja: "#F39C12",
     orange: "#F39C12",
 
+    "laranja pastel": "#F6B26B",
+
     rosa: "#EFA7C8",
     pink: "#EFA7C8",
+    "rosa pastel": "#F3B6CF",
 
     marrom: "#8D6E63",
     brown: "#8D6E63",
+    "marrom pastel": "#B89583",
 
     creme: "#F5E6C8",
     cream: "#F5E6C8",
 
     lilas: "#B39DDB",
-    lilás: "#B39DDB",
+    "lilas claro": "#D8C7F0",
 
     turquesa: "#4DB6AC",
     turquoise: "#4DB6AC",
   };
 
-  // Verifica nomes de cores conhecidos.
   if (cores[valorNormalizado]) {
     return cores[valorNormalizado];
   }
@@ -82,7 +112,7 @@ function obterCor(valor?: string): string {
     return valor.trim();
   }
 
-  // Se a cor não for reconhecida, não aplica uma cor arbitrária.
+  // Não inventa uma cor quando o valor não for reconhecido.
   return "transparent";
 }
 
@@ -91,7 +121,7 @@ export function BirdColorDiagram({
   corPeito,
   corDorso,
   className = "",
-}: BirdColorDiagramProps & { className?: string }) {
+}: BirdColorDiagramProps) {
   const corCabecaFinal = obterCor(corCabeca);
   const corPeitoFinal = obterCor(corPeito);
   const corDorsoFinal = obterCor(corDorso);
@@ -131,19 +161,8 @@ export function BirdColorDiagram({
         />
 
         {/* OLHO */}
-        <circle
-          cx="177"
-          cy="120"
-          r="15"
-          fill="#202124"
-        />
-
-        <circle
-          cx="182"
-          cy="115"
-          r="4"
-          fill="#FFFFFF"
-        />
+        <circle cx="177" cy="120" r="15" fill="#202124" />
+        <circle cx="182" cy="115" r="4" fill="#FFFFFF" />
 
         {/* PEITO */}
         <path
@@ -176,8 +195,7 @@ export function BirdColorDiagram({
 
         {/* LINHA SIMPLES DA ASA */}
         <path
-          d="M 244 224
-             C 274 245, 306 266, 349 285"
+          d="M 244 224 C 274 245, 306 266, 349 285"
           fill="none"
           stroke="#202124"
           strokeWidth="3"
