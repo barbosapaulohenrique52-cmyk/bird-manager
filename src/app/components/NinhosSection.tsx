@@ -858,8 +858,9 @@ export function NinhosSection({
 
       {/* Ninhos continuam sendo usados para definir a origem dos ovos.
           A visualização dos ovos abaixo é agrupada pelo local atual. */}
-      <div className="space-y-4">
-        {ninhos.length === 0 ? (
+      {modoVisualizacao === 'local' && (
+        <div className="space-y-4">
+          {ninhos.length === 0 ? (
           <div className="bg-white p-12 rounded-3xl text-center border-2 border-slate-100">
             <i className="fas fa-dove text-5xl text-slate-200 mb-4"></i>
             <p className="text-slate-500 font-bold">Nenhum ninho ativo</p>
@@ -1123,12 +1124,13 @@ export function NinhosSection({
             </div>
           ))
         )}
-      </div>
+        </div>
+      )}
 
       {/* ============================================================
           OVOS AGRUPADOS PELO LOCAL ATUAL
           ============================================================ */}
-      {ninhos.some(n => n.eggs.length > 0) && (
+      {modoVisualizacao === 'casal' && ninhos.some(n => n.eggs.length > 0) && (
         <div className="pt-2">
           <div className="flex flex-col gap-3 mb-4">
             <div className="flex items-center justify-between gap-2">
