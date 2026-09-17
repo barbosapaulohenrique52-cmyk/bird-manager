@@ -9,6 +9,8 @@ const CABECALHOS_INGRESSO = [
   'Sexo',
   'Status',
   'Criador',
+  'Pai',
+  'Mãe',
   'Ano de aquisição',
   'Cor da cabeça',
   'Cor do peito',
@@ -25,6 +27,8 @@ interface LinhaPlanilhaAve {
   sexo: string;
   status: string;
   criador: string;
+  pai: string;
+  mae: string;
   anoAquisicao: string;
   corCabeca: string;
   corPeito: string;
@@ -60,6 +64,8 @@ function aveParaLinhaPlanilha(ave: Ave): LinhaPlanilhaAve {
     sexo: valorTexto(ave.sex),
     status: valorTexto(ave.status),
     criador: valorTexto(ave.creator),
+    pai: valorTexto(ave.pai),
+    mae: valorTexto(ave.mae),
     anoAquisicao: valorTexto(ave.acqYear),
     corCabeca: valorTexto(ave.corCabeca),
     corPeito: valorTexto(ave.corPeito),
@@ -78,6 +84,8 @@ function criarLinhaModeloAve(): LinhaPlanilhaAve {
     sexo: '',
     status: '',
     criador: '',
+    pai: '',
+    mae: '',
     anoAquisicao: '',
     corCabeca: '',
     corPeito: '',
@@ -197,6 +205,8 @@ function configurarLarguraColunas(worksheet: ExcelJS.Worksheet): void {
     14, // Sexo
     16, // Status
     22, // Criador
+    22, // Pai
+    22, // Mãe
     18, // Ano de aquisição
     20, // Cor da cabeça
     20, // Cor do peito
@@ -234,6 +244,8 @@ function prepararPlanilhaAves(
       linha.sexo,
       linha.status,
       linha.criador,
+      linha.pai,
+      linha.mae,
       linha.anoAquisicao,
       linha.corCabeca,
       linha.corPeito,
@@ -677,6 +689,8 @@ function encontrarColunasImportacao(
       'acqyear',
       'aquisicao'
     ],
+    pai: ['pai', 'father', 'progenitorpai'],
+    mae: ['mae', 'mãe', 'mother', 'progenitormae'],
     corCabeca: [
       'cordacabeca',
       'corcabeca',
@@ -837,6 +851,16 @@ export async function importarPlanilhaAves(
           creator: colunas.criador
             ? converterTextoImportacao(
                 obterValorCelula(linha, colunas.criador)
+              )
+            : '',
+          pai: colunas.pai
+            ? converterTextoImportacao(
+                obterValorCelula(linha, colunas.pai)
+              )
+            : '',
+          mae: colunas.mae
+            ? converterTextoImportacao(
+                obterValorCelula(linha, colunas.mae)
               )
             : '',
           acqYear: colunas.anoAquisicao
