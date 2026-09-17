@@ -26,17 +26,6 @@ export function CasalHistoricoModal({
   ninhos = [],
   onRetornarAoNinho
 }: CasalHistoricoModalProps) {
-  /*
-   * O histórico antigo pode não ter sido gravado no campo casal.historico,
-   * embora os filhotes estejam corretamente vinculados aos pais no Plantel
-   * por parentMaleId e parentFemaleId.
-   *
-   * Por isso, reunimos:
-   * 1. os registros já existentes no histórico do casal; e
-   * 2. as aves do Plantel que possuem os dois pais deste casal.
-   *
-   * A união evita duplicações usando aveId ou anilha + ano.
-   */
   const avesDoPlantel: Ave[] = (() => {
     try {
       const armazenadas = JSON.parse(
@@ -120,35 +109,59 @@ export function CasalHistoricoModal({
       });
 
     const eggAny = registroNinho?.egg as any;
+    const statusAve = String((ave as any)?.status || '').trim().toLowerCase();
+
+    // A saída é determinada pelo registro do ovo. O campo dataSaidaNinho
+    // continua existindo mesmo depois que o filhote passa para o Plantel.
     const saiuDoNinho = Boolean(
       (filhote as any).saiuDoNinho ||
+      (filhote as any).dataSaidaNinho ||
       (ave as any)?.saiuDoNinho ||
       (ave as any)?.dataSaidaNinho ||
       eggAny?.dataSaidaNinho
     );
+
     const emObito = Boolean(
       (filhote as any).emObito ||
-      String((ave as any)?.status || '').toLowerCase() === 'óbito' ||
-      String((ave as any)?.status || '').toLowerCase() === 'obito'
+      statusAve === 'óbito' ||
+      statusAve === 'obito'
     );
 
-    let status = filhote.status || 'Ativo';
-    let local = (ave as any)?.localAtual || (ave as any)?.local || (ave as any)?.location || '';
+    // O campo egg.local é o local real exibido na aba Ninhos
+    // (por exemplo: GAIOLA 2 ou GAIOLA 3). Não usar ninho.id como local.
+    const localDoOvo = String(
+      eggAny?.localAtual ||
+      eggAny?.local ||
+      ''
+    ).trim();
+
+    const localDaAve = String(
+      (ave as any)?.localAtual ||
+      (ave as any)?.local ||
+      (ave as any)?.location ||
+      ''
+    ).trim();
+
+    let status: string;
+    let local: string;
 
     if (emObito) {
       status = 'Óbito';
-    } else if (registroNinho && !saiuDoNinho) {
-      status = 'No ninho';
-      local = registroNinho.ninho.name || registroNinho.ninho.id;
+      local = localDaAve || localDoOvo || 'Não informado';
     } else if (saiuDoNinho) {
+      // Esta condição precisa vir antes de "registroNinho", pois o ovo
+      // permanece no histórico do ninho após a saída.
       status = 'Saiu do ninho';
-      local = eggAny?.localAtual || (ave as any)?.localAtual || local || 'Não informado';
-    } else if (String((ave as any)?.status || '').toLowerCase() === 'vendido' || filhote.status === 'Vendido') {
+      local = localDoOvo || localDaAve || 'Não informado';
+    } else if (registroNinho) {
+      status = 'No ninho';
+      local = localDoOvo || registroNinho.ninho.name || 'Não informado';
+    } else if (statusAve === 'vendido' || filhote.status === 'Vendido') {
       status = 'Vendido';
-      local = local || 'Não informado';
+      local = localDaAve || 'Não informado';
     } else {
       status = 'Ativo';
-      local = local || 'Plantel';
+      local = localDaAve || 'Plantel';
     }
 
     return {
