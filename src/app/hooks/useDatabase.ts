@@ -826,7 +826,14 @@ export function useDatabase() {
       }> = avesData.map((aveData, index) => ({
         ave: {
           id: `${baseId}-${index}`,
-          ...aveData
+          ...aveData,
+          // Nome padrão da ave: anilha-ano.
+          // Durante a importação, o padrão é mantido mesmo que
+          // a planilha traga "sem nome" ou deixe o campo vazio.
+          name:
+            aveData.ring && aveData.ringYear
+              ? `${String(aveData.ring).trim()}-${aveData.ringYear}`
+              : aveData.name || 'sem nome'
         } as Ave,
         dados: aveData as Omit<Ave, 'id'> & {
           pai?: string;
