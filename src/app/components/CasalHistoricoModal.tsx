@@ -90,9 +90,32 @@ export function CasalHistoricoModal({
       .flatMap(ninho => (ninho.eggs ?? []).map((egg, eggIdx) => ({ ninho, egg, eggIdx })))
       .find(({ egg }) => {
         const eggAny = egg as any;
-        return (
-          (filhote.aveId && (eggAny.filhoteId === filhote.aveId || eggAny.aveId === filhote.aveId)) ||
-          (filhote.anilha && eggAny.anilha === filhote.anilha)
+        const identificadoresFilhote = [
+          filhote.aveId,
+          filhote.anilha,
+          String(filhote.anilha || '').replace(/^0+/, '')
+        ]
+          .filter(Boolean)
+          .map(valor => String(valor).trim().toLowerCase());
+
+        const identificadoresOvo = [
+          eggAny.filhoteId,
+          eggAny.aveId,
+          eggAny.anilha,
+          eggAny.ring,
+          eggAny.ringNumber,
+          eggAny.filhoteAnilha,
+          eggAny.anilhaFilhote,
+          eggAny.idFilhote
+        ]
+          .filter(Boolean)
+          .map(valor => String(valor).trim().toLowerCase());
+
+        return identificadoresOvo.some(identificador =>
+          identificadoresFilhote.includes(identificador) ||
+          identificadoresFilhote.some(valor =>
+            valor.replace(/^0+/, '') === identificador.replace(/^0+/, '')
+          )
         );
       });
 
@@ -133,7 +156,8 @@ export function CasalHistoricoModal({
       status,
       local: local || 'Não informado',
       saiuDoNinho,
-      emObito
+      emObito,
+      registroNinho
     };
   });
 
@@ -411,15 +435,15 @@ export function CasalHistoricoModal({
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {filhote.saiuDoNinho && !filhote.emObito && registroNinho && onRetornarAoNinho && (
+                        {filhote.saiuDoNinho && !filhote.emObito && filhote.registroNinho && onRetornarAoNinho && (
                           <button
                             type="button"
                             onClick={() => {
                               if (
-                                registroNinho &&
+                                filhote.registroNinho &&
                                 confirm('Deseja retornar esta ave ao ninho? Ela voltará a aparecer na aba Ninhos.')
                               ) {
-                                onRetornarAoNinho(registroNinho.ninho.id, registroNinho.eggIdx);
+                                onRetornarAoNinho(filhote.registroNinho.ninho.id, filhote.registroNinho.eggIdx);
                               }
                             }}
                             className="px-3 py-2 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-black uppercase hover:bg-amber-100 transition-all"
