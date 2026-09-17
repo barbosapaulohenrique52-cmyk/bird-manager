@@ -347,6 +347,7 @@ export function CasaisSection({
             onAddFilhote={onAddFilhote}
             onUpdateFilhote={onUpdateFilhote}
             onDeleteFilhote={onDeleteFilhote}
+            ninhos={ninhos}
             onRetornarAoNinho={(aveId) => {
               const ninhoEncontrado = ninhos.find(ninho =>
                 ninho.eggs.some(egg => egg.filhoteId === aveId)
