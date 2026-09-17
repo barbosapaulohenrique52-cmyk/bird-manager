@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Casal, Ave, Filhote } from '../App';
+import type { Casal, Ave, Filhote, Ninho } from '../App';
 import { PhotoZoom } from './PhotoZoom';
 
 interface CasalHistoricoModalProps {
@@ -10,6 +10,7 @@ interface CasalHistoricoModalProps {
   onAddFilhote: (casalId: string, filhote: Omit<Filhote, 'id'>) => void;
   onUpdateFilhote: (casalId: string, filhoteId: string, updates: Partial<Filhote>) => void;
   onDeleteFilhote: (casalId: string, filhoteId: string) => void;
+  ninhos: Ninho[];
   /** Retorna ao ninho uma ave que já saiu, sem apagar seu histórico. */
   onRetornarAoNinho?: (aveId: string) => void;
 }
@@ -22,6 +23,7 @@ export function CasalHistoricoModal({
   onAddFilhote,
   onUpdateFilhote,
   onDeleteFilhote,
+  ninhos,
   onRetornarAoNinho
 }: CasalHistoricoModalProps) {
   /*
@@ -84,18 +86,54 @@ export function CasalHistoricoModal({
 
   const filhotesComSituacao = filhotes.map(filhote => {
     const ave = filhote.aveId ? avesPorId.get(filhote.aveId) : undefined;
+    const registroNinho = ninhos
+      .flatMap(ninho => ninho.eggs.map((egg, eggIdx) => ({ ninho, egg, eggIdx })))
+      .find(({ egg }) => {
+        const eggAny = egg as any;
+        return (
+          (filhote.aveId && (eggAny.filhoteId === filhote.aveId || eggAny.aveId === filhote.aveId)) ||
+          (filhote.anilha && eggAny.anilha === filhote.anilha)
+        );
+      });
+
+    const eggAny = registroNinho?.egg as any;
+    const saiuDoNinho = Boolean(
+      (filhote as any).saiuDoNinho ||
+      (ave as any)?.saiuDoNinho ||
+      (ave as any)?.dataSaidaNinho ||
+      eggAny?.dataSaidaNinho
+    );
+    const emObito = Boolean(
+      (filhote as any).emObito ||
+      String((ave as any)?.status || '').toLowerCase() === 'óbito' ||
+      String((ave as any)?.status || '').toLowerCase() === 'obito'
+    );
+
+    let status = filhote.status || 'Ativo';
+    let local = (ave as any)?.localAtual || (ave as any)?.local || (ave as any)?.location || '';
+
+    if (emObito) {
+      status = 'Óbito';
+    } else if (registroNinho && !saiuDoNinho) {
+      status = 'No ninho';
+      local = registroNinho.ninho.name || registroNinho.ninho.id;
+    } else if (saiuDoNinho) {
+      status = 'Saiu do ninho';
+      local = eggAny?.localAtual || (ave as any)?.localAtual || local || 'Não informado';
+    } else if (String((ave as any)?.status || '').toLowerCase() === 'vendido' || filhote.status === 'Vendido') {
+      status = 'Vendido';
+      local = local || 'Não informado';
+    } else {
+      status = 'Ativo';
+      local = local || 'Plantel';
+    }
+
     return {
       ...filhote,
-      saiuDoNinho: Boolean(
-        (filhote as any).saiuDoNinho ||
-        (ave as any)?.saiuDoNinho ||
-        (ave as any)?.dataSaidaNinho
-      ),
-      emObito: Boolean(
-        (filhote as any).emObito ||
-        String((ave as any)?.status || '').toLowerCase() === 'óbito' ||
-        String((ave as any)?.status || '').toLowerCase() === 'obito'
-      )
+      status,
+      local: local || 'Não informado',
+      saiuDoNinho,
+      emObito
     };
   });
 
@@ -112,7 +150,7 @@ export function CasalHistoricoModal({
 
   const totalFilhotes = filhotes.length;
   const filhotesVendidos = filhotes.filter(f => f.status === 'Vendido').length;
-  const filhotesAtivos = filhotes.filter(f => f.status === 'Ativo').length;
+  const filhotesAtivos = filhotesComSituacao.filter(f => f.status === 'Ativo' || f.status === 'No ninho' || f.status === 'Saiu do ninho').length;
   const valorTotal = filhotes.reduce((sum, f) => sum + (f.valorVenda || 0), 0);
 
   const handleAddFilhote = () => {
@@ -350,12 +388,21 @@ export function CasalHistoricoModal({
                           <span className="font-bold text-sm">{filhote.anilha}</span>
                           <span className="text-xs text-slate-500">• {filhote.anoAnilha}</span>
                           <span className={`text-xs font-black px-2 py-0.5 rounded-full ${
-                            filhote.status === 'Ativo' 
-                              ? 'bg-emerald-100 text-emerald-700' 
-                              : 'bg-purple-100 text-purple-700'
+                            filhote.status === 'No ninho'
+                              ? 'bg-amber-100 text-amber-700'
+                              : filhote.status === 'Saiu do ninho'
+                                ? 'bg-blue-100 text-blue-700'
+                                : filhote.status === 'Vendido'
+                                  ? 'bg-purple-100 text-purple-700'
+                                  : filhote.status === 'Óbito'
+                                    ? 'bg-slate-200 text-slate-700'
+                                    : 'bg-emerald-100 text-emerald-700'
                           }`}>
                             {filhote.status}
                           </span>
+                        </div>
+                        <div className="text-xs text-slate-600 mt-1">
+                          <strong>Local:</strong> {(filhote as any).local || 'Não informado'}
                         </div>
                         {filhote.status === 'Vendido' && (
                           <div className="text-xs text-slate-500 mt-1">
