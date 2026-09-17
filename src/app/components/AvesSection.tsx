@@ -589,11 +589,11 @@ export function AvesSection({
           <div className="overflow-x-auto">
             <table className="w-full table-fixed text-left">
               <colgroup>
-                <col className="w-[36%]" />
+                <col className="w-[48%]" />
+                <col className="w-[7%]" />
+                <col className="w-[12%]" />
+                <col className="w-[25%]" />
                 <col className="w-[8%]" />
-                <col className="w-[14%]" />
-                <col className="w-[24%]" />
-                <col className="w-[18%]" />
               </colgroup>
 
               <thead>
@@ -726,13 +726,13 @@ export function AvesSection({
                         </div>
                     </td>
 
-                    <td className="px-2 sm:px-3 py-3 align-middle">
-                      <div className="flex items-center justify-center gap-0 sm:gap-1">
+                    <td className="px-0.5 sm:px-1 py-2 align-middle">
+                      <div className="flex flex-col items-center justify-center gap-0">
                         <button
                           type="button"
                           onClick={() => onViewDetails?.(ave.id)}
                           title="Visualizar detalhes"
-                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
+                          className="w-6 h-5 rounded-md flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
                         >
                           <i className="fas fa-eye text-xs"></i>
                         </button>
@@ -741,7 +741,7 @@ export function AvesSection({
                           type="button"
                           onClick={() => onOpenModal('ave', ave.id)}
                           title="Editar ave"
-                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition"
+                          className="w-6 h-5 rounded-md flex items-center justify-center text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition"
                         >
                           <i className="fas fa-pen text-xs"></i>
                         </button>
@@ -750,7 +750,7 @@ export function AvesSection({
                           type="button"
                           onClick={() => onDeleteAve(ave.id)}
                           title="Excluir ave"
-                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-red-500 hover:bg-red-50 hover:text-red-700 transition"
+                          className="w-6 h-5 rounded-md flex items-center justify-center text-red-500 hover:bg-red-50 hover:text-red-700 transition"
                         >
                           <i className="fas fa-trash text-xs"></i>
                         </button>
