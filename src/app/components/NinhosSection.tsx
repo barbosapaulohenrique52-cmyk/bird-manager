@@ -856,9 +856,10 @@ export function NinhosSection({
         </div>
       </div>
 
-      {/* Ninhos continuam sendo usados para definir a origem dos ovos.
-          A visualização dos ovos abaixo é agrupada pelo local atual. */}
-      {modoVisualizacao === 'local' && (
+      {/* A visualização abaixo utiliza exclusivamente o agrupamento selecionado:
+          egg.local quando o modo é Por local, ou o casal quando o modo é Por casal.
+          As ações continuam apontando para o ninho/ovo original. */}
+      {false && modoVisualizacao === 'local' && (
         <div className="space-y-4">
           {ninhos.length === 0 ? (
           <div className="bg-white p-12 rounded-3xl text-center border-2 border-slate-100">
@@ -1128,9 +1129,9 @@ export function NinhosSection({
       )}
 
       {/* ============================================================
-          OVOS AGRUPADOS PELO LOCAL ATUAL
+          OVOS AGRUPADOS PELO MODO SELECIONADO
           ============================================================ */}
-      {modoVisualizacao === 'casal' && ninhos.some(n => n.eggs.length > 0) && (
+      {ninhos.some(n => n.eggs.length > 0) && (
         <div className="pt-2">
           <div className="flex flex-col gap-3 mb-4">
             <div className="flex items-center justify-between gap-2">
