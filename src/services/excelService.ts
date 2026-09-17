@@ -140,41 +140,60 @@ function aplicarBordas(row: ExcelJS.Row) {
 }
 
 /**
- * Aplica uma lista suspensa utilizando uma faixa de células
- * localizada na própria aba Aves.
+ * Define as células como texto.
  *
- * Essa abordagem evita nomes definidos e referências entre abas,
- * aumentando a compatibilidade com WPS Office e Excel.
+ * Isso é essencial para preservar identificações como:
+ * 072, 001, 0008 etc.
+ *
+ * A anilha, o pai e a mãe não devem ser tratados como números.
+ */
+function aplicarFormatoTexto(
+  worksheet: ExcelJS.Worksheet,
+  colunas: string[],
+  primeiraLinha: number,
+  ultimaLinha: number,
+) {
+  colunas.forEach((coluna) => {
+    for (
+      let linha = primeiraLinha;
+      linha <= ultimaLinha;
+      linha += 1
+    ) {
+      const cell = worksheet.getCell(`${coluna}${linha}`);
+
+      cell.numFmt = "@";
+
+      if (cell.value !== null && cell.value !== undefined) {
+        cell.value = String(cell.value);
+      }
+    }
+  });
+}
+
+/**
+ * Aplica uma lista suspensa utilizando um nome definido no Excel.
  */
 function aplicarListaSuspensa(
   worksheet: ExcelJS.Worksheet,
   coluna: string,
   primeiraLinha: number,
   ultimaLinha: number,
-  colunaAuxiliar: string,
-  quantidadeValores: number,
+  nomeLista: string,
 ) {
-  const ultimaLinhaLista = Math.max(quantidadeValores + 1, 2);
-
   for (let linha = primeiraLinha; linha <= ultimaLinha; linha += 1) {
     worksheet.getCell(`${coluna}${linha}`).dataValidation = {
       type: "list",
       allowBlank: true,
-
-      // Referência direta na própria aba Aves.
-      formulae: [`$${colunaAuxiliar}$2:$${colunaAuxiliar}$${ultimaLinhaLista}`],
-
+      formulae: [`=${nomeLista}`],
       showErrorMessage: false,
       showInputMessage: true,
       promptTitle: "Lista de referência",
-      prompt: "Selecione um valor da lista ou digite um valor novo.",
+      prompt:
+        "Selecione um valor da lista ou digite um valor novo.",
     };
   }
 }
 
-/**
- * Cria a aba visível com as listas de referência.
- */
 function adicionarAbaListas(
   workbook: ExcelJS.Workbook,
   references: ExcelReferenceData,
@@ -208,7 +227,10 @@ function adicionarAbaListas(
     },
     {
       titulo: "Casais",
-      valores: nomesCasais(references.casais, references.aves),
+      valores: nomesCasais(
+        references.casais,
+        references.aves,
+      ),
     },
     {
       titulo: "Ninhos",
@@ -238,7 +260,6 @@ function adicionarAbaListas(
 
     const titulo = worksheet.getCell(`${letra}1`);
     titulo.value = lista.titulo;
-
     titulo.font = {
       bold: true,
       color: { argb: "FFFFFFFF" },
@@ -255,10 +276,20 @@ function adicionarAbaListas(
       vertical: "middle",
     };
 
-    const valores = lista.valores.length > 0 ? lista.valores : [""];
+    const valores =
+      lista.valores.length > 0 ? lista.valores : [""];
 
     valores.forEach((valor, linha) => {
-      worksheet.getCell(`${letra}${linha + 2}`).value = valor;
+      const cell = worksheet.getCell(
+        `${letra}${linha + 2}`,
+      );
+
+      /*
+       * Todas as listas são gravadas como texto.
+       * Isso preserva anilhas como 072 e 001.
+       */
+      cell.value = String(valor);
+      cell.numFmt = "@";
     });
 
     worksheet.getColumn(coluna).width = Math.max(
@@ -271,8 +302,14 @@ function adicionarAbaListas(
 
   worksheet.autoFilter = {
     from: "A1",
-    to: `${worksheet.getColumn(listas.length).letter}${
-      Math.max(...listas.map((lista) => Math.max(lista.valores.length, 1))) + 1
+    to: `${
+      worksheet.getColumn(listas.length).letter
+    }${
+      Math.max(
+        ...listas.map((lista) =>
+          Math.max(lista.valores.length, 1),
+        ),
+      ) + 1
     }`,
   };
 
@@ -297,14 +334,31 @@ function adicionarAbaInstrucoes(workbook: ExcelJS.Workbook) {
     [
       "5. Para pai e mãe, informe a anilha, o nome ou o ID da ave já cadastrada.",
     ],
-    ["6. Para ninho, informe o nome ou o ID do ninho já cadastrado."],
-    ["7. Para casal de amas, informe a descrição do casal ou seu ID."],
-    ["8. A importação será revisada antes de alterar os dados do sistema."],
+    [
+      "6. Para ninho, informe o nome ou o ID do ninho já cadastrado.",
+    ],
+    [
+      "7. Para casal de amas, informe a descrição do casal ou seu ID.",
+    ],
+    [
+      "8. A importação será revisada antes de alterar os dados do sistema.",
+    ],
+    [""],
+    ["Atenção sobre as anilhas"],
+    [
+      "A coluna anilha deve ser mantida como TEXTO para preservar zeros à esquerda.",
+    ],
+    [
+      "Exemplos válidos: 072, 001, 0008. Não altere a coluna para Número.",
+    ],
     [""],
     ["Campos principais"],
     ["id", "ID interno. Deixe vazio para novas aves."],
     ["especie", "Espécie da ave."],
-    ["anilha", "Número ou identificação da anilha."],
+    [
+      "anilha",
+      "Identificação da anilha. Deve ser tratada como texto.",
+    ],
     ["ano_anilha", "Ano da anilha."],
     ["nome", "Nome da ave."],
     ["sexo", "Macho, Fêmea ou Indefinido."],
@@ -315,7 +369,10 @@ function adicionarAbaInstrucoes(workbook: ExcelJS.Workbook) {
     ["pai", "Nome, anilha ou ID do pai."],
     ["mae", "Nome, anilha ou ID da mãe."],
     ["data_nascimento", "Data no formato AAAA-MM-DD."],
-    ["ninho_nascimento", "Nome ou ID do ninho de nascimento."],
+    [
+      "ninho_nascimento",
+      "Nome ou ID do ninho de nascimento.",
+    ],
     ["criado_por_amas", "Use Sim ou Não."],
     ["casal_amas", "Descrição ou ID do casal de amas."],
     ["cor_cabeca", "Cor da cabeça."],
@@ -344,148 +401,16 @@ function adicionarAbaInstrucoes(workbook: ExcelJS.Workbook) {
     size: 13,
   };
 
-  worksheet.getColumn(1).width = 25;
+  worksheet.getCell("A13").font = {
+    bold: true,
+    size: 13,
+    color: { argb: "FFB91C1C" },
+  };
+
+  worksheet.getColumn(1).width = 28;
   worksheet.getColumn(2).width = 90;
 
   worksheet.views = [{ state: "frozen", ySplit: 3 }];
-}
-
-/**
- * Cria as listas auxiliares nas colunas X até AH da aba Aves.
- *
- * Essas colunas ficam ocultas e são usadas como origem das
- * validações de dados.
- */
-function adicionarListasAuxiliaresNaAbaAves(
-  worksheet: ExcelJS.Worksheet,
-  references: ExcelReferenceData,
-) {
-  const criadores = valoresUnicos(
-    references.aves.map((ave) => ave.creator || ""),
-  );
-
-  const listas = [
-    {
-      titulo: "AuxEspecies",
-      valores: valoresUnicos(references.config.especies || []),
-    },
-    {
-      titulo: "AuxSexo",
-      valores: ["Macho", "Fêmea", "Indefinido"],
-    },
-    {
-      titulo: "AuxStatus",
-      valores: ["Ativo", "Vendido", "Óbito", "No Ninho"],
-    },
-    {
-      titulo: "AuxCriadores",
-      valores: criadores,
-    },
-    {
-      titulo: "AuxPais",
-      valores: nomesAves(references.aves),
-    },
-    {
-      titulo: "AuxCasais",
-      valores: nomesCasais(references.casais, references.aves),
-    },
-    {
-      titulo: "AuxNinhos",
-      valores: nomesNinhos(references.ninhos),
-    },
-    {
-      titulo: "AuxCoresCabeca",
-      valores: nomesCores(references.config.coresCabeca),
-    },
-    {
-      titulo: "AuxCoresPeito",
-      valores: nomesCores(references.config.coresPeito),
-    },
-    {
-      titulo: "AuxCoresDorso",
-      valores: nomesCores(references.config.coresDorso),
-    },
-    {
-      titulo: "AuxCriadoPorAmas",
-      valores: ["Sim", "Não"],
-    },
-  ];
-
-  const colunasAuxiliares = [
-    "X",
-    "Y",
-    "Z",
-    "AA",
-    "AB",
-    "AC",
-    "AD",
-    "AE",
-    "AF",
-    "AG",
-    "AH",
-  ];
-
-  listas.forEach((lista, indice) => {
-    const coluna = colunasAuxiliares[indice];
-
-    worksheet.getCell(`${coluna}1`).value = lista.titulo;
-
-    const valores = lista.valores.length > 0 ? lista.valores : [""];
-
-    valores.forEach((valor, linha) => {
-      worksheet.getCell(`${coluna}${linha + 2}`).value = valor;
-    });
-
-    // Oculta a coluna auxiliar.
-    worksheet.getColumn(coluna).hidden = true;
-  });
-
-  return {
-    especies: {
-      coluna: "X",
-      quantidade: listas[0].valores.length,
-    },
-    sexo: {
-      coluna: "Y",
-      quantidade: listas[1].valores.length,
-    },
-    status: {
-      coluna: "Z",
-      quantidade: listas[2].valores.length,
-    },
-    criadores: {
-      coluna: "AA",
-      quantidade: listas[3].valores.length,
-    },
-    pais: {
-      coluna: "AB",
-      quantidade: listas[4].valores.length,
-    },
-    casais: {
-      coluna: "AC",
-      quantidade: listas[5].valores.length,
-    },
-    ninhos: {
-      coluna: "AD",
-      quantidade: listas[6].valores.length,
-    },
-    coresCabeca: {
-      coluna: "AE",
-      quantidade: listas[7].valores.length,
-    },
-    coresPeito: {
-      coluna: "AF",
-      quantidade: listas[8].valores.length,
-    },
-    coresDorso: {
-      coluna: "AG",
-      quantidade: listas[9].valores.length,
-    },
-    criadoPorAmas: {
-      coluna: "AH",
-      quantidade: listas[10].valores.length,
-    },
-  };
 }
 
 export async function baixarPlanilhaModelo(
@@ -538,30 +463,110 @@ export async function baixarPlanilhaModelo(
 
   const linhasModelo = 200;
 
-  for (let linha = 2; linha <= linhasModelo + 1; linha += 1) {
+  for (
+    let linha = 2;
+    linha <= linhasModelo + 1;
+    linha += 1
+  ) {
     worksheet.addRow([]);
     aplicarBordas(worksheet.getRow(linha));
   }
 
-  // Aba visível para consulta dos valores cadastrados.
-  adicionarAbaListas(workbook, references);
+  /*
+   * Colunas que obrigatoriamente devem ser TEXTO:
+   *
+   * A = ID
+   * C = Anilha
+   * K = Pai
+   * L = Mãe
+   *
+   * Principalmente C, K e L precisam preservar zeros
+   * à esquerda, como 072, 001 e 0008.
+   */
+  aplicarFormatoTexto(
+    worksheet,
+    ["A", "C", "K", "L"],
+    2,
+    linhasModelo + 1,
+  );
 
-  // Aba com instruções de preenchimento.
+  /*
+   * Também define o formato da coluna de anilha no cabeçalho.
+   */
+  worksheet.getColumn("C").numFmt = "@";
+  worksheet.getColumn("K").numFmt = "@";
+  worksheet.getColumn("L").numFmt = "@";
+
+  adicionarAbaListas(workbook, references);
   adicionarAbaInstrucoes(workbook);
 
-  // Listas auxiliares na própria aba Aves.
-  const listasAuxiliares = adicionarListasAuxiliaresNaAbaAves(
-    worksheet,
-    references,
+  const especies = valoresUnicos(
+    references.config.especies || [],
   );
+
+  const criadores = valoresUnicos(
+    references.aves.map((ave) => ave.creator || ""),
+  );
+
+  const pais = nomesAves(references.aves);
+  const casais = nomesCasais(
+    references.casais,
+    references.aves,
+  );
+  const ninhos = nomesNinhos(references.ninhos);
+  const coresCabeca = nomesCores(
+    references.config.coresCabeca,
+  );
+  const coresPeito = nomesCores(
+    references.config.coresPeito,
+  );
+  const coresDorso = nomesCores(
+    references.config.coresDorso,
+  );
+
+  const definirLista = (
+    nome: string,
+    coluna: string,
+    quantidade: number,
+  ) => {
+    const ultimaLinha = Math.max(quantidade + 1, 2);
+
+    workbook.definedNames.add(
+      nome,
+      `'Listas'!$${coluna}$2:$${coluna}$${ultimaLinha}`,
+    );
+  };
+
+  definirLista("ListaEspecies", "A", especies.length);
+  definirLista("ListaSexo", "B", 3);
+  definirLista("ListaStatus", "C", 4);
+  definirLista("ListaCriadores", "D", criadores.length);
+  definirLista("ListaPais", "E", pais.length);
+  definirLista("ListaCasais", "F", casais.length);
+  definirLista("ListaNinhos", "G", ninhos.length);
+  definirLista(
+    "ListaCoresCabeca",
+    "H",
+    coresCabeca.length,
+  );
+  definirLista(
+    "ListaCoresPeito",
+    "I",
+    coresPeito.length,
+  );
+  definirLista(
+    "ListaCoresDorso",
+    "J",
+    coresDorso.length,
+  );
+  definirLista("ListaAmas", "K", 2);
 
   aplicarListaSuspensa(
     worksheet,
     "B",
     2,
     linhasModelo + 1,
-    listasAuxiliares.especies.coluna,
-    listasAuxiliares.especies.quantidade,
+    "ListaEspecies",
   );
 
   aplicarListaSuspensa(
@@ -569,8 +574,7 @@ export async function baixarPlanilhaModelo(
     "F",
     2,
     linhasModelo + 1,
-    listasAuxiliares.sexo.coluna,
-    listasAuxiliares.sexo.quantidade,
+    "ListaSexo",
   );
 
   aplicarListaSuspensa(
@@ -578,8 +582,7 @@ export async function baixarPlanilhaModelo(
     "G",
     2,
     linhasModelo + 1,
-    listasAuxiliares.status.coluna,
-    listasAuxiliares.status.quantidade,
+    "ListaStatus",
   );
 
   aplicarListaSuspensa(
@@ -587,8 +590,7 @@ export async function baixarPlanilhaModelo(
     "H",
     2,
     linhasModelo + 1,
-    listasAuxiliares.criadores.coluna,
-    listasAuxiliares.criadores.quantidade,
+    "ListaCriadores",
   );
 
   aplicarListaSuspensa(
@@ -596,8 +598,7 @@ export async function baixarPlanilhaModelo(
     "K",
     2,
     linhasModelo + 1,
-    listasAuxiliares.pais.coluna,
-    listasAuxiliares.pais.quantidade,
+    "ListaPais",
   );
 
   aplicarListaSuspensa(
@@ -605,8 +606,7 @@ export async function baixarPlanilhaModelo(
     "L",
     2,
     linhasModelo + 1,
-    listasAuxiliares.pais.coluna,
-    listasAuxiliares.pais.quantidade,
+    "ListaPais",
   );
 
   aplicarListaSuspensa(
@@ -614,8 +614,7 @@ export async function baixarPlanilhaModelo(
     "N",
     2,
     linhasModelo + 1,
-    listasAuxiliares.ninhos.coluna,
-    listasAuxiliares.ninhos.quantidade,
+    "ListaNinhos",
   );
 
   aplicarListaSuspensa(
@@ -623,8 +622,7 @@ export async function baixarPlanilhaModelo(
     "P",
     2,
     linhasModelo + 1,
-    listasAuxiliares.casais.coluna,
-    listasAuxiliares.casais.quantidade,
+    "ListaCasais",
   );
 
   aplicarListaSuspensa(
@@ -632,8 +630,7 @@ export async function baixarPlanilhaModelo(
     "Q",
     2,
     linhasModelo + 1,
-    listasAuxiliares.coresCabeca.coluna,
-    listasAuxiliares.coresCabeca.quantidade,
+    "ListaCoresCabeca",
   );
 
   aplicarListaSuspensa(
@@ -641,8 +638,7 @@ export async function baixarPlanilhaModelo(
     "R",
     2,
     linhasModelo + 1,
-    listasAuxiliares.coresPeito.coluna,
-    listasAuxiliares.coresPeito.quantidade,
+    "ListaCoresPeito",
   );
 
   aplicarListaSuspensa(
@@ -650,8 +646,7 @@ export async function baixarPlanilhaModelo(
     "S",
     2,
     linhasModelo + 1,
-    listasAuxiliares.coresDorso.coluna,
-    listasAuxiliares.coresDorso.quantidade,
+    "ListaCoresDorso",
   );
 
   aplicarListaSuspensa(
@@ -659,8 +654,7 @@ export async function baixarPlanilhaModelo(
     "O",
     2,
     linhasModelo + 1,
-    listasAuxiliares.criadoPorAmas.coluna,
-    listasAuxiliares.criadoPorAmas.quantidade,
+    "ListaAmas",
   );
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -673,14 +667,21 @@ export async function baixarPlanilhaModelo(
   const link = document.createElement("a");
 
   link.href = url;
-  link.download = "modelo_importacao_aves_bird_manager.xlsx";
+  link.download =
+    "modelo_importacao_aves_bird_manager.xlsx";
   link.click();
 
   URL.revokeObjectURL(url);
 }
 
-function converterBooleano(valor: unknown): boolean | undefined {
-  if (valor === undefined || valor === null || valor === "") {
+function converterBooleano(
+  valor: unknown,
+): boolean | undefined {
+  if (
+    valor === undefined ||
+    valor === null ||
+    valor === ""
+  ) {
     return undefined;
   }
 
@@ -690,19 +691,31 @@ function converterBooleano(valor: unknown): boolean | undefined {
 
   const texto = String(valor).trim().toLowerCase();
 
-  if (["sim", "s", "true", "1", "yes"].includes(texto)) {
+  if (
+    ["sim", "s", "true", "1", "yes"].includes(texto)
+  ) {
     return true;
   }
 
-  if (["não", "nao", "n", "false", "0", "no"].includes(texto)) {
+  if (
+    ["não", "nao", "n", "false", "0", "no"].includes(
+      texto,
+    )
+  ) {
     return false;
   }
 
   return undefined;
 }
 
-function converterNumero(valor: unknown): number | undefined {
-  if (valor === undefined || valor === null || valor === "") {
+function converterNumero(
+  valor: unknown,
+): number | undefined {
+  if (
+    valor === undefined ||
+    valor === null ||
+    valor === ""
+  ) {
     return undefined;
   }
 
@@ -711,7 +724,17 @@ function converterNumero(valor: unknown): number | undefined {
   return Number.isFinite(numero) ? numero : undefined;
 }
 
-function textoOuUndefined(valor: unknown): string | undefined {
+/**
+ * Converte um valor em texto preservando o conteúdo.
+ *
+ * Importante:
+ * - Se o Excel entregar "072", mantém "072".
+ * - Se o Excel já tiver convertido para 72, não é possível
+ *   recuperar automaticamente o zero perdido.
+ */
+function textoOuUndefined(
+  valor: unknown,
+): string | undefined {
   if (valor === undefined || valor === null) {
     return undefined;
   }
@@ -739,10 +762,13 @@ export async function lerPlanilhaAves(
   await workbook.xlsx.load(buffer);
 
   const worksheet =
-    workbook.getWorksheet("Aves") || workbook.worksheets[0];
+    workbook.getWorksheet("Aves") ||
+    workbook.worksheets[0];
 
   if (!worksheet) {
-    throw new Error("A planilha não possui uma aba válida.");
+    throw new Error(
+      "A planilha não possui uma aba válida.",
+    );
   }
 
   const primeiraLinha = worksheet.getRow(1);
@@ -800,44 +826,103 @@ export async function lerPlanilhaAves(
       continue;
     }
 
+    /*
+     * As anilhas são lidas como texto.
+     *
+     * Se a planilha estiver corretamente formatada como texto,
+     * "072" chegará ao sistema como "072".
+     */
+    const anilha = textoOuUndefined(
+      valor(linha, "anilha"),
+    );
+
+    const pai = textoOuUndefined(
+      valor(linha, "pai"),
+    );
+
+    const mae = textoOuUndefined(
+      valor(linha, "mae"),
+    );
+
     resultado.push({
       id: textoOuUndefined(valor(linha, "id")),
-      species: textoOuUndefined(valor(linha, "especie")),
-      ring: textoOuUndefined(valor(linha, "anilha")),
-      ringYear: converterNumero(valor(linha, "ano_anilha")),
-      name: textoOuUndefined(valor(linha, "nome")),
-      sex: textoOuUndefined(valor(linha, "sexo")) as
-        | Ave["sex"]
-        | undefined,
-      status: textoOuUndefined(valor(linha, "status")) as
-        | Ave["status"]
-        | undefined,
-      creator: textoOuUndefined(valor(linha, "criador")),
-      acqYear: converterNumero(valor(linha, "ano_aquisicao")),
-      photo: textoOuUndefined(valor(linha, "foto")),
-      parentMaleId: textoOuUndefined(valor(linha, "pai")),
-      parentFemaleId: textoOuUndefined(valor(linha, "mae")),
-      birthDate: textoOuUndefined(valor(linha, "data_nascimento")),
+      species: textoOuUndefined(
+        valor(linha, "especie"),
+      ),
+
+      ring: anilha,
+
+      ringYear: converterNumero(
+        valor(linha, "ano_anilha"),
+      ),
+
+      name: textoOuUndefined(
+        valor(linha, "nome"),
+      ),
+
+      sex: textoOuUndefined(
+        valor(linha, "sexo"),
+      ) as Ave["sex"] | undefined,
+
+      status: textoOuUndefined(
+        valor(linha, "status"),
+      ) as Ave["status"] | undefined,
+
+      creator: textoOuUndefined(
+        valor(linha, "criador"),
+      ),
+
+      acqYear: converterNumero(
+        valor(linha, "ano_aquisicao"),
+      ),
+
+      photo: textoOuUndefined(
+        valor(linha, "foto"),
+      ),
+
+      /*
+       * Pai e mãe permanecem como texto.
+       * O App.tsx fará a conversão da referência
+       * para o ID interno da ave.
+       */
+      parentMaleId: pai,
+      parentFemaleId: mae,
+
+      birthDate: textoOuUndefined(
+        valor(linha, "data_nascimento"),
+      ),
+
       birthNestId: textoOuUndefined(
         valor(linha, "ninho_nascimento"),
       ),
+
       criadoPorAmas: converterBooleano(
         valor(linha, "criado_por_amas"),
       ),
+
       casalAmasId: textoOuUndefined(
         valor(linha, "casal_amas"),
       ),
+
       corCabeca: textoOuUndefined(
         valor(linha, "cor_cabeca"),
       ),
+
       corPeito: textoOuUndefined(
         valor(linha, "cor_peito"),
       ),
+
       corDorso: textoOuUndefined(
         valor(linha, "cor_dorso"),
       ),
-      nota: textoOuUndefined(valor(linha, "nota")),
-      porta: textoOuUndefined(valor(linha, "porta")),
+
+      nota: textoOuUndefined(
+        valor(linha, "nota"),
+      ),
+
+      porta: textoOuUndefined(
+        valor(linha, "porta"),
+      ),
     });
   }
 
