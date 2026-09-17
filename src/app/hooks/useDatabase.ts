@@ -810,44 +810,108 @@ export function useDatabase() {
 
       const baseId = Date.now();
 
-      avesData.forEach((aveData, index) => {
-        const novaAve: Ave = {
+      /*
+       * Primeiro criamos todas as aves importadas com seus IDs.
+       * Assim, um filho pode localizar o pai ou a mãe mesmo quando
+       * o registro do pai/mãe aparece depois dele na planilha.
+       */
+      const avesImportadasComId: Array<{
+        ave: Ave;
+        dados: Omit<Ave, 'id'> & {
+          pai?: string;
+          mae?: string;
+          parentMaleId?: string;
+          parentFemaleId?: string;
+        };
+      }> = avesData.map((aveData, index) => ({
+        ave: {
           id: `${baseId}-${index}`,
           ...aveData
-        };
+        } as Ave,
+        dados: aveData as Omit<Ave, 'id'> & {
+          pai?: string;
+          mae?: string;
+          parentMaleId?: string;
+          parentFemaleId?: string;
+        }
+      }));
 
-        newDb.aves.push(novaAve);
+      const todasAvesDisponiveis = [
+        ...newDb.aves,
+        ...avesImportadasComId.map((item) => item.ave)
+      ];
+
+      const localizarAve = (referencia?: string): Ave | undefined => {
+        const valor = String(referencia ?? '').trim();
+
+        if (!valor) {
+          return undefined;
+        }
+
+        return todasAvesDisponiveis.find((ave) => {
+          return (
+            ave.id === valor ||
+            ave.name?.trim().toLowerCase() === valor.toLowerCase() ||
+            ave.ring?.trim().toLowerCase() === valor.toLowerCase()
+          );
+        });
+      };
+
+      avesImportadasComId.forEach(({ ave, dados }) => {
+        const paiImportado =
+          dados.pai || dados.parentMaleId || '';
+
+        const maeImportada =
+          dados.mae || dados.parentFemaleId || '';
+
+        const paiEncontrado = localizarAve(paiImportado);
+        const maeEncontrada = localizarAve(maeImportada);
+
+        if (paiEncontrado) {
+          ave.parentMaleId = paiEncontrado.id;
+        }
+
+        if (maeEncontrada) {
+          ave.parentFemaleId = maeEncontrada.id;
+        }
+
+        // Os campos pai/mae são auxiliares da planilha e não fazem
+        // parte do modelo principal da ave.
+        delete (ave as Ave & { pai?: string }).pai;
+        delete (ave as Ave & { mae?: string }).mae;
+
+        newDb.aves.push(ave);
 
         if (
-          aveData.species &&
-          aveData.species.trim() !== '' &&
-          !newDb.config.especies.includes(aveData.species)
+          ave.species &&
+          ave.species.trim() !== '' &&
+          !newDb.config.especies.includes(ave.species)
         ) {
-          newDb.config.especies.push(aveData.species);
+          newDb.config.especies.push(ave.species);
         }
 
         if (
-          aveData.corCabeca &&
-          aveData.corCabeca.trim() !== '' &&
-          !newColorLists.coresCabeca.includes(aveData.corCabeca)
+          ave.corCabeca &&
+          ave.corCabeca.trim() !== '' &&
+          !newColorLists.coresCabeca.includes(ave.corCabeca)
         ) {
-          newColorLists.coresCabeca.push(aveData.corCabeca);
+          newColorLists.coresCabeca.push(ave.corCabeca);
         }
 
         if (
-          aveData.corPeito &&
-          aveData.corPeito.trim() !== '' &&
-          !newColorLists.coresPeito.includes(aveData.corPeito)
+          ave.corPeito &&
+          ave.corPeito.trim() !== '' &&
+          !newColorLists.coresPeito.includes(ave.corPeito)
         ) {
-          newColorLists.coresPeito.push(aveData.corPeito);
+          newColorLists.coresPeito.push(ave.corPeito);
         }
 
         if (
-          aveData.corDorso &&
-          aveData.corDorso.trim() !== '' &&
-          !newColorLists.coresDorso.includes(aveData.corDorso)
+          ave.corDorso &&
+          ave.corDorso.trim() !== '' &&
+          !newColorLists.coresDorso.includes(ave.corDorso)
         ) {
-          newColorLists.coresDorso.push(aveData.corDorso);
+          newColorLists.coresDorso.push(ave.corDorso);
         }
       });
 
