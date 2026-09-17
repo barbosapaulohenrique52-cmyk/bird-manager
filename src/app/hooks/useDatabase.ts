@@ -898,7 +898,11 @@ export function useDatabase() {
         if (idx !== -1) {
           newDb.ninhos[idx] = {
             ...newDb.ninhos[idx],
-            ...ninho
+            ...ninho,
+            active:
+              ninho.active ??
+              newDb.ninhos[idx].active ??
+              true
           } as Ninho;
         }
       } else {
@@ -906,8 +910,9 @@ export function useDatabase() {
           id: Date.now().toString(),
           name: ninho.name || '',
           casalId: ninho.casalId || '',
-          eggs: []
-        } as Ninho);
+          eggs: [],
+          active: ninho.active ?? true
+        });
       }
 
       save(newDb);
@@ -1179,15 +1184,20 @@ export function useDatabase() {
         ninho &&
         ninho.eggs[eggIdx]
       ) {
-        ninho.eggs[eggIdx][field] =
-          value as any;
+        const eggAtualizado: Egg = {
+          ...ninho.eggs[eggIdx],
+          [field]: value
+        } as Egg;
 
-        // ✨ Se está atualizando a espécie, adicionar à lista central se não existir
+        ninho.eggs[eggIdx] =
+          eggAtualizado;
+
+        // Se está atualizando a espécie,
+        // adicionar à lista central se não existir
         if (
           field === 'species' &&
           value &&
-          value !==
-            'Não especificado' &&
+          value !== 'Não especificado' &&
           !newDb.config.especies.includes(
             value
           )

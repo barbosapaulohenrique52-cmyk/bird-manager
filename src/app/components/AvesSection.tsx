@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Ave, ModalType, Config, CorAve } from '../App';
 import BirdColorDiagram from './BirdColorDiagram';
+import { gerarPlanilhaAves } from '../../services/excelService';
 
 interface AvesSectionProps {
   aves: Ave[];
@@ -374,6 +375,16 @@ export function AvesSection({
               className="bg-slate-800 text-white px-5 py-2.5 rounded-xl font-black text-[10px]"
             >
               ADICIONAR AVE
+            </button>
+
+            <button
+              type="button"
+              onClick={() => gerarPlanilhaAves(aves, config)}
+              className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2"
+              title="Gerar planilha Excel com todas as aves"
+            >
+              <i className="fas fa-file-excel"></i>
+              GERAR PLANILHA
             </button>
 
             <button
