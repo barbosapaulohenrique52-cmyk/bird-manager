@@ -391,7 +391,7 @@ export function AvesSection({
 
           <button
             type="button"
-            onClick={() => gerarPlanilhaModeloAves(config)}
+            onClick={() => gerarPlanilhaModeloAves(config, 200, aves)}
             className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
           >
             <i className="fas fa-file-download"></i>
