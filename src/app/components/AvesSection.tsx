@@ -717,7 +717,6 @@ export function AvesSection({
                             {ave.corDorso || '-'}
                           </p>
                         </div>
-                      </div>
                     </td>
 
                     <td className="px-4 py-4">
