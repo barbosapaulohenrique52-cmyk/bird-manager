@@ -372,6 +372,7 @@ export function AvesSection({
     for (const ninho of listaNinhos) {
       const ovo = ninho.eggs?.find(egg => {
         const eggAny = egg as typeof egg & {
+          local?: string;
           localSaidaNinho?: string;
           localAtual?: string;
           location?: string;
@@ -395,6 +396,7 @@ export function AvesSection({
 
       if (ovo) {
         const ovoAny = ovo as typeof ovo & {
+          local?: string;
           localSaidaNinho?: string;
           localAtual?: string;
           location?: string;
@@ -404,6 +406,7 @@ export function AvesSection({
 
         const localOvo = [
           ovoAny.localSaidaNinho,
+          ovoAny.local,
           ovoAny.localAtual,
           ovoAny.localCriacao,
           ovoAny.localAlojamento,
@@ -431,27 +434,12 @@ export function AvesSection({
       }
     }
 
-    // Filhotes que ainda não saíram do ninho devem aparecer como
-    // "Ninho", em vez de "Não informado".
-    const statusNormalizado = String(ave.status || '').trim().toLowerCase();
-    const localSemantico = (aveAny.local || '').trim().toLowerCase();
-
-    const estaNoNinho =
-      statusNormalizado === 'no ninho' ||
-      statusNormalizado === 'ninho' ||
-      statusNormalizado === 'no_ninho' ||
-      localSemantico === 'ninho';
-
-    if (estaNoNinho) {
-      return 'Ninho';
-    }
-
-    // "caixa" não é considerado um local físico cadastrado.
+    // "ninho" e "caixa" são classificações do ovo, não locais físicos.
+    const localSemantico = (aveAny.local || '').trim();
     if (
       localSemantico &&
-      localSemantico !== 'caixa' &&
-      localSemantico !== 'não informado' &&
-      localSemantico !== 'nao informado'
+      localSemantico.toLowerCase() !== 'ninho' &&
+      localSemantico.toLowerCase() !== 'caixa'
     ) {
       return localSemantico;
     }
