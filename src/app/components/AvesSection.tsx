@@ -34,7 +34,7 @@ export function AvesSection({
   const [busca, setBusca] = useState('');
   const [filtroEspecie, setFiltroEspecie] = useState('');
   const [filtroSexo, setFiltroSexo] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('__SEM_OBITOS__');
   const [filtroCorCabeca, setFiltroCorCabeca] = useState('');
   const [filtroCorPeito, setFiltroCorPeito] = useState('');
   const [filtroCorDorso, setFiltroCorDorso] = useState('');
@@ -254,8 +254,20 @@ export function AvesSection({
       const correspondeSexo =
         !filtroSexo || ave.sex === filtroSexo;
 
+      const statusNormalizado = String(ave.status || '')
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\\u0300-\\u036f]/g, '');
+
+      const ehAveFalecida = ['obito', 'falecido', 'morto', 'morta'].includes(
+        statusNormalizado
+      );
+
       const correspondeStatus =
-        !filtroStatus || ave.status === filtroStatus;
+        filtroStatus === '__SEM_OBITOS__'
+          ? !ehAveFalecida
+          : !filtroStatus || ave.status === filtroStatus;
 
       const correspondeCorCabeca =
         !filtroCorCabeca || ave.corCabeca === filtroCorCabeca;
@@ -307,13 +319,15 @@ export function AvesSection({
     filtroCorDorso,
     filtroPorta,
     filtroLocal
-  ].filter(Boolean).length;
+  ].filter(
+    filtro => Boolean(filtro) && filtro !== '__SEM_OBITOS__'
+  ).length;
 
   function limparFiltros() {
     setBusca('');
     setFiltroEspecie('');
     setFiltroSexo('');
-    setFiltroStatus('');
+    setFiltroStatus('__SEM_OBITOS__');
     setFiltroCorCabeca('');
     setFiltroCorPeito('');
     setFiltroCorDorso('');
@@ -740,6 +754,7 @@ export function AvesSection({
                 onChange={event => setFiltroStatus(event.target.value)}
                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
               >
+                <option value="__SEM_OBITOS__">Aves não falecidas (padrão)</option>
                 <option value="">Todos os status</option>
 
                 {status.map(statusAve => (
