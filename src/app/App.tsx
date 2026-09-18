@@ -128,6 +128,12 @@ export interface Config {
   coresPeito?: CorAve[];
   coresDorso?: CorAve[];
   coresAves?: CorAve[];
+
+  /**
+   * Locais físicos cadastrados nas configurações
+   * para ovos, filhotes e aves.
+   */
+  locaisOvos?: string[];
 }
 
 export interface Lancamento {
@@ -256,6 +262,7 @@ export default function App() {
         {activeTab === "aves" && (
           <AvesSection
             aves={db.aves}
+            ninhos={db.ninhos}
             config={db.config}
             onOpenModal={openModal}
             onDeleteAve={deleteAve}
