@@ -74,7 +74,7 @@ function CheckboxFilter({
       : `${quantidadeSelecionada} selecionado${quantidadeSelecionada > 1 ? 's' : ''}`;
 
   return (
-    <div className="relative">
+    <div className="relative group">
       <button
         type="button"
         onClick={() => setAberto(value => !value)}
@@ -712,23 +712,23 @@ export function AvesSection({
   }
 
   return (
-    <section className="space-y-5">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+    <section className="space-y-6">
+      <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5">
         <div>
-          <h2 className="text-2xl font-black text-slate-800">
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
             Plantel de Aves
           </h2>
 
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 mt-1.5">
             Gerencie, consulte e exporte os registros do seu plantel.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2.5">
           <button
             type="button"
             onClick={() => setMostrarFiltros(value => !value)}
-            className={`px-4 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition ${
+            className={`px-4 py-2.5 rounded-xl font-bold text-[11px] flex items-center gap-2 transition-all duration-200 border ${
               mostrarFiltros || quantidadeFiltrosAtivos > 0
                 ? 'bg-slate-800 text-white'
                 : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -748,7 +748,7 @@ export function AvesSection({
             <button
               type="button"
               onClick={() => setMostrarEdicaoLote(true)}
-              className="bg-violet-600 hover:bg-violet-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+              className="bg-violet-600 hover:bg-violet-700 text-white px-5 py-2.5 rounded-xl font-bold text-[11px] flex items-center gap-2 transition-all duration-200 shadow-sm hover:shadow-md"
             >
               <i className="fas fa-layer-group"></i>
               EDITAR {avesSelecionadas.length} EM LOTE
@@ -758,7 +758,7 @@ export function AvesSection({
           <button
             type="button"
             onClick={() => onOpenModal('ave')}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-bold text-[11px] flex items-center gap-2 transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <i className="fas fa-plus"></i>
             ADICIONAR AVE
@@ -768,7 +768,7 @@ export function AvesSection({
             type="button"
             onClick={() => inputImportacaoRef.current?.click()}
             disabled={importandoPlanilha}
-            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-bold text-[11px] flex items-center gap-2 transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <i className={importandoPlanilha ? 'fas fa-spinner fa-spin' : 'fas fa-file-import'}></i>
             {importandoPlanilha ? 'IMPORTANDO...' : 'IMPORTAR PLANILHA'}
@@ -785,7 +785,7 @@ export function AvesSection({
           <button
             type="button"
             onClick={() => gerarPlanilhaAves(aves, config)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-bold text-[11px] flex items-center gap-2 transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <i className="fas fa-file-excel"></i>
             GERAR PLANILHA
@@ -794,7 +794,7 @@ export function AvesSection({
           <button
             type="button"
             onClick={() => gerarPlanilhaModeloAves(config, 200, aves)}
-            className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+            className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-bold text-[11px] flex items-center gap-2 transition-all duration-200 shadow-sm hover:shadow-md"
           >
             <i className="fas fa-file-download"></i>
             BAIXAR MODELO
@@ -802,22 +802,22 @@ export function AvesSection({
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
-        <div className="relative">
-          <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-5">
+        <div className="relative group">
+          <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-emerald-600 transition-colors"></i>
 
           <input
             type="text"
             value={busca}
             onChange={event => setBusca(event.target.value)}
             placeholder="Buscar por espécie, anilha, nome, sexo, status, criador..."
-            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+            className="w-full pl-11 pr-4 py-3.5 bg-slate-50/80 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-emerald-400 focus:ring-4 focus:ring-emerald-500/10 text-sm text-slate-700 placeholder:text-slate-400 transition-all"
           />
         </div>
 
         {mostrarFiltros && (
-          <div className="mt-4 pt-4 border-t border-slate-100">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+          <div className="mt-5 pt-5 border-t border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3">
               <CheckboxFilter
                 label="Espécie"
                 options={especies}
@@ -893,15 +893,15 @@ export function AvesSection({
         )}
       </div>
 
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-bold text-slate-500">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+        <p className="text-xs sm:text-sm font-semibold text-slate-500">
           Exibindo {avesFiltradas.length} de {aves.length} aves
         </p>
         {avesSelecionadas.length > 0 && (
           <button
             type="button"
             onClick={() => setAvesSelecionadas([])}
-            className="text-xs font-bold text-violet-600 hover:text-violet-800"
+            className="text-xs font-bold text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors"
           >
             <i className="fas fa-times mr-1"></i>
             Limpar seleção ({avesSelecionadas.length})
@@ -909,7 +909,7 @@ export function AvesSection({
         )}
 
         {avesFiltradas.length > 0 && (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-400 bg-slate-50 px-3 py-1.5 rounded-full">
             Clique em uma ave para visualizar os detalhes
           </p>
         )}
@@ -945,7 +945,7 @@ export function AvesSection({
           )}
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full table-fixed text-left">
               <colgroup>
@@ -959,14 +959,14 @@ export function AvesSection({
               </colgroup>
 
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
+                <tr className="bg-slate-50/80 border-b border-slate-200">
                   <th className="px-2 py-3 text-center">
                     <input
                       type="checkbox"
                       checked={todasFiltradasSelecionadas}
                       onChange={alternarSelecaoTodasFiltradas}
                       aria-label="Selecionar todas as aves exibidas"
-                      className="w-4 h-4 accent-violet-600 cursor-pointer"
+                      className="w-4 h-4 accent-violet-600 cursor-pointer rounded"
                     />
                   </th>
 
@@ -1000,7 +1000,7 @@ export function AvesSection({
                 {avesFiltradas.map(ave => (
                   <tr
                     key={ave.id}
-                    className={`hover:bg-slate-50 transition ${
+                    className={`hover:bg-slate-50/80 transition-colors duration-150 ${
                       avesSelecionadas.includes(ave.id) ? 'bg-violet-50' : ''
                     }`}
                   >
@@ -1010,7 +1010,7 @@ export function AvesSection({
                         checked={avesSelecionadas.includes(ave.id)}
                         onChange={() => alternarSelecaoAve(ave.id)}
                         aria-label={`Selecionar ${ave.name || ave.ring || 'ave'}`}
-                        className="w-4 h-4 accent-violet-600 cursor-pointer"
+                        className="w-4 h-4 accent-violet-600 cursor-pointer rounded"
                       />
                     </td>
 
