@@ -380,16 +380,26 @@ export function AvesSection({
           localAlojamento?: string;
         };
 
+        // O birthNestId identifica o ninho de origem, mas não identifica
+        // qual ovo pertence à ave. Não podemos usá-lo sozinho aqui,
+        // pois todos os ovos do mesmo ninho acabariam recebendo o local
+        // do primeiro ovo encontrado.
+        const normalizar = (valor: unknown) =>
+          String(valor ?? '')
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, '');
+
         const correspondePorId =
-          eggAny.filhoteId === ave.id ||
-          (ave.birthNestId && ninho.id === ave.birthNestId);
+          Boolean(eggAny.filhoteId) && eggAny.filhoteId === ave.id;
 
         const correspondePorAnilha =
           Boolean(ave.ring) &&
-          eggAny.anilha === ave.ring &&
+          Boolean(eggAny.anilha) &&
+          normalizar(eggAny.anilha) === normalizar(ave.ring) &&
           (!ave.ringYear ||
             !eggAny.anoAnilha ||
-            eggAny.anoAnilha === ave.ringYear);
+            normalizar(eggAny.anoAnilha) === normalizar(ave.ringYear));
 
         return correspondePorId || correspondePorAnilha;
       });
