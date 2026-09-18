@@ -130,6 +130,7 @@ export function CasalHistoricoModal({
     // O campo egg.local é o local real exibido na aba Ninhos
     // (por exemplo: GAIOLA 2 ou GAIOLA 3). Não usar ninho.id como local.
     const localDoOvo = String(
+      eggAny?.localSaidaNinho ||
       eggAny?.localAtual ||
       eggAny?.local ||
       ''
