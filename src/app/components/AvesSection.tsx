@@ -210,7 +210,7 @@ export function AvesSection({
           ? error.message
           : 'Não foi possível importar a planilha.';
       window.alert(mensagem);
-    } fontally {
+    } finally {
       setImportandoPlanilha(false);
     }
   };
