@@ -20,6 +20,111 @@ interface AvesSectionProps {
   onViewDetails?: (aveId: string) => void;
 }
 
+interface CheckboxFilterProps {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (values: string[]) => void;
+  formatOption?: (value: string) => string;
+  allLabel?: string;
+  specialOption?: { value: string; label: string };
+}
+
+function CheckboxFilter({
+  label,
+  options,
+  selected,
+  onChange,
+  formatOption = value => value,
+  allLabel = 'Todos',
+  specialOption
+}: CheckboxFilterProps) {
+  const [aberto, setAberto] = useState(false);
+  const isAll = selected.length === 0;
+
+  function alternarOpcao(value: string) {
+    if (specialOption && value === specialOption.value) {
+      onChange([specialOption.value]);
+      return;
+    }
+
+    const semEspecial = specialOption
+      ? selected.filter(item => item !== specialOption.value)
+      : selected;
+
+    const novosValores = semEspecial.includes(value)
+      ? semEspecial.filter(item => item !== value)
+      : [...semEspecial, value];
+
+    onChange(novosValores);
+  }
+
+  function selecionarTodos() {
+    onChange([]);
+  }
+
+  const quantidadeSelecionada = specialOption && selected.includes(specialOption.value)
+    ? 0
+    : selected.length;
+
+  const textoResumo = specialOption && selected.includes(specialOption.value)
+    ? specialOption.label
+    : isAll
+      ? allLabel
+      : `${quantidadeSelecionada} selecionado${quantidadeSelecionada > 1 ? 's' : ''}`;
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setAberto(value => !value)}
+        className="w-full min-h-[42px] px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500 flex items-center justify-between gap-2 text-left"
+      >
+        <span className="truncate">{label}: {textoResumo}</span>
+        <i className={`fas fa-chevron-${aberto ? 'up' : 'down'} text-[10px] text-slate-400 shrink-0`}></i>
+      </button>
+
+      {aberto && (
+        <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl p-2 max-h-64 overflow-y-auto min-w-[220px]">
+          <label className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-50 cursor-pointer border-b border-slate-100 mb-1">
+            <input
+              type="checkbox"
+              checked={isAll}
+              onChange={selecionarTodos}
+              className="w-4 h-4 accent-emerald-600"
+            />
+            <span className="text-xs font-bold text-slate-700">{allLabel}</span>
+          </label>
+
+          {specialOption && (
+            <label className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selected.includes(specialOption.value)}
+                onChange={() => alternarOpcao(specialOption.value)}
+                className="w-4 h-4 accent-emerald-600"
+              />
+              <span className="text-xs font-semibold text-slate-700">{specialOption.label}</span>
+            </label>
+          )}
+
+          {options.map(option => (
+            <label key={option} className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selected.includes(option)}
+                onChange={() => alternarOpcao(option)}
+                className="w-4 h-4 accent-emerald-600"
+              />
+              <span className="text-xs font-semibold text-slate-700">{formatOption(option)}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AvesSection({
   aves,
   ninhos,
@@ -32,14 +137,14 @@ export function AvesSection({
   onViewDetails
 }: AvesSectionProps) {
   const [busca, setBusca] = useState('');
-  const [filtroEspecie, setFiltroEspecie] = useState('');
-  const [filtroSexo, setFiltroSexo] = useState('');
-  const [filtroStatus, setFiltroStatus] = useState('__SEM_OBITOS__');
-  const [filtroCorCabeca, setFiltroCorCabeca] = useState('');
-  const [filtroCorPeito, setFiltroCorPeito] = useState('');
-  const [filtroCorDorso, setFiltroCorDorso] = useState('');
-  const [filtroPorta, setFiltroPorta] = useState('');
-  const [filtroLocal, setFiltroLocal] = useState('');
+  const [filtroEspecie, setFiltroEspecie] = useState<string[]>([]);
+  const [filtroSexo, setFiltroSexo] = useState<string[]>([]);
+  const [filtroStatus, setFiltroStatus] = useState<string[]>(['__NAO_FALECIDAS__']);
+  const [filtroCorCabeca, setFiltroCorCabeca] = useState<string[]>([]);
+  const [filtroCorPeito, setFiltroCorPeito] = useState<string[]>([]);
+  const [filtroCorDorso, setFiltroCorDorso] = useState<string[]>([]);
+  const [filtroPorta, setFiltroPorta] = useState<string[]>([]);
+  const [filtroLocal, setFiltroLocal] = useState<string[]>([]);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const inputImportacaoRef = useRef<HTMLInputElement | null>(null);
   const [importandoPlanilha, setImportandoPlanilha] = useState(false);
@@ -249,40 +354,34 @@ export function AvesSection({
           );
 
       const correspondeEspecie =
-        !filtroEspecie || ave.species === filtroEspecie;
+        filtroEspecie.length === 0 || filtroEspecie.includes(ave.species || '');
 
       const correspondeSexo =
-        !filtroSexo || ave.sex === filtroSexo;
+        filtroSexo.length === 0 || filtroSexo.includes(ave.sex || '');
 
-      const statusNormalizado = String(ave.status || '')
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
-
-      const ehAveFalecida = ['obito', 'falecido', 'morto', 'morta'].includes(
-        statusNormalizado
-      );
-
+      const statusNormalizado = String(ave.status || '').trim().toLowerCase();
+      const eFalecida = ['óbito', 'obito', 'falecido', 'falecida', 'morto', 'morta'].includes(statusNormalizado);
       const correspondeStatus =
-        filtroStatus === '__SEM_OBITOS__'
-          ? !ehAveFalecida
-          : !filtroStatus || ave.status === filtroStatus;
+        filtroStatus.length === 0
+          ? true
+          : filtroStatus.includes('__NAO_FALECIDAS__')
+            ? !eFalecida
+            : filtroStatus.some(valor => String(ave.status || '').trim().toLowerCase() === valor.trim().toLowerCase());
 
       const correspondeCorCabeca =
-        !filtroCorCabeca || ave.corCabeca === filtroCorCabeca;
+        filtroCorCabeca.length === 0 || filtroCorCabeca.includes(ave.corCabeca || '');
 
       const correspondeCorPeito =
-        !filtroCorPeito || ave.corPeito === filtroCorPeito;
+        filtroCorPeito.length === 0 || filtroCorPeito.includes(ave.corPeito || '');
 
       const correspondeCorDorso =
-        !filtroCorDorso || ave.corDorso === filtroCorDorso;
+        filtroCorDorso.length === 0 || filtroCorDorso.includes(ave.corDorso || '');
 
       const correspondePorta =
-        !filtroPorta || ave.porta === filtroPorta;
+        filtroPorta.length === 0 || filtroPorta.includes(ave.porta || '');
 
       const correspondeLocal =
-        !filtroLocal || obterLocalAve(ave, ninhos) === filtroLocal;
+        filtroLocal.length === 0 || filtroLocal.includes(obterLocalAve(ave, ninhos));
 
       return (
         correspondeBusca &&
@@ -313,26 +412,24 @@ export function AvesSection({
   const quantidadeFiltrosAtivos = [
     filtroEspecie,
     filtroSexo,
-    filtroStatus,
+    filtroStatus.length === 1 && filtroStatus[0] === '__NAO_FALECIDAS__' ? [] : filtroStatus,
     filtroCorCabeca,
     filtroCorPeito,
     filtroCorDorso,
     filtroPorta,
     filtroLocal
-  ].filter(
-    filtro => Boolean(filtro) && filtro !== '__SEM_OBITOS__'
-  ).length;
+  ].filter(values => values.length > 0).length;
 
   function limparFiltros() {
     setBusca('');
-    setFiltroEspecie('');
-    setFiltroSexo('');
-    setFiltroStatus('__SEM_OBITOS__');
-    setFiltroCorCabeca('');
-    setFiltroCorPeito('');
-    setFiltroCorDorso('');
-    setFiltroPorta('');
-    setFiltroLocal('');
+    setFiltroEspecie([]);
+    setFiltroSexo([]);
+    setFiltroStatus(['__NAO_FALECIDAS__']);
+    setFiltroCorCabeca([]);
+    setFiltroCorPeito([]);
+    setFiltroCorDorso([]);
+    setFiltroPorta([]);
+    setFiltroLocal([]);
   }
 
   const todasFiltradasSelecionadas =
@@ -721,118 +818,65 @@ export function AvesSection({
         {mostrarFiltros && (
           <div className="mt-4 pt-4 border-t border-slate-100">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
-              <select
-                value={filtroEspecie}
-                onChange={event => setFiltroEspecie(event.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">Todas as espécies</option>
-
-                {especies.map(especie => (
-                  <option key={especie} value={especie}>
-                    {especie}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={filtroSexo}
-                onChange={event => setFiltroSexo(event.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">Todos os sexos</option>
-
-                {sexos.map(sexo => (
-                  <option key={sexo} value={sexo}>
-                    {formatarSexo(sexo)}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={filtroStatus}
-                onChange={event => setFiltroStatus(event.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="__SEM_OBITOS__">Aves não falecidas (padrão)</option>
-                <option value="">Todos os status</option>
-
-                {status.map(statusAve => (
-                  <option key={statusAve} value={statusAve}>
-                    {formatarStatus(statusAve)}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={filtroCorCabeca}
-                onChange={event => setFiltroCorCabeca(event.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">Cor da cabeça</option>
-
-                {coresCabeca.map(cor => (
-                  <option key={cor} value={cor}>
-                    {cor}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={filtroCorPeito}
-                onChange={event => setFiltroCorPeito(event.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">Cor do peito</option>
-
-                {coresPeito.map(cor => (
-                  <option key={cor} value={cor}>
-                    {cor}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={filtroCorDorso}
-                onChange={event => setFiltroCorDorso(event.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">Cor do dorso</option>
-
-                {coresDorso.map(cor => (
-                  <option key={cor} value={cor}>
-                    {cor}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={filtroPorta}
-                onChange={event => setFiltroPorta(event.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">Todas as portas</option>
-
-                {portas.map(porta => (
-                  <option key={porta} value={porta}>
-                    {porta}
-                  </option>
-                ))}
-              </select>
-
-              <select
-                value={filtroLocal}
-                onChange={event => setFiltroLocal(event.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="">Todos os locais</option>
-
-                {locais.map(local => (
-                  <option key={local} value={local}>
-                    {local}
-                  </option>
-                ))}
-              </select>
+              <CheckboxFilter
+                label="Espécie"
+                options={especies}
+                selected={filtroEspecie}
+                onChange={setFiltroEspecie}
+                allLabel="Todas as espécies"
+              />
+              <CheckboxFilter
+                label="Sexo"
+                options={sexos}
+                selected={filtroSexo}
+                onChange={setFiltroSexo}
+                formatOption={formatarSexo}
+                allLabel="Todos os sexos"
+              />
+              <CheckboxFilter
+                label="Status"
+                options={status}
+                selected={filtroStatus}
+                onChange={setFiltroStatus}
+                formatOption={formatarStatus}
+                allLabel="Todos os status"
+                specialOption={{ value: '__NAO_FALECIDAS__', label: 'Aves não falecidas (padrão)' }}
+              />
+              <CheckboxFilter
+                label="Cor da cabeça"
+                options={coresCabeca}
+                selected={filtroCorCabeca}
+                onChange={setFiltroCorCabeca}
+                allLabel="Todas as cores"
+              />
+              <CheckboxFilter
+                label="Cor do peito"
+                options={coresPeito}
+                selected={filtroCorPeito}
+                onChange={setFiltroCorPeito}
+                allLabel="Todas as cores"
+              />
+              <CheckboxFilter
+                label="Cor do dorso"
+                options={coresDorso}
+                selected={filtroCorDorso}
+                onChange={setFiltroCorDorso}
+                allLabel="Todas as cores"
+              />
+              <CheckboxFilter
+                label="Porta"
+                options={portas}
+                selected={filtroPorta}
+                onChange={setFiltroPorta}
+                allLabel="Todas as portas"
+              />
+              <CheckboxFilter
+                label="Local"
+                options={locais}
+                selected={filtroLocal}
+                onChange={setFiltroLocal}
+                allLabel="Todos os locais"
+              />
             </div>
 
             {quantidadeFiltrosAtivos > 0 && (
