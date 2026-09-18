@@ -16,6 +16,7 @@ const CABECALHOS_INGRESSO = [
   'Cor do peito',
   'Cor do dorso',
   'Nota',
+  'Local',
   'Porta',
 ];
 
@@ -34,6 +35,7 @@ interface LinhaPlanilhaAve {
   corPeito: string;
   corDorso: string;
   nota: string;
+  local: string;
   porta: string;
 }
 
@@ -46,6 +48,7 @@ interface ListasPlanilha {
   coresCabeca: string[];
   coresPeito: string[];
   coresDorso: string[];
+  locais: string[];
   portas: string[];
 }
 
@@ -73,6 +76,7 @@ function aveParaLinhaPlanilha(ave: Ave): LinhaPlanilhaAve {
     corPeito: valorTexto(ave.corPeito),
     corDorso: valorTexto(ave.corDorso),
     nota: valorTexto(ave.nota),
+    local: valorTexto(ave.local),
     porta: valorTexto(ave.porta),
   };
 }
@@ -93,6 +97,7 @@ function criarLinhaModeloAve(): LinhaPlanilhaAve {
     corPeito: '',
     corDorso: '',
     nota: '',
+    local: '',
     porta: '',
   };
 }
@@ -126,6 +131,13 @@ function obterListas(config?: Config, aves: Ave[] = []): ListasPlanilha {
   const coresCabeca = obterNomesCores(config?.coresCabeca);
   const coresPeito = obterNomesCores(config?.coresPeito);
   const coresDorso = obterNomesCores(config?.coresDorso);
+
+  // A interface Config atual não possui uma lista de portas.
+  // A coluna Porta permanece disponível para digitação manual.
+  const locais = obterListaUnica([
+    ...(config?.locaisOvos ?? []),
+    ...aves.map((ave) => valorTexto(ave.local)),
+  ]);
 
   // A interface Config atual não possui uma lista de portas.
   // A coluna Porta permanece disponível para digitação manual.
@@ -166,6 +178,7 @@ function obterListas(config?: Config, aves: Ave[] = []): ListasPlanilha {
     coresCabeca,
     coresPeito,
     coresDorso,
+    locais,
     portas,
   };
 }
@@ -242,6 +255,7 @@ function configurarLarguraColunas(worksheet: ExcelJS.Worksheet): void {
     20, // Cor do peito
     20, // Cor do dorso
     35, // Nota
+    22, // Local
     14, // Porta
   ];
 
@@ -282,6 +296,7 @@ function prepararPlanilhaAves(
       linha.corPeito,
       linha.corDorso,
       linha.nota,
+      linha.local,
       linha.porta,
     ]);
   });
@@ -299,7 +314,7 @@ function prepararPlanilhaAves(
 
   worksheet.autoFilter = {
     from: 'A1',
-    to: 'O1',
+    to: 'P1',
   };
 
   worksheet.eachRow((linha, numeroLinha) => {
@@ -333,6 +348,7 @@ function criarAbaListas(
   worksheet.getCell('G1').value = 'Cor do peito';
   worksheet.getCell('H1').value = 'Cor do dorso';
   worksheet.getCell('I1').value = 'Portas';
+  worksheet.getCell('J1').value = 'Locais';
 
   const maiorQuantidade = Math.max(
     listas.especies.length,
@@ -344,6 +360,7 @@ function criarAbaListas(
     listas.coresPeito.length,
     listas.coresDorso.length,
     listas.portas.length,
+    listas.locais.length,
     1,
   );
 
@@ -359,6 +376,7 @@ function criarAbaListas(
     worksheet.getCell(`G${linha}`).value = listas.coresPeito[indice] ?? '';
     worksheet.getCell(`H${linha}`).value = listas.coresDorso[indice] ?? '';
     worksheet.getCell(`I${linha}`).value = listas.portas[indice] ?? '';
+    worksheet.getCell(`J${linha}`).value = listas.locais[indice] ?? '';
   }
 
   worksheet.columns = [
@@ -371,6 +389,7 @@ function criarAbaListas(
     { width: 25 },
     { width: 25 },
     { width: 18 },
+    { width: 25 },
   ];
 
   worksheet.getRow(1).height = 25;
@@ -583,6 +602,16 @@ export async function gerarPlanilhaModeloAves(
     listas.coresDorso.length,
   );
 
+  // Local: coluna O da planilha principal, lista J da aba Listas.
+  aplicarValidacaoLista(
+    worksheetAves,
+    'O',
+    linhaInicial,
+    linhaFinal,
+    'J',
+    listas.locais.length,
+  );
+
   const buffer = await workbook.xlsx.writeBuffer();
 
   baixarArquivoExcel(buffer, 'modelo_plantel_aves.xlsx');
@@ -775,6 +804,13 @@ function encontrarColunasImportacao(
       'observacoes',
       'notes'
     ],
+    local: [
+      'local',
+      'viveiro',
+      'ninho',
+      'localizacao',
+      'localizacaoave'
+    ],
     porta: [
       'porta',
       'gaiola',
@@ -947,6 +983,11 @@ export async function importarPlanilhaAves(
           nota: colunas.nota
             ? converterTextoImportacao(
                 obterValorCelula(linha, colunas.nota)
+              )
+            : '',
+          local: colunas.local
+            ? converterTextoImportacao(
+                obterValorCelula(linha, colunas.local)
               )
             : '',
           porta: colunas.porta
