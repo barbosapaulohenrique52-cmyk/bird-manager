@@ -48,6 +48,7 @@ export interface Ave {
   corPeito?: string;
   corDorso?: string;
   nota?: string;
+  local?: string;
   porta?: string;
 }
 
