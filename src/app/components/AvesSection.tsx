@@ -35,6 +35,7 @@ export function AvesSection({
   const [filtroCorPeito, setFiltroCorPeito] = useState('');
   const [filtroCorDorso, setFiltroCorDorso] = useState('');
   const [filtroPorta, setFiltroPorta] = useState('');
+  const [filtroLocal, setFiltroLocal] = useState('');
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const inputImportacaoRef = useRef<HTMLInputElement | null>(null);
   const [importandoPlanilha, setImportandoPlanilha] = useState(false);
@@ -175,6 +176,15 @@ export function AvesSection({
     [aves]
   );
 
+  const locais = useMemo(() => {
+    const locaisCadastrados = config?.locaisOvos || [];
+    const locaisDasAves = aves
+      .map(ave => obterLocalAve(ave))
+      .filter(local => local && local !== 'Não informado');
+
+    return Array.from(new Set([...locaisCadastrados, ...locaisDasAves])).sort();
+  }, [config?.locaisOvos, aves]);
+
   const avesFiltradas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
 
@@ -194,7 +204,11 @@ export function AvesSection({
           ave.corPeito,
           ave.corDorso,
           ave.nota,
-          ave.porta
+          ave.porta,
+          (ave as any).localAtual,
+          (ave as any).local,
+          (ave as any).location,
+          (ave as any).localSaidaNinho
         ]
           .filter(value => value !== undefined && value !== null)
           .some(value =>
@@ -222,6 +236,9 @@ export function AvesSection({
       const correspondePorta =
         !filtroPorta || ave.porta === filtroPorta;
 
+      const correspondeLocal =
+        !filtroLocal || obterLocalAve(ave) === filtroLocal;
+
       return (
         correspondeBusca &&
         correspondeEspecie &&
@@ -230,7 +247,8 @@ export function AvesSection({
         correspondeCorCabeca &&
         correspondeCorPeito &&
         correspondeCorDorso &&
-        correspondePorta
+        correspondePorta &&
+        correspondeLocal
       );
     });
   }, [
@@ -242,7 +260,8 @@ export function AvesSection({
     filtroCorCabeca,
     filtroCorPeito,
     filtroCorDorso,
-    filtroPorta
+    filtroPorta,
+    filtroLocal
   ]);
 
   const quantidadeFiltrosAtivos = [
@@ -252,7 +271,8 @@ export function AvesSection({
     filtroCorCabeca,
     filtroCorPeito,
     filtroCorDorso,
-    filtroPorta
+    filtroPorta,
+    filtroLocal
   ].filter(Boolean).length;
 
   function limparFiltros() {
@@ -264,6 +284,7 @@ export function AvesSection({
     setFiltroCorPeito('');
     setFiltroCorDorso('');
     setFiltroPorta('');
+    setFiltroLocal('');
   }
 
   function formatarSexo(sexo?: string) {
@@ -306,6 +327,23 @@ export function AvesSection({
     };
 
     return mapa[statusAve.toLowerCase()] || statusAve;
+  }
+
+  function obterLocalAve(ave: Ave) {
+    const aveAny = ave as Ave & {
+      localAtual?: string;
+      local?: string;
+      location?: string;
+      localSaidaNinho?: string;
+    };
+
+    return (
+      aveAny.localAtual ||
+      aveAny.localSaidaNinho ||
+      aveAny.local ||
+      aveAny.location ||
+      'Não informado'
+    );
   }
 
   function obterClasseStatus(statusAve?: string) {
@@ -527,6 +565,20 @@ export function AvesSection({
                   </option>
                 ))}
               </select>
+
+              <select
+                value={filtroLocal}
+                onChange={event => setFiltroLocal(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Todos os locais</option>
+
+                {locais.map(local => (
+                  <option key={local} value={local}>
+                    {local}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {quantidadeFiltrosAtivos > 0 && (
@@ -589,10 +641,11 @@ export function AvesSection({
           <div className="overflow-x-auto">
             <table className="w-full table-fixed text-left">
               <colgroup>
-                <col className="w-[48%]" />
+                <col className="w-[38%]" />
                 <col className="w-[7%]" />
                 <col className="w-[12%]" />
-                <col className="w-[25%]" />
+                <col className="w-[18%]" />
+                <col className="w-[17%]" />
                 <col className="w-[8%]" />
               </colgroup>
 
@@ -612,6 +665,10 @@ export function AvesSection({
 
                   <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
                     Cores
+                  </th>
+
+                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
+                    Local
                   </th>
 
                   <th className="px-1 sm:px-2 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500 text-center">
@@ -724,6 +781,12 @@ export function AvesSection({
                             {ave.corDorso || '-'}
                           </p>
                         </div>
+                    </td>
+
+                    <td className="px-2 sm:px-3 py-3 align-middle">
+                      <span className="inline-flex max-w-full px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-[9px] sm:text-[10px] font-bold break-words">
+                        {obterLocalAve(ave)}
+                      </span>
                     </td>
 
                     <td className="px-0.5 sm:px-1 py-2 align-middle">
