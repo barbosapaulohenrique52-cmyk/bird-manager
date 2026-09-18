@@ -236,7 +236,7 @@ export default function App() {
 
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main className="flex-1 w-full px-2 sm:px-4 lg:ml-56 lg:px-6 pb-32 lg:pb-8">
+      <main className="flex-1 w-full px-2 sm:px-4 lg:ml-32 lg:px-6 pb-32 lg:pb-8">
         {activeTab === "ninhos" && (
           <NinhosSection
             ninhos={db.ninhos}
