@@ -16,13 +16,13 @@ export function Navigation({ activeTab, setActiveTab }: NavigationProps) {
   ];
 
   return (
-    <nav className="bg-white border-b border-slate-100 h-16 sticky top-16 z-30">
-      <div className="flex h-full max-w-5xl mx-auto gap-1 overflow-x-auto no-scrollbar px-1 items-center">
+    <nav className="bg-white border-b border-slate-100 h-16 sticky top-0 z-30">
+      <div className="h-full flex max-w-5xl mx-auto gap-1 overflow-x-auto no-scrollbar px-1">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 h-14 px-2 rounded-xl text-[9px] font-black uppercase transition-all min-w-max flex flex-col items-center gap-1 ${
+            className={`flex-1 h-14 my-1 px-2 rounded-xl text-[9px] font-black uppercase transition-all min-w-[100px] flex flex-col items-center justify-center gap-0.5 ${
               activeTab === tab.id
                 ? 'bg-emerald-800 text-white shadow-lg'
                 : 'text-slate-400 bg-slate-50'
