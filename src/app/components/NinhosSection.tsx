@@ -279,6 +279,9 @@ export function NinhosSection({
   // Estado da forma de visualização dos ovos. Por padrão, os ovos são agrupados por local.
   const [modoVisualizacao, setModoVisualizacao] = useState<'local' | 'casal'>('local');
 
+  // Estado para controlar a exibição do bloco de KPIs.
+  const [kpisAbertos, setKpisAbertos] = useState(true);
+
   // Estado para controlar quais ninhos estão expandidos
   const [ninhosExpandidos, setNinhosExpandidos] = useState<Set<string>>(new Set());
 
@@ -854,6 +857,17 @@ export function NinhosSection({
         a[0].localeCompare(b[0], 'pt-BR')
       );
 
+  // KPIs resumidos da reprodução.
+  // Utiliza os mesmos ovos já considerados na listagem, sem alterar os dados salvos.
+  const kpis = {
+    ninhos: ninhos.length,
+    ovos: todosOvos.length,
+    chocando: todosOvos.filter(({ egg }) => egg.status === 'Chocando').length,
+    ferteis: todosOvos.filter(({ egg }) => egg.status === 'Fértil').length,
+    eclodidos: todosOvos.filter(({ egg }) => egg.status === 'Eclodido').length,
+    perdidos: todosOvos.filter(({ egg }) => egg.status === 'Perdido').length,
+  };
+
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -888,6 +902,96 @@ export function NinhosSection({
             NOVO NINHO
           </button>
         </div>
+      </div>
+
+      {/* KPIs Resumidos — bloco recolhível */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setKpisAbertos(value => !value)}
+          className="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
+          aria-expanded={kpisAbertos}
+          title={kpisAbertos ? 'Recolher indicadores' : 'Expandir indicadores'}
+        >
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+              <i className="fas fa-chart-line text-sm"></i>
+            </div>
+            <div className="text-left">
+              <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                Resumo da reprodução
+              </p>
+              <p className="text-[10px] text-slate-500">
+                Indicadores dos ninhos e ovos
+              </p>
+            </div>
+          </div>
+          <i className={`fas fa-chevron-${kpisAbertos ? 'up' : 'down'} text-[10px] text-slate-400 transition-transform`}></i>
+        </button>
+
+        {kpisAbertos && (
+          <div className="px-3 pb-3 pt-1 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+                <i className="fas fa-home text-base"></i>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Ninhos</p>
+                <h4 className="text-lg font-bold text-slate-800 leading-none mt-1">{kpis.ninhos}</h4>
+              </div>
+            </div>
+
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                <i className="fas fa-egg text-base"></i>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Ovos</p>
+                <h4 className="text-lg font-bold text-slate-800 leading-none mt-1">{kpis.ovos}</h4>
+              </div>
+            </div>
+
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+                <i className="fas fa-hourglass-half text-base"></i>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Chocando</p>
+                <h4 className="text-lg font-bold text-slate-800 leading-none mt-1">{kpis.chocando}</h4>
+              </div>
+            </div>
+
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+                <i className="fas fa-check-circle text-base"></i>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Férteis</p>
+                <h4 className="text-lg font-bold text-slate-800 leading-none mt-1">{kpis.ferteis}</h4>
+              </div>
+            </div>
+
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+                <i className="fas fa-dove text-base"></i>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Eclodidos</p>
+                <h4 className="text-lg font-bold text-slate-800 leading-none mt-1">{kpis.eclodidos}</h4>
+              </div>
+            </div>
+
+            <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shrink-0">
+                <i className="fas fa-exclamation-triangle text-base"></i>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Perdidos</p>
+                <h4 className="text-lg font-bold text-slate-800 leading-none mt-1">{kpis.perdidos}</h4>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* A visualização abaixo utiliza exclusivamente o agrupamento selecionado:
