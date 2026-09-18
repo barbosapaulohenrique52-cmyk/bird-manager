@@ -1,2412 +1,944 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { Ave, Casal, Ninho, Egg, Config, Lancamento, ParametrosEspecie, CorAve } from '../App';
+import { useMemo, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
+import type { Ave, ModalType, Config, Ninho } from '../App';
+import BirdColorDiagram from './BirdColorDiagram';
+import {
+  gerarPlanilhaAves,
+  gerarPlanilhaModeloAves,
+  importarPlanilhaAves
+} from '../../services/excelService';
 
-declare global {
-  interface Window {
-    google?: any;
-  }
+interface AvesSectionProps {
+  aves: Ave[];
+  ninhos: Ninho[];
+  config?: Config;
+  onOpenModal: (type: ModalType, id?: string | null) => void;
+  onDeleteAve: (id: string) => void;
+  onImportAves: (avesData: Array<Omit<Ave, 'id'>>) => number;
+  onPhotoClick?: (photoUrl: string) => void;
+  onViewDetails?: (aveId: string) => void;
 }
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-const GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
-const GOOGLE_DRIVE_FOLDER_NAME = 'GouldPRO';
-const GOOGLE_DRIVE_BACKUP_NAME = 'backup.json';
+export function AvesSection({
+  aves,
+  ninhos,
+  config,
+  onOpenModal,
+  onDeleteAve,
+  onImportAves,
+  onPhotoClick,
+  onViewDetails
+}: AvesSectionProps) {
+  const [busca, setBusca] = useState('');
+  const [filtroEspecie, setFiltroEspecie] = useState('');
+  const [filtroSexo, setFiltroSexo] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('');
+  const [filtroCorCabeca, setFiltroCorCabeca] = useState('');
+  const [filtroCorPeito, setFiltroCorPeito] = useState('');
+  const [filtroCorDorso, setFiltroCorDorso] = useState('');
+  const [filtroPorta, setFiltroPorta] = useState('');
+  const [filtroLocal, setFiltroLocal] = useState('');
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+  const inputImportacaoRef = useRef<HTMLInputElement | null>(null);
+  const [importandoPlanilha, setImportandoPlanilha] = useState(false);
 
-function carregarGoogleIdentityServices(): Promise<void> {
-  if (window.google?.accounts?.oauth2) {
-    return Promise.resolve();
-  }
+  const handleImportarPlanilha = async (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const arquivo = event.target.files?.[0];
 
-  return new Promise((resolve, reject) => {
-    const scriptId = 'google-identity-services';
-    const existente = document.getElementById(scriptId);
+    event.target.value = '';
 
-    if (existente) {
-      existente.addEventListener('load', () => resolve());
-      existente.addEventListener('error', () =>
-        reject(new Error('Não foi possível carregar o Google Identity Services.'))
-      );
+    if (!arquivo) {
       return;
     }
 
-    const script = document.createElement('script');
-    script.id = scriptId;
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () =>
-      reject(new Error('Não foi possível carregar o Google Identity Services.'));
-    document.head.appendChild(script);
-  });
-}
-
-async function obterTokenGoogle(): Promise<string> {
-  if (!GOOGLE_CLIENT_ID) {
-    throw new Error('O Client ID do Google ainda não foi configurado no Vercel.');
-  }
-
-  await carregarGoogleIdentityServices();
-
-  return new Promise((resolve, reject) => {
-    let finalizado = false;
-
-    const tokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: GOOGLE_DRIVE_SCOPE,
-      callback: (response: any) => {
-        if (finalizado) return;
-        finalizado = true;
-
-        if (response?.access_token) {
-          resolve(response.access_token);
-        } else {
-          reject(
-            new Error(
-              response?.error_description ||
-                'O Google não forneceu um token de acesso.'
-            )
-          );
-        }
-      },
-      error_callback: (error: any) => {
-        if (finalizado) return;
-        finalizado = true;
-        reject(
-          new Error(
-            error?.message ||
-              'A autorização do Google foi cancelada ou falhou.'
-          )
-        );
-      }
-    });
-
-    tokenClient.requestAccessToken({ prompt: '' });
-  });
-}
-
-async function buscarOuCriarPastaGoogleDrive(
-  accessToken: string
-): Promise<string> {
-  const query =
-    `name = '${GOOGLE_DRIVE_FOLDER_NAME.replace(/'/g, "\\'")}' ` +
-    `and mimeType = 'application/vnd.google-apps.folder' ` +
-    `and trashed = false`;
-
-  const busca = await fetch(
-    `https://www.googleapis.com/drive/v3/files?${new URLSearchParams({
-      q: query,
-      spaces: 'drive',
-      fields: 'files(id,name)',
-      pageSize: '10'
-    })}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`
-      }
-    }
-  );
-
-  if (!busca.ok) {
-    throw new Error('Não foi possível acessar o Google Drive.');
-  }
-
-  const dados = await busca.json();
-
-  if (dados.files?.length > 0) {
-    return dados.files[0].id;
-  }
-
-  const criar = await fetch(
-    'https://www.googleapis.com/drive/v3/files',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: GOOGLE_DRIVE_FOLDER_NAME,
-        mimeType: 'application/vnd.google-apps.folder'
-      })
-    }
-  );
-
-  if (!criar.ok) {
-    throw new Error(
-      'Não foi possível criar a pasta GouldPRO no Google Drive.'
-    );
-  }
-
-  const pasta = await criar.json();
-  return pasta.id;
-}
-
-async function buscarBackupGoogleDrive(
-  accessToken: string,
-  folderId: string
-): Promise<string | null> {
-  const query =
-    `name = '${GOOGLE_DRIVE_BACKUP_NAME}' ` +
-    `and '${folderId}' in parents ` +
-    `and trashed = false`;
-
-  const busca = await fetch(
-    `https://www.googleapis.com/drive/v3/files?${new URLSearchParams({
-      q: query,
-      spaces: 'drive',
-      fields: 'files(id,name)',
-      pageSize: '10'
-    })}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`
-      }
-    }
-  );
-
-  if (!busca.ok) {
-    throw new Error(
-      'Não foi possível procurar o backup no Google Drive.'
-    );
-  }
-
-  const dados = await busca.json();
-  return dados.files?.[0]?.id || null;
-}
-
-async function criarBackupGoogleDrive(
-  accessToken: string,
-  folderId: string,
-  conteudo: string
-): Promise<string> {
-  const metadata = {
-    name: GOOGLE_DRIVE_BACKUP_NAME,
-    parents: [folderId],
-    mimeType: 'application/json'
-  };
-
-  const boundary = 'gouldpro-backup-boundary';
-
-  const corpo =
-    `--${boundary}\r\n` +
-    'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
-    `${JSON.stringify(metadata)}\r\n` +
-    `--${boundary}\r\n` +
-    'Content-Type: application/json\r\n\r\n' +
-    `${conteudo}\r\n` +
-    `--${boundary}--`;
-
-  const resposta = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': `multipart/related; boundary=${boundary}`
-      },
-      body: corpo
-    }
-  );
-
-  if (!resposta.ok) {
-    throw new Error(
-      'Não foi possível criar o backup no Google Drive.'
-    );
-  }
-
-  const arquivo = await resposta.json();
-  return arquivo.id;
-}
-
-async function atualizarBackupGoogleDrive(
-  accessToken: string,
-  fileId: string,
-  conteudo: string
-): Promise<void> {
-  const resposta = await fetch(
-    `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
-    {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: conteudo
-    }
-  );
-
-  if (!resposta.ok) {
-    throw new Error(
-      'Não foi possível atualizar o backup no Google Drive.'
-    );
-  }
-}
-
-interface Database {
-  aves: Ave[];
-  casais: Casal[];
-  ninhos: Ninho[];
-  config: Config;
-  lancamentos: Lancamento[];
-}
-
-interface ColorLists {
-  coresCabeca: string[];
-  coresPeito: string[];
-  coresDorso: string[];
-}
-
-const defaultParametros: ParametrosEspecie = {
-  diasFertilidade: 7,
-  duracaoChoca: 14,
-  diasSaidaNinho: 30,
-  diasAnilhamento: 7
-};
-
-const defaultConfig: Config = {
-  prazoAlertaPostura: 15,
-  especies: [
-    'Diamante de Gould',
-    'Manon',
-    'Canário',
-    'Periquito',
-    'Calopsita',
-    'Agapornis'
-  ],
-  parametrosEspecies: {},
-  parametrosPadrao: defaultParametros,
-  coresCabeca: [],
-  coresPeito: [],
-  coresDorso: [],
-  coresAves: []
-};
-
-function hexParaCorNome(nome: string): string {
-  const mapa: Record<string, string> = {
-    preto: '#171717', branca: '#F5F5F5', branco: '#F5F5F5',
-    cinza: '#9CA3AF', vermelho: '#DC2626', vermelha: '#DC2626',
-    laranja: '#F97316', amarelo: '#FACC15', amarela: '#FACC15',
-    verde: '#22C55E', 'verde pastel': '#A7D7A9',
-    azul: '#3B82F6', 'azul claro': '#93C5FD', roxo: '#8B5CF6',
-    lilás: '#C4B5FD', rosa: '#F9A8D4', marrom: '#92400E',
-    castanho: '#92400E', bege: '#D6C19A', creme: '#FFF1C7',
-    dourado: '#D4AF37', dourada: '#D4AF37'
-  };
-  return mapa[nome.trim().toLowerCase()] || '#A3A3A3';
-}
-
-function normalizarConfig(config: Partial<Config> | null | undefined): Config {
-  return {
-    ...defaultConfig,
-    ...(config || {}),
-    especies: Array.isArray(config?.especies) && config.especies.length > 0
-      ? config.especies
-      : defaultConfig.especies,
-    parametrosEspecies: config?.parametrosEspecies || {},
-    parametrosPadrao: config?.parametrosPadrao || defaultParametros,
-    coresCabeca: Array.isArray(config?.coresCabeca) ? config.coresCabeca : [],
-    coresPeito: Array.isArray(config?.coresPeito) ? config.coresPeito : [],
-    coresDorso: Array.isArray(config?.coresDorso) ? config.coresDorso : [],
-    coresAves: Array.isArray(config?.coresAves) ? config.coresAves : []
-  };
-}
-
-function completarCoresAves(config: Config, aves: Ave[]): Config {
-  const coresCabeca = [...(config.coresCabeca || [])];
-  const coresPeito = [...(config.coresPeito || [])];
-  const coresDorso = [...(config.coresDorso || [])];
-
-  // Compatibilidade: cores cadastradas na versão anterior ficam
-  // disponíveis inicialmente nas três regiões, sem apagar dados antigos.
-  const coresAntigas = config.coresAves || [];
-
-  const adicionarCor = (lista: CorAve[], cor: CorAve) => {
-    const existe = lista.some(
-      item => item.nome.trim().toLowerCase() === cor.nome.trim().toLowerCase()
-    );
-
-    if (!existe) {
-      lista.push({
-        ...cor,
-        hex: cor.hex || hexParaCorNome(cor.nome)
-      });
-    }
-  };
-
-  coresAntigas.forEach(cor => {
-    adicionarCor(coresCabeca, cor);
-    adicionarCor(coresPeito, cor);
-    adicionarCor(coresDorso, cor);
-  });
-
-  const adicionarNomeDaAve = (
-    lista: CorAve[],
-    nome: string | undefined,
-    regiao: string
-  ) => {
-    if (!nome || !nome.trim()) return;
-
-    const chave = nome.trim().toLowerCase();
-    const existe = lista.some(
-      cor => cor.nome.trim().toLowerCase() === chave
-    );
-
-    if (!existe) {
-      lista.push({
-        id: `cor-${regiao}-${Date.now()}-${lista.length}`,
-        nome: nome.trim(),
-        hex: hexParaCorNome(nome)
-      });
-    }
-  };
-
-  aves.forEach(ave => {
-    adicionarNomeDaAve(coresCabeca, ave.corCabeca, 'cabeca');
-    adicionarNomeDaAve(coresPeito, ave.corPeito, 'peito');
-    adicionarNomeDaAve(coresDorso, ave.corDorso, 'dorso');
-  });
-
-  return {
-    ...config,
-    coresCabeca,
-    coresPeito,
-    coresDorso
-  };
-}
-
-export function useDatabase() {
-  const [db, setDb] = useState<Database>({
-    aves: [],
-    casais: [],
-    ninhos: [],
-    config: defaultConfig,
-    lancamentos: []
-  });
-
-  const [lastGoogleDriveBackup, setLastGoogleDriveBackup] =
-    useState<string | null>(() =>
-      localStorage.getItem('gpro_v19_lastGoogleDriveBackup')
-    );
-
-  const [colorLists, setColorLists] = useState<ColorLists>({
-    coresCabeca: [],
-    coresPeito: [],
-    coresDorso: []
-  });
-
-  // Load from localStorage
-  useEffect(() => {
-    const aves = JSON.parse(
-      localStorage.getItem('gpro_v19_aves') || '[]'
-    );
-
-    const casais = JSON.parse(
-      localStorage.getItem('gpro_v19_casais') || '[]'
-    );
-
-    const ninhos = JSON.parse(
-      localStorage.getItem('gpro_v19_ninhos') || '[]'
-    );
-
-    let config = JSON.parse(
-      localStorage.getItem('gpro_v19_config') ||
-        JSON.stringify(defaultConfig)
-    );
-
-    config = normalizarConfig(config);
-
-    const lancamentos = JSON.parse(
-      localStorage.getItem('gpro_v19_lancamentos') || '[]'
-    );
-
-    const savedColors = JSON.parse(
-      localStorage.getItem('gpro_v19_colors') ||
-        '{"coresCabeca":[],"coresPeito":[],"coresDorso":[]}'
-    );
-
-    // Migrar configuração antiga para nova estrutura
-    if (
-      config.diasFertilidade !== undefined &&
-      !config.parametrosPadrao
-    ) {
-      config = {
-        prazoAlertaPostura: config.prazoAlertaPostura || 15,
-        especies: [
-          'Diamante de Gould',
-          'Manon',
-          'Canário',
-          'Periquito',
-          'Calopsita',
-          'Agapornis'
-        ],
-        parametrosEspecies: {},
-        parametrosPadrao: {
-          diasFertilidade: config.diasFertilidade || 7,
-          duracaoChoca: config.duracaoChoca || 14,
-          diasSaidaNinho: config.diasSaidaNinho || 30,
-          diasAnilhamento: config.diasAnilhamento || 7
-        }
-      };
-
-      localStorage.setItem(
-        'gpro_v19_config',
-        JSON.stringify(config)
-      );
+    if (!arquivo.name.toLowerCase().endsWith('.xlsx')) {
+      window.alert('Selecione um arquivo Excel no formato .xlsx.');
+      return;
     }
 
-    // Garantir que o campo especies existe
-    if (!config.especies) {
-      config.especies = [
-        'Diamante de Gould',
-        'Manon',
-        'Canário',
-        'Periquito',
-        'Calopsita',
-        'Agapornis'
-      ];
+    try {
+      setImportandoPlanilha(true);
 
-      localStorage.setItem(
-        'gpro_v19_config',
-        JSON.stringify(config)
-      );
-    }
+      const resultado = await importarPlanilhaAves(arquivo);
 
-    // 🔥 SINCRONIZAR ESPÉCIES EXISTENTES NAS AVES E OVOS
-    const especiesExistentes = new Set(config.especies || []);
-    let houveAlteracao = false;
-
-    // Coletar espécies das aves
-    aves.forEach((ave: Ave) => {
-      if (
-        ave.species &&
-        ave.species.trim() !== '' &&
-        !especiesExistentes.has(ave.species)
-      ) {
-        especiesExistentes.add(ave.species);
-        houveAlteracao = true;
-      }
-    });
-
-    // Coletar espécies dos ovos
-    ninhos.forEach((ninho: Ninho) => {
-      ninho.eggs?.forEach((egg: Egg) => {
-        if (
-          egg.species &&
-          egg.species.trim() !== '' &&
-          !especiesExistentes.has(egg.species)
-        ) {
-          especiesExistentes.add(egg.species);
-          houveAlteracao = true;
-        }
-      });
-    });
-
-    // Se encontrou novas espécies, atualizar config
-    if (houveAlteracao) {
-      config.especies = Array.from(especiesExistentes);
-
-      localStorage.setItem(
-        'gpro_v19_config',
-        JSON.stringify(config)
-      );
-
-      console.log(
-        '✅ Espécies sincronizadas:',
-        config.especies
-      );
-    }
-
-    const configComCores = completarCoresAves(config, aves);
-    if (JSON.stringify(configComCores) !== JSON.stringify(config)) {
-      config = configComCores;
-      localStorage.setItem('gpro_v19_config', JSON.stringify(config));
-    }
-
-    // Migrar casais para incluir campo historico se não existir
-    const casaisMigrados = casais.map((casal: Casal) => ({
-      ...casal,
-      historico: casal.historico || []
-    }));
-
-    // Sincronizar filhotes que já foram anilhados antes da criação dos
-    // campos de Nota/Porta no Plantel. Não sobrescreve valores já
-    // existentes na ave; apenas recupera os dados do ovo quando faltarem.
-    let houveMigracaoNotaPorta = false;
-    ninhos.forEach((ninho: Ninho) => {
-      ninho.eggs?.forEach((egg: Egg) => {
-        if (!egg.filhoteId) return;
-
-        const ave = aves.find((a: Ave) => a.id === egg.filhoteId);
-        if (!ave) return;
-
-        if (ave.nota === undefined && egg.nota !== undefined) {
-          ave.nota = egg.nota;
-          houveMigracaoNotaPorta = true;
-        }
-        if (ave.porta === undefined && egg.porta !== undefined) {
-          ave.porta = egg.porta;
-          houveMigracaoNotaPorta = true;
-        }
-      });
-    });
-
-    // Corrigir nomes automáticos criados pela versão anterior.
-    // Ex.: "Filhote 123" -> "123-2026".
-    // Nomes personalizados pelo usuário não são alterados.
-    let houveMigracaoNome = false;
-
-    aves.forEach((ave: Ave) => {
-      if (
-        ave.name &&
-        /^Filhote\s+/i.test(ave.name) &&
-        ave.ring
-      ) {
-        ave.name = `${ave.ring}-${ave.ringYear}`;
-        houveMigracaoNome = true;
-      }
-    });
-
-    if (houveMigracaoNome) {
-      localStorage.setItem(
-        'gpro_v19_aves',
-        JSON.stringify(aves)
-      );
-    }
-
-    if (houveMigracaoNotaPorta) {
-      localStorage.setItem('gpro_v19_aves', JSON.stringify(aves));
-    }
-
-    setDb({
-      aves,
-      casais: casaisMigrados,
-      ninhos,
-      config,
-      lancamentos
-    });
-
-    setColorLists({
-      coresCabeca: Array.isArray(savedColors?.coresCabeca)
-        ? savedColors.coresCabeca
-        : [],
-      coresPeito: Array.isArray(savedColors?.coresPeito)
-        ? savedColors.coresPeito
-        : [],
-      coresDorso: Array.isArray(savedColors?.coresDorso)
-        ? savedColors.coresDorso
-        : []
-    });
-  }, []);
-
-  // Save to localStorage
-  const save = useCallback((newDb: Database) => {
-    localStorage.setItem(
-      'gpro_v19_aves',
-      JSON.stringify(newDb.aves)
-    );
-
-    localStorage.setItem(
-      'gpro_v19_casais',
-      JSON.stringify(newDb.casais)
-    );
-
-    localStorage.setItem(
-      'gpro_v19_ninhos',
-      JSON.stringify(newDb.ninhos)
-    );
-
-    localStorage.setItem(
-      'gpro_v19_config',
-      JSON.stringify(newDb.config)
-    );
-
-    localStorage.setItem(
-      'gpro_v19_lancamentos',
-      JSON.stringify(newDb.lancamentos)
-    );
-
-    // Incrementar contador de edições
-    const editCount =
-      Number(
-        localStorage.getItem('gpro_v19_editCount') || '0'
-      ) + 1;
-
-    localStorage.setItem(
-      'gpro_v19_editCount',
-      editCount.toString()
-    );
-
-    // A cada 10 edições, alertar para fazer backup
-    if (editCount % 10 === 0) {
-      const lastBackup = localStorage.getItem(
-        'gpro_v19_lastBackup'
-      );
-
-      const message = lastBackup
-        ? `Você fez ${editCount} edições desde o início. Último backup: ${new Date(
-            lastBackup
-          ).toLocaleDateString(
-            'pt-BR'
-          )}. Recomendamos fazer um novo backup!`
-        : `Você fez ${editCount} edições. Recomendamos fazer um backup dos seus dados!`;
-
-      // Usar setTimeout para não bloquear o salvamento
-      setTimeout(() => {
-        if (confirm(message + '\n\nDeseja fazer backup agora?')) {
-          const blob = new Blob(
-            [JSON.stringify(newDb)],
-            {
-              type: 'application/json'
-            }
-          );
-
-          const a = document.createElement('a');
-
-          a.href =
-            URL.createObjectURL(blob);
-
-          a.download =
-            `backup_gpro_${
-              new Date()
-                .toISOString()
-                .split('T')[0]
-            }.json`;
-
-          a.click();
-
-          localStorage.setItem(
-            'gpro_v19_lastBackup',
-            new Date().toISOString()
-          );
-        }
-      }, 100);
-    }
-
-    setDb(newDb);
-  }, []);
-
-  const saveAve = useCallback(
-    (
-      aveData: Partial<Ave>,
-      editId: string | null
-    ) => {
-      const newDb = { ...db };
-
-      if (editId) {
-        const idx = newDb.aves.findIndex(
-          a => a.id === editId
-        );
-
-        if (idx !== -1) {
-          newDb.aves[idx] = {
-            ...newDb.aves[idx],
-            ...aveData
-          } as Ave;
-        }
-      } else {
-        newDb.aves.push({
-          id: Date.now().toString(),
-          ...aveData
-        } as Ave);
+      if (resultado.aves.length > 0) {
+        onImportAves(resultado.aves);
       }
 
-      // ✨ Adicionar espécie à lista central se não existir
-      if (
-        aveData.species &&
-        aveData.species.trim() !== '' &&
-        !newDb.config.especies.includes(
-          aveData.species
-        )
-      ) {
-        newDb.config.especies.push(
-          aveData.species
-        );
+      let mensagem = `${resultado.aves.length} ave(s) importada(s) com sucesso.`;
 
-        console.log(
-          '✅ Nova espécie adicionada:',
-          aveData.species
-        );
+      if (resultado.linhasIgnoradas > 0) {
+        mensagem += `\n${resultado.linhasIgnoradas} linha(s) ignorada(s).`;
       }
 
-      // Atualizar listas de cores únicas
-      const newColorLists = {
-        ...colorLists
-      };
-
-      if (
-        aveData.corCabeca &&
-        aveData.corCabeca.trim() !== '' &&
-        !newColorLists.coresCabeca.includes(
-          aveData.corCabeca
-        )
-      ) {
-        newColorLists.coresCabeca.push(
-          aveData.corCabeca
-        );
-      }
-
-      if (
-        aveData.corPeito &&
-        aveData.corPeito.trim() !== '' &&
-        !newColorLists.coresPeito.includes(
-          aveData.corPeito
-        )
-      ) {
-        newColorLists.coresPeito.push(
-          aveData.corPeito
-        );
-      }
-
-      if (
-        aveData.corDorso &&
-        aveData.corDorso.trim() !== '' &&
-        !newColorLists.coresDorso.includes(
-          aveData.corDorso
-        )
-      ) {
-        newColorLists.coresDorso.push(
-          aveData.corDorso
-        );
-      }
-
-      if (
-        JSON.stringify(newColorLists) !==
-        JSON.stringify(colorLists)
-      ) {
-        localStorage.setItem(
-          'gpro_v19_colors',
-          JSON.stringify(newColorLists)
-        );
-
-        setColorLists(newColorLists);
-      }
-
-      save(newDb);
-    },
-    [db, save, colorLists]
-  );
-
-  const saveCasal = useCallback(
-    (casalData: Omit<Casal, 'id'>) => {
-      const newDb = { ...db };
-
-      const newId =
-        Date.now().toString();
-
-      newDb.casais.push({
-        id: newId,
-        ...casalData
-      });
-
-      save(newDb);
-
-      return newId;
-    },
-    [db, save]
-  );
-
-  const saveNinho = useCallback(
-    (ninho: Partial<Ninho> & { id?: string }) => {
-      const newDb = { ...db };
-
-      if (ninho.id) {
-        const idx =
-          newDb.ninhos.findIndex(
-            n => n.id === ninho.id
-          );
-
-        if (idx !== -1) {
-          newDb.ninhos[idx] = {
-            ...newDb.ninhos[idx],
-            ...ninho
-          } as Ninho;
-        }
-      } else {
-        newDb.ninhos.push({
-          id: Date.now().toString(),
-          name: ninho.name || '',
-          casalId: ninho.casalId || '',
-          eggs: []
-        } as Ninho);
-      }
-
-      save(newDb);
-    },
-    [db, save]
-  );
-
-  const updateNinhoCasal = useCallback(
-    (
-      ninhoId: string,
-      casalId: string
-    ) => {
-      const newDb = { ...db };
-
-      const ninho =
-        newDb.ninhos.find(
-          n => n.id === ninhoId
-        );
-
-      if (ninho) {
-        ninho.casalId = casalId;
-        save(newDb);
-      }
-    },
-    [db, save]
-  );
-
-  const updateNinho = useCallback(
-    (
-      ninhoId: string,
-      field: keyof Ninho,
-      value: any
-    ) => {
-      const newDb = { ...db };
-
-      const ninho =
-        newDb.ninhos.find(
-          n => n.id === ninhoId
-        );
-
-      if (ninho) {
-        (ninho as any)[field] = value;
-        save(newDb);
-      }
-    },
-    [db, save]
-  );
-
-  const updateCasal = useCallback(
-    (
-      casalId: string,
-      field: keyof Casal,
-      value: any
-    ) => {
-      const newDb = { ...db };
-
-      const casal =
-        newDb.casais.find(
-          c => c.id === casalId
-        );
-
-      if (casal) {
-        (casal as any)[field] = value;
-        save(newDb);
-      }
-    },
-    [db, save]
-  );
-
-  const deleteCasal = useCallback(
-    (id: string) => {
-      if (
-        confirm(
-          "Deseja realmente desfazer este casal?"
-        )
-      ) {
-        const newDb = { ...db };
-
-        newDb.casais =
-          newDb.casais.filter(
-            c => c.id !== id
-          );
-
-        newDb.ninhos.forEach(n => {
-          if (n.casalId === id) {
-            n.casalId = "";
-          }
-        });
-
-        save(newDb);
-      }
-    },
-    [db, save]
-  );
-
-  const deleteAve = useCallback(
-    (id: string) => {
-      if (
-        confirm(
-          "Deseja realmente excluir esta ave?"
-        )
-      ) {
-        const newDb = { ...db };
-
-        newDb.aves =
-          newDb.aves.filter(
-            a => a.id !== id
-          );
-
-        // Remove a ave dos casais
-        newDb.casais =
-          newDb.casais.filter(
-            c =>
-              c.mId !== id &&
-              c.fId !== id
-          );
-
-        save(newDb);
-      }
-    },
-    [db, save]
-  );
-
-  const deleteNinho = useCallback(
-    (id: string) => {
-      if (
-        confirm(
-          "Deseja realmente excluir este ninho e todos os ovos associados?"
-        )
-      ) {
-        const newDb = { ...db };
-
-        newDb.ninhos =
-          newDb.ninhos.filter(
-            n => n.id !== id
-          );
-
-        save(newDb);
-      }
-    },
-    [db, save]
-  );
-
-  const addEgg = useCallback(
-    (ninhoId: string) => {
-      const newDb = { ...db };
-
-      const ninho =
-        newDb.ninhos.find(
-          n => n.id === ninhoId
-        );
-
-      if (ninho) {
-        const hoje =
-          new Date()
-            .toISOString()
-            .split('T')[0];
-
-        // Buscar espécie dos pais do casal
-        let species =
-          'Não especificado';
-
-        const casal =
-          newDb.casais.find(
-            c =>
-              c.id ===
-              ninho.casalId
-          );
-
-        if (casal) {
-          const pai =
-            newDb.aves.find(
-              a =>
-                a.id ===
-                casal.mId
-            );
-
-          const mae =
-            newDb.aves.find(
-              a =>
-                a.id ===
-                casal.fId
-            );
-
-          // Usar a espécie do pai como padrão, ou da mãe se o pai não tiver
-          if (pai?.species) {
-            species =
-              pai.species;
-          } else if (mae?.species) {
-            species =
-              mae.species;
-          }
-        }
-
-        // ✨ Adicionar espécie à lista central se não existir
-        if (
-          species &&
-          species !==
-            'Não especificado' &&
-          !newDb.config.especies.includes(
-            species
-          )
-        ) {
-          newDb.config.especies.push(
-            species
-          );
-
-          console.log(
-            '✅ Nova espécie adicionada automaticamente (ovo):',
-            species
-          );
-        }
-
-        ninho.eggs.push({
-          id:
-            Date.now().toString(),
-          postura: hoje,
-          status:
-            "Em Espera",
-          local: "ninho",
-          species: species
-        });
-
-        save(newDb);
-      }
-    },
-    [db, save]
-  );
-
-  const removeEgg = useCallback(
-    (
-      ninhoId: string,
-      eggIdx: number
-    ) => {
-      const newDb = { ...db };
-
-      const ninho =
-        newDb.ninhos.find(
-          n => n.id === ninhoId
-        );
-
-      if (ninho) {
-        ninho.eggs.splice(
-          eggIdx,
-          1
-        );
-
-        save(newDb);
-      }
-    },
-    [db, save]
-  );
-
-  const updateEgg = useCallback(
-    (
-      ninhoId: string,
-      eggIdx: number,
-      field: keyof Egg,
-      value: string
-    ) => {
-      const newDb = { ...db };
-
-      const ninho =
-        newDb.ninhos.find(
-          n => n.id === ninhoId
-        );
-
-      if (
-        ninho &&
-        ninho.eggs[eggIdx]
-      ) {
-        ninho.eggs[eggIdx][field] =
-          value as any;
-
-        // ✨ Se está atualizando a espécie, adicionar à lista central se não existir
-        if (
-          field === 'species' &&
-          value &&
-          value !==
-            'Não especificado' &&
-          !newDb.config.especies.includes(
-            value
-          )
-        ) {
-          newDb.config.especies.push(
-            value
-          );
-
-          console.log(
-            '✅ Nova espécie adicionada automaticamente (edição ovo):',
-            value
-          );
-        }
-
-        save(newDb);
-      }
-    },
-    [db, save]
-  );
-
-  const eclodirOvo = useCallback(
-    (
-      ninhoId: string,
-      eggIdx: number,
-      dataEclosao: string
-    ) => {
-      const newDb = { ...db };
-
-      const ninho =
-        newDb.ninhos.find(
-          n => n.id === ninhoId
-        );
-
-      if (
-        ninho &&
-        ninho.eggs[eggIdx]
-      ) {
-        ninho.eggs[eggIdx].status =
-          'Eclodido';
-
-        ninho.eggs[eggIdx].dataEclosao =
-          dataEclosao;
-
-        save(newDb);
-      }
-    },
-    [db, save]
-  );
-
-  /*
-   * ============================================================
-   * ANILHAR FILHOTE
-   * ============================================================
-   *
-   * Fluxo:
-   *
-   * Eclodido -> Anilhado -> No Ninho (Plantel)
-   *                          |
-   *                          -> Sair do ninho -> Ativo
-   *
-   * A partir do anilhamento, a ave já existe no Plantel com
-   * status "No Ninho", mas continua aparecendo no ninho.
-   *
-   * Se a anilha for apagada antes da saída do ninho, a ave
-   * provisória é removida do Plantel e o ovo volta para
-   * "Anilha pendente".
-   */
-  const anilharFilhote = useCallback(
-    (
-      ninhoId: string,
-      eggIdx: number,
-      anilha: string,
-      anoAnilha: number
-    ) => {
-      const newDb = { ...db };
-
-      const ninho = newDb.ninhos.find(
-        n => n.id === ninhoId
-      );
-
-      if (
-        !ninho ||
-        !ninho.eggs[eggIdx]
-      ) {
-        return;
-      }
-
-      const egg = ninho.eggs[eggIdx];
-      const anilhaLimpa = anilha.trim();
-
-      /*
-       * Se o usuário apagar completamente a anilha:
-       *
-       * - antes da saída: desfaz o anilhamento e remove a ave
-       *   provisória do Plantel;
-       * - depois da saída: não permite, pois a ave já está
-       *   oficialmente no Plantel.
-       */
-      if (!anilhaLimpa) {
-        if (egg.dataSaidaNinho) {
-          alert(
-            'Este filhote já saiu do ninho e está no Plantel.\n\nA anilha não pode ser removida nesta etapa.'
-          );
-          return;
-        }
-
-        if (egg.filhoteId) {
-          const aveId = egg.filhoteId;
-
-          newDb.aves = newDb.aves.filter(
-            ave => ave.id !== aveId
-          );
-
-          const casalOriginal = newDb.casais.find(
-            c => c.id === ninho.casalId
-          );
-
-          if (casalOriginal?.historico) {
-            casalOriginal.historico =
-              casalOriginal.historico.filter(
-                filhote => filhote.aveId !== aveId
-              );
-          }
-        }
-
-        egg.filhoteAnilhado = false;
-        delete egg.anilha;
-        delete egg.anoAnilha;
-        delete egg.filhoteId;
-        delete egg.dataSaidaNinho;
-
-        save(newDb);
-
-        alert(
-          'Anilhamento desfeito.\n\nO filhote voltou para o status "Anilha pendente".'
-        );
-
-        return;
-      }
-
-      const casalOriginal = newDb.casais.find(
-        c => c.id === ninho.casalId
-      );
-
-      const criadoPorAmas = !!(
-        egg.casalChocandoId &&
-        egg.casalChocandoId !== ninho.casalId
-      );
-
-      /*
-       * Atualizar a ave existente caso ela já tenha sido criada
-       * no primeiro anilhamento.
-       */
-      if (egg.filhoteId) {
-        const aveExistente = newDb.aves.find(
-          ave => ave.id === egg.filhoteId
-        );
-
-        if (aveExistente) {
-          aveExistente.ring = anilhaLimpa;
-          aveExistente.ringYear = anoAnilha;
-
-          // Nome automático padrão: ANILHA-ANO.
-          // Se o nome anterior era o nome automático "Filhote ...",
-          // atualizamos. Se o usuário já colocou um nome próprio,
-          // preservamos o nome informado por ele.
-          if (
-            !aveExistente.name ||
-            /^Filhote\s+/i.test(aveExistente.name)
-          ) {
-            aveExistente.name = `${anilhaLimpa}-${anoAnilha}`;
-          }
-
-          /*
-           * Se ainda não saiu do ninho, permanece como "No Ninho".
-           * Se já saiu, preservamos "Ativo".
-           */
-          if (!egg.dataSaidaNinho) {
-            aveExistente.status = 'No Ninho';
-          }
-
-          aveExistente.species =
-            egg.species || aveExistente.species;
-
-          // A nota e a porta registradas no ovo passam a acompanhar
-          // o filhote no Plantel.
-          if (egg.nota !== undefined) {
-            aveExistente.nota = egg.nota;
-          }
-          if (egg.porta !== undefined) {
-            aveExistente.porta = egg.porta;
-          }
-        }
-
-        /*
-         * Atualizar também o histórico existente, sem criar
-         * uma segunda entrada.
-         */
-        if (casalOriginal?.historico) {
-          const historico = casalOriginal.historico.find(
-            filhote => filhote.aveId === egg.filhoteId
-          );
-
-          if (historico) {
-            historico.anilha = anilhaLimpa;
-            historico.anoAnilha = anoAnilha;
-          }
-        }
-      } else {
-        /*
-         * Primeiro anilhamento:
-         * criar imediatamente a ave no Plantel como "No Ninho".
-         */
-        const novaAve: Ave = {
-          id: Date.now().toString(),
-
-          species:
-            egg.species ||
-            'Não especificado',
-
-          ring:
-            anilhaLimpa,
-
-          ringYear:
-            anoAnilha,
-
-          name:
-            `${anilhaLimpa}-${anoAnilha}`,
-
-          sex:
-            'Indefinido',
-
-          status:
-            'No Ninho',
-
-          creator:
-            'Criação Própria',
-
-          acqYear:
-            anoAnilha,
-
-          parentMaleId:
-            casalOriginal?.mId,
-
-          parentFemaleId:
-            casalOriginal?.fId,
-
-          birthDate:
-            egg.dataEclosao,
-
-          birthNestId:
-            ninhoId,
-
-          criadoPorAmas:
-            criadoPorAmas,
-
-          // Levar para o Plantel as informações registradas no ovo.
-          nota: egg.nota,
-          porta: egg.porta,
-
-          casalAmasId:
-            criadoPorAmas
-              ? egg.casalChocandoId
-              : undefined
-        };
-
-        newDb.aves.push(novaAve);
-
-        egg.filhoteId =
-          novaAve.id;
-
-        /*
-         * O histórico é criado no anilhamento e permanece
-         * durante toda a vida do filhote.
-         */
-        if (casalOriginal) {
-          if (!casalOriginal.historico) {
-            casalOriginal.historico = [];
-          }
-
-          casalOriginal.historico.push({
-            id:
-              Date.now().toString() +
-              '_hist',
-
-            anilha:
-              anilhaLimpa,
-
-            anoAnilha:
-              anoAnilha,
-
-            aveId:
-              novaAve.id,
-
-            status:
-              'Ativo'
-          });
+      if (resultado.erros.length > 0) {
+        mensagem += `\n\nDetalhes:\n${resultado.erros.slice(0, 5).join('\n')}`;
+
+        if (resultado.erros.length > 5) {
+          mensagem += `\n... e mais ${resultado.erros.length - 5} erro(s).`;
         }
       }
 
-      egg.filhoteAnilhado = true;
-      egg.anilha = anilhaLimpa;
-      egg.anoAnilha = anoAnilha;
-
-      save(newDb);
-
-      alert(
-        'Filhote anilhado com sucesso!\n\n' +
-        'O filhote já foi incluído no Plantel como "No Ninho" e continuará no ninho até que você registre a saída.'
-      );
-    },
-    [db, save]
-  );
-
-  /*
-   * ============================================================
-   * REGISTRAR SAÍDA DO NINHO
-   * ============================================================
-   *
-   * O filhote já existe no Plantel desde o anilhamento.
-   * Aqui apenas mudamos seu status:
-   *
-   * No Ninho -> Ativo
-   *
-   * O registro continua no ninho e no histórico do casal.
-   */
-  const registrarSaidaDoNinho = useCallback(
-    (
-      ninhoId: string,
-      eggIdx: number,
-      dataSaidaNinho: string,
-      novoLocal?: string
-    ) => {
-      const newDb = { ...db };
-
-      const ninho =
-        newDb.ninhos.find(
-          n => n.id === ninhoId
-        );
-
-      if (
-        !ninho ||
-        !ninho.eggs[eggIdx]
-      ) {
-        alert(
-          'Não foi possível localizar o ovo.'
-        );
-        return;
-      }
-
-      const egg =
-        ninho.eggs[eggIdx];
-
-      if (
-        !egg.filhoteAnilhado ||
-        !egg.anilha
-      ) {
-        alert(
-          'Este filhote ainda não foi anilhado.\n\nAnilhe o filhote antes de registrar a saída do ninho.'
-        );
-        return;
-      }
-
-      if (egg.dataSaidaNinho) {
-        alert(
-          'A saída deste filhote já foi registrada.'
-        );
-        return;
-      }
-
-      /*
-       * O filhote normalmente já existe no Plantel.
-       * O bloco de criação abaixo serve apenas para recuperar
-       * registros antigos ou inconsistentes que tenham anilha,
-       * mas não tenham filhoteId.
-       */
-      let ave = egg.filhoteId
-        ? newDb.aves.find(
-            a => a.id === egg.filhoteId
-          )
-        : undefined;
-
-      const casalOriginal =
-        newDb.casais.find(
-          c =>
-            c.id ===
-            ninho.casalId
-        );
-
-      const criadoPorAmas =
-        !!(
-          egg.casalChocandoId &&
-          egg.casalChocandoId !==
-            ninho.casalId
-        );
-
-      if (!ave) {
-        const novaAve: Ave = {
-          id:
-            Date.now().toString(),
-
-          species:
-            egg.species ||
-            'Não especificado',
-
-          ring:
-            egg.anilha,
-
-          ringYear:
-            egg.anoAnilha!,
-
-          name:
-            `${egg.anilha}-${egg.anoAnilha}`,
-
-          sex:
-            'Indefinido',
-
-          status:
-            'No Ninho',
-
-          creator:
-            'Criação Própria',
-
-          acqYear:
-            egg.anoAnilha!,
-
-          parentMaleId:
-            casalOriginal?.mId,
-
-          parentFemaleId:
-            casalOriginal?.fId,
-
-          birthDate:
-            egg.dataEclosao,
-
-          birthNestId:
-            ninhoId,
-
-          criadoPorAmas:
-            criadoPorAmas,
-
-          casalAmasId:
-            criadoPorAmas
-              ? egg.casalChocandoId
-              : undefined
-        };
-
-        newDb.aves.push(
-          novaAve
-        );
-
-        egg.filhoteId =
-          novaAve.id;
-
-        ave = novaAve;
-
-        if (casalOriginal) {
-          if (!casalOriginal.historico) {
-            casalOriginal.historico = [];
-          }
-
-          casalOriginal.historico.push({
-            id:
-              Date.now().toString() +
-              '_hist',
-
-            anilha:
-              egg.anilha,
-
-            anoAnilha:
-              egg.anoAnilha!,
-
-            aveId:
-              novaAve.id,
-
-            status:
-              'Ativo'
-          });
-        }
-      }
-
-      /*
-       * Agora a saída efetiva:
-       * o filhote deixa de estar "No Ninho" e passa a "Ativo".
-       */
-      ave.status = 'Ativo';
-      ave.ring = egg.anilha;
-      ave.ringYear = egg.anoAnilha!;
-
-      egg.dataSaidaNinho =
-        dataSaidaNinho;
-
-      // Preserva o local escolhido no momento da saída.
-      if (novoLocal && novoLocal.trim()) {
-        (egg as any).localSaidaNinho = novoLocal.trim();
-      } else {
-        delete (egg as any).localSaidaNinho;
-      }
-
-      /*
-       * Garantir que o histórico esteja vinculado à mesma ave.
-       */
-      if (casalOriginal) {
-        if (!casalOriginal.historico) {
-          casalOriginal.historico = [];
-        }
-
-        const historico =
-          casalOriginal.historico.find(
-            filhote =>
-              filhote.aveId ===
-              ave!.id
-          );
-
-        if (historico) {
-          historico.anilha =
-            egg.anilha;
-
-          historico.anoAnilha =
-            egg.anoAnilha!;
-
-          historico.status =
-            'Ativo';
-        } else {
-          casalOriginal.historico.push({
-            id:
-              Date.now().toString() +
-              '_hist',
-
-            anilha:
-              egg.anilha,
-
-            anoAnilha:
-              egg.anoAnilha!,
-
-            aveId:
-              ave.id,
-
-            status:
-              'Ativo'
-          });
-        }
-      }
-
-      save(newDb);
-
+      window.alert(mensagem);
+    } catch (error) {
       const mensagem =
-        criadoPorAmas
-          ? `Saída do ninho registrada com sucesso!\n\nFilhote ${egg.anilha} agora está como "Ativo" no Plantel.\nCriado por amas.`
-          : `Saída do ninho registrada com sucesso!\n\nFilhote ${egg.anilha} agora está como "Ativo" no Plantel.`;
-
-      alert(
-        mensagem
-      );
-    },
-    [db, save]
-  );
-
-  /**
-   * ============================================================
-   * DESFAZER SAÍDA DO NINHO
-   * ============================================================
-   *
-   * Retorna:
-   *
-   * Ativo -> No Ninho
-   *
-   * IMPORTANTE:
-   * - NÃO remove a ave do Plantel;
-   * - NÃO remove o histórico;
-   * - NÃO remove a anilha;
-   * - apenas remove a data de saída e devolve o status
-   *   para "No Ninho".
-   */
-  const desfazerSaidaDoNinho = useCallback(
-    (
-      ninhoId: string,
-      eggIdx: number
-    ) => {
-      const newDb = { ...db };
-
-      const ninho =
-        newDb.ninhos.find(
-          n => n.id === ninhoId
-        );
-
-      if (
-        !ninho ||
-        !ninho.eggs[eggIdx]
-      ) {
-        alert(
-          'Não foi possível localizar o ovo.'
-        );
-        return;
-      }
-
-      const egg =
-        ninho.eggs[eggIdx];
-
-      if (
-        !egg.filhoteId ||
-        !egg.dataSaidaNinho
-      ) {
-        alert(
-          'A saída deste filhote ainda não foi registrada.'
-        );
-        return;
-      }
-
-      const ave =
-        newDb.aves.find(
-          a =>
-            a.id ===
-            egg.filhoteId
-        );
-
-      if (!ave) {
-        alert(
-          'A ave correspondente não foi encontrada no Plantel.'
-        );
-        return;
-      }
-
-      /*
-       * Retorna a ave ao Plantel como "No Ninho".
-       */
-      ave.status =
-        'No Ninho';
-
-      ave.ring =
-        egg.anilha || ave.ring;
-
-      ave.ringYear =
-        egg.anoAnilha || ave.ringYear;
-
-      /*
-       * A anilha e o vínculo com o ovo permanecem.
-       * Apenas a saída é desfeita.
-       */
-      delete egg.dataSaidaNinho;
-      delete (egg as any).localSaidaNinho;
-
-      /*
-       * O histórico permanece.
-       */
-      const casalOriginal =
-        newDb.casais.find(
-          c =>
-            c.id ===
-            ninho.casalId
-        );
-
-      if (casalOriginal?.historico) {
-        const historico =
-          casalOriginal.historico.find(
-            filhote =>
-              filhote.aveId ===
-              ave.id
-          );
-
-        if (historico) {
-          historico.anilha =
-            egg.anilha || historico.anilha;
-
-          historico.anoAnilha =
-            egg.anoAnilha || historico.anoAnilha;
-
-          /*
-           * Filhote continua sendo um registro ativo no histórico.
-           * "No Ninho" é o status da ave no Plantel.
-           */
-          historico.status =
-            'Ativo';
-        }
-      }
-
-      save(newDb);
-
-      alert(
-        'Saída do ninho desfeita com sucesso!\n\n' +
-        'O filhote voltou para "No Ninho" no Plantel e continua registrado no ninho e no histórico do casal.'
-      );
-    },
-    [db, save]
-  );
-
-  const reverterEclosao = useCallback(
-    (
-      ninhoId: string,
-      eggIdx: number
-    ) => {
-      const newDb = { ...db };
-
-      const ninho =
-        newDb.ninhos.find(
-          n => n.id === ninhoId
-        );
-
-      if (
-        ninho &&
-        ninho.eggs[eggIdx]
-      ) {
-        const egg =
-          ninho.eggs[eggIdx];
-
-        // Se o filhote já foi criado no plantel,
-        // remover a ave
-        if (egg.filhoteId) {
-          newDb.aves =
-            newDb.aves.filter(
-              a =>
-                a.id !==
-                egg.filhoteId
-            );
-
-          // Remover também do histórico dos pais
-          const casalOriginal =
-            newDb.casais.find(
-              c =>
-                c.id ===
-                ninho.casalId
-            );
-
-          if (
-            casalOriginal?.historico
-          ) {
-            casalOriginal.historico =
-              casalOriginal.historico.filter(
-                f =>
-                  f.aveId !==
-                  egg.filhoteId
-              );
-          }
-        }
-
-        // Reverter o status do ovo
-        egg.status =
-          'Fértil';
-
-        egg.dataEclosao =
-          null as any;
-
-        egg.filhoteAnilhado =
-          false;
-
-        egg.anilha =
-          null as any;
-
-        egg.anoAnilha =
-          null as any;
-
-        egg.filhoteId =
-          null as any;
-
-        // Limpar data de saída, caso exista
-        delete egg.dataSaidaNinho;
-
-        save(newDb);
-      }
-    },
-    [db, save]
-  );
-
-  const saveConfig = useCallback(
-    (config: Config) => {
-      const configNormalizada = completarCoresAves(
-        normalizarConfig(config),
-        db.aves
-      );
-
-      const newDb = {
-        ...db,
-        config: configNormalizada
-      };
-
-      save(newDb);
-    },
-    [db, save]
-  );
-
-  const saveBackupToGoogleDrive =
-    useCallback(async () => {
-      try {
-        const accessToken =
-          await obterTokenGoogle();
-
-        const folderId =
-          await buscarOuCriarPastaGoogleDrive(
-            accessToken
-          );
-
-        const backupJson =
-          JSON.stringify(db);
-
-        const backupId =
-          await buscarBackupGoogleDrive(
-            accessToken,
-            folderId
-          );
-
-        if (backupId) {
-          await atualizarBackupGoogleDrive(
-            accessToken,
-            backupId,
-            backupJson
-          );
-        } else {
-          await criarBackupGoogleDrive(
-            accessToken,
-            folderId,
-            backupJson
-          );
-        }
-
-        const agora =
-          new Date().toISOString();
-
-        localStorage.setItem(
-          'gpro_v19_lastGoogleDriveBackup',
-          agora
-        );
-
-        localStorage.setItem(
-          'gpro_v19_lastBackup',
-          agora
-        );
-
-        setLastGoogleDriveBackup(
-          agora
-        );
-
-        alert(
-          'Backup salvo no Google Drive com sucesso!\n\nArquivo: backup.json\nPasta: GouldPRO'
-        );
-      } catch (error) {
-        console.error(
-          'Erro no backup do Google Drive:',
-          error
-        );
-
-        const mensagem =
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido.';
-
-        alert(
-          `Não foi possível salvar o backup no Google Drive.\n\n${mensagem}`
-        );
-      }
-    }, [db]);
-
-  const importBackupFromGoogleDrive =
-    useCallback(async () => {
-      try {
-        const accessToken =
-          await obterTokenGoogle();
-
-        const folderId =
-          await buscarOuCriarPastaGoogleDrive(
-            accessToken
-          );
-
-        const backupId =
-          await buscarBackupGoogleDrive(
-            accessToken,
-            folderId
-          );
-
-        if (!backupId) {
-          alert(
-            'Nenhum backup.json foi encontrado na pasta GouldPRO do Google Drive.'
-          );
-
-          return;
-        }
-
-        const resposta =
-          await fetch(
-            `https://www.googleapis.com/drive/v3/files/${backupId}?alt=media`,
-            {
-              headers: {
-                Authorization: `Bearer ${accessToken}`
-              }
-            }
-          );
-
-        if (!resposta.ok) {
-          throw new Error(
-            'Não foi possível baixar o backup do Google Drive.'
-          );
-        }
-
-        const imported =
-          await resposta.json();
-
-        if (
-          !imported ||
-          !Array.isArray(
-            imported.aves
-          ) ||
-          !Array.isArray(
-            imported.casais
-          ) ||
-          !Array.isArray(
-            imported.ninhos
-          ) ||
-          !imported.config ||
-          !Array.isArray(
-            imported.lancamentos
-          )
-        ) {
-          throw new Error(
-            'O backup encontrado não possui um formato válido do GouldPRO.'
-          );
-        }
-
-        const confirmar =
-          confirm(
-            'ATENÇÃO: importar o backup do Google Drive substituirá os dados atuais deste navegador.\n\n' +
-              `Backup encontrado: ${imported.aves.length} aves, ${imported.casais.length} casais e ${imported.ninhos.length} ninhos.\n\n` +
-              'Deseja continuar?'
-          );
-
-        if (!confirmar)
-          return;
-
-        const newDb: Database = {
-          aves:
-            imported.aves,
-
-          casais:
-            imported.casais.map(
-              (casal: Casal) => ({
-                ...casal,
-                historico:
-                  casal.historico ||
-                  []
-              })
-            ),
-
-          ninhos:
-            imported.ninhos,
-
-          config:
-            imported.config,
-
-          lancamentos:
-            imported.lancamentos
-        };
-
-        save(newDb);
-
-        const agora =
-          new Date().toISOString();
-
-        localStorage.setItem(
-          'gpro_v19_lastGoogleDriveImport',
-          agora
-        );
-
-        alert(
-          'Backup importado do Google Drive com sucesso! A página será recarregada.'
-        );
-
-        window.location.reload();
-      } catch (error) {
-        console.error(
-          'Erro ao importar do Google Drive:',
-          error
-        );
-
-        const mensagem =
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido.';
-
-        alert(
-          `Não foi possível importar o backup do Google Drive.\n\n${mensagem}`
-        );
-      }
-    }, [save]);
-
-  const exportBackup =
-    useCallback(() => {
-      const blob =
-        new Blob(
-          [JSON.stringify(db)],
-          {
-            type: 'application/json'
-          }
-        );
-
-      const a =
-        document.createElement(
-          'a'
-        );
-
-      a.href =
-        URL.createObjectURL(blob);
-
-      const date =
-        new Date()
-          .toISOString()
-          .split('T')[0];
-
-      a.download =
-        `backup_gpro_${date}.json`;
-
-      a.click();
-
-      // Registrar data do último backup
-      localStorage.setItem(
-        'gpro_v19_lastBackup',
-        new Date().toISOString()
-      );
-
-      alert(
-        'Backup realizado com sucesso!'
-      );
-    }, [db]);
-
-  const importBackup =
-    useCallback(
-      (file: File) => {
-        const reader =
-          new FileReader();
-
-        reader.onload = e => {
-          try {
-            const imported =
-              JSON.parse(
-                e.target?.result as string
-              );
-
-            const newDb = {
-              ...db,
-              ...imported,
-              config: completarCoresAves(
-                normalizarConfig(imported.config),
-                imported.aves || db.aves
-              )
-            };
-
-            save(newDb);
-
-            alert(
-              "Backup Importado com Sucesso!"
-            );
-          } catch (err) {
-            alert(
-              "Erro ao importar arquivo."
-            );
-          }
-        };
-
-        reader.readAsText(file);
-      },
-      [db, save]
-    );
-
-  const clearEverything =
-    useCallback(() => {
-      if (
-        confirm(
-          "ATENÇÃO: Isso apagará TODOS os seus dados salvos!"
-        )
-      ) {
-        localStorage.clear();
-        window.location.reload();
-      }
-    }, []);
-
-  const saveLancamento =
-    useCallback(
-      (
-        lancamentoData: Omit<
-          Lancamento,
-          'id'
-        >
-      ) => {
-        const newDb = {
-          ...db,
-
-          lancamentos: [
-            ...db.lancamentos,
-            {
-              id:
-                Date.now().toString(),
-              ...lancamentoData
-            }
-          ]
-        };
-
-        save(newDb);
-      },
-      [db, save]
-    );
-
-  const deleteLancamento =
-    useCallback(
-      (id: string) => {
-        const newDb = {
-          ...db,
-
-          lancamentos:
-            db.lancamentos.filter(
-              l =>
-                l.id !== id
-            )
-        };
-
-        save(newDb);
-      },
-      [db, save]
-    );
-
-  const deleteMultipleLancamentos =
-    useCallback(
-      (ids: string[]) => {
-        const idsSet =
-          new Set(ids);
-
-        const newDb = {
-          ...db,
-
-          lancamentos:
-            db.lancamentos.filter(
-              l =>
-                !idsSet.has(l.id)
-            )
-        };
-
-        save(newDb);
-      },
-      [db, save]
-    );
-
-  const addFilhoteToHistorico =
-    useCallback(
-      (
-        casalId: string,
-        filhote: Omit<
-          import('../App').Filhote,
-          'id'
-        >
-      ) => {
-        const newDb = {
-          ...db
-        };
-
-        const casal =
-          newDb.casais.find(
-            c =>
-              c.id === casalId
-          );
-
-        if (casal) {
-          if (
-            !casal.historico
-          ) {
-            casal.historico =
-              [];
-          }
-
-          casal.historico.push({
-            id:
-              Date.now().toString(),
-            ...filhote
-          });
-
-          save(newDb);
-        }
-      },
-      [db, save]
-    );
-
-  const updateFilhoteHistorico =
-    useCallback(
-      (
-        casalId: string,
-        filhoteId: string,
-        updates: Partial<
-          import('../App').Filhote
-        >
-      ) => {
-        const newDb = {
-          ...db
-        };
-
-        const casal =
-          newDb.casais.find(
-            c =>
-              c.id === casalId
-          );
-
-        if (
-          casal &&
-          casal.historico
-        ) {
-          const idx =
-            casal.historico.findIndex(
-              f =>
-                f.id ===
-                filhoteId
-            );
-
-          if (idx !== -1) {
-            casal.historico[
-              idx
-            ] = {
-              ...casal.historico[
-                idx
-              ],
-              ...updates
-            };
-
-            save(newDb);
-          }
-        }
-      },
-      [db, save]
-    );
-
-  const deleteFilhoteHistorico =
-    useCallback(
-      (
-        casalId: string,
-        filhoteId: string
-      ) => {
-        const newDb = {
-          ...db
-        };
-
-        const casal =
-          newDb.casais.find(
-            c =>
-              c.id === casalId
-          );
-
-        if (
-          casal &&
-          casal.historico
-        ) {
-          casal.historico =
-            casal.historico.filter(
-              f =>
-                f.id !==
-                filhoteId
-            );
-
-          save(newDb);
-        }
-      },
-      [db, save]
-    );
-
-  return {
-    db,
-    colorLists,
-
-    saveAve,
-    saveCasal,
-    saveNinho,
-
-    updateNinhoCasal,
-    updateNinho,
-    updateCasal,
-
-    deleteCasal,
-    deleteAve,
-    deleteNinho,
-
-    addEgg,
-    removeEgg,
-    updateEgg,
-
-    eclodirOvo,
-    anilharFilhote,
-    registrarSaidaDoNinho,
-    desfazerSaidaDoNinho,
-    reverterEclosao,
-
-    saveConfig,
-
-    exportBackup,
-    saveBackupToGoogleDrive,
-    importBackupFromGoogleDrive,
-    lastGoogleDriveBackup,
-    importBackup,
-
-    clearEverything,
-
-    saveLancamento,
-    deleteLancamento,
-    deleteMultipleLancamentos,
-
-    addFilhoteToHistorico,
-    updateFilhoteHistorico,
-    deleteFilhoteHistorico
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível importar a planilha.';
+
+      window.alert(mensagem);
+    } finally {
+      setImportandoPlanilha(false);
+    }
   };
+
+  const especies = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.species)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
+
+  const sexos = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.sex)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
+
+  const status = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.status)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
+
+  const coresCabeca = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.corCabeca)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
+
+  const coresPeito = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.corPeito)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
+
+  const coresDorso = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.corDorso)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
+
+  const portas = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          aves
+            .map(ave => ave.porta)
+            .filter(Boolean)
+        )
+      ).sort(),
+    [aves]
+  );
+
+  const locais = useMemo(() => {
+    const locaisCadastrados = config?.locaisOvos || [];
+    const locaisDasAves = aves
+      .map(ave => obterLocalAve(ave, ninhos))
+      .filter(local => local && local !== 'Não informado');
+
+    return Array.from(new Set([...locaisCadastrados, ...locaisDasAves])).sort();
+  }, [config?.locaisOvos, aves, ninhos]);
+
+  const avesFiltradas = useMemo(() => {
+    const termo = busca.trim().toLowerCase();
+
+    return aves.filter(ave => {
+      const correspondeBusca =
+        !termo ||
+        [
+          ave.species,
+          ave.ring,
+          ave.name,
+          ave.sex,
+          ave.status,
+          ave.creator,
+          ave.ringYear,
+          ave.acqYear,
+          ave.corCabeca,
+          ave.corPeito,
+          ave.corDorso,
+          ave.nota,
+          ave.porta,
+          (ave as any).localAtual,
+          (ave as any).local,
+          (ave as any).location,
+          (ave as any).localSaidaNinho
+        ]
+          .filter(value => value !== undefined && value !== null)
+          .some(value =>
+            String(value).toLowerCase().includes(termo)
+          );
+
+      const correspondeEspecie =
+        !filtroEspecie || ave.species === filtroEspecie;
+
+      const correspondeSexo =
+        !filtroSexo || ave.sex === filtroSexo;
+
+      const correspondeStatus =
+        !filtroStatus || ave.status === filtroStatus;
+
+      const correspondeCorCabeca =
+        !filtroCorCabeca || ave.corCabeca === filtroCorCabeca;
+
+      const correspondeCorPeito =
+        !filtroCorPeito || ave.corPeito === filtroCorPeito;
+
+      const correspondeCorDorso =
+        !filtroCorDorso || ave.corDorso === filtroCorDorso;
+
+      const correspondePorta =
+        !filtroPorta || ave.porta === filtroPorta;
+
+      const correspondeLocal =
+        !filtroLocal || obterLocalAve(ave, ninhos) === filtroLocal;
+
+      return (
+        correspondeBusca &&
+        correspondeEspecie &&
+        correspondeSexo &&
+        correspondeStatus &&
+        correspondeCorCabeca &&
+        correspondeCorPeito &&
+        correspondeCorDorso &&
+        correspondePorta &&
+        correspondeLocal
+      );
+    });
+  }, [
+    aves,
+    ninhos,
+    busca,
+    filtroEspecie,
+    filtroSexo,
+    filtroStatus,
+    filtroCorCabeca,
+    filtroCorPeito,
+    filtroCorDorso,
+    filtroPorta,
+    filtroLocal
+  ]);
+
+  const quantidadeFiltrosAtivos = [
+    filtroEspecie,
+    filtroSexo,
+    filtroStatus,
+    filtroCorCabeca,
+    filtroCorPeito,
+    filtroCorDorso,
+    filtroPorta,
+    filtroLocal
+  ].filter(Boolean).length;
+
+  function limparFiltros() {
+    setBusca('');
+    setFiltroEspecie('');
+    setFiltroSexo('');
+    setFiltroStatus('');
+    setFiltroCorCabeca('');
+    setFiltroCorPeito('');
+    setFiltroCorDorso('');
+    setFiltroPorta('');
+    setFiltroLocal('');
+  }
+
+  function formatarSexo(sexo?: string) {
+    if (!sexo) return '-';
+
+    const mapa: Record<string, string> = {
+      macho: 'Macho',
+      fêmea: 'Fêmea',
+      femea: 'Fêmea',
+      indefinido: 'Indefinido'
+    };
+
+    return mapa[sexo.toLowerCase()] || sexo;
+  }
+
+  function simboloSexo(sexo?: string) {
+    const sexoNormalizado = sexo?.trim().toLowerCase();
+
+    if (sexoNormalizado === 'macho') {
+      return '♂';
+    }
+
+    if (sexoNormalizado === 'fêmea' || sexoNormalizado === 'femea') {
+      return '♀';
+    }
+
+    return '—';
+  }
+
+  function formatarStatus(statusAve?: string) {
+    if (!statusAve) return '-';
+
+    const mapa: Record<string, string> = {
+      ativo: 'Ativo',
+      vendido: 'Vendido',
+      falecido: 'Falecido',
+      doado: 'Doado',
+      perdido: 'Perdido',
+      inativo: 'Inativo'
+    };
+
+    return mapa[statusAve.toLowerCase()] || statusAve;
+  }
+
+  function obterLocalAve(ave: Ave, listaNinhos: Ninho[] = []) {
+    const aveAny = ave as Ave & {
+      localAtual?: string;
+      local?: string;
+      location?: string;
+      localSaidaNinho?: string;
+      localCriacao?: string;
+      localAlojamento?: string;
+    };
+
+    const localDireto = [
+      aveAny.localAtual,
+      aveAny.localSaidaNinho,
+      aveAny.localCriacao,
+      aveAny.localAlojamento,
+      aveAny.location,
+      aveAny.local
+    ].find(valor => {
+      if (!valor) return false;
+
+      const valorNormalizado = String(valor).trim().toLowerCase();
+
+      return (
+        valorNormalizado !== 'ninho' &&
+        valorNormalizado !== 'caixa' &&
+        valorNormalizado !== 'não informado' &&
+        valorNormalizado !== 'nao informado'
+      );
+    });
+
+    if (localDireto) {
+      return String(localDireto).trim();
+    }
+
+    // Filhotes originados de ovos podem não possuir o local gravado
+    // diretamente no registro da ave. Nesse caso, recuperamos o ovo
+    // correspondente pelo filhoteId, anilha ou ano da anilha.
+    for (const ninho of listaNinhos) {
+      const ovo = ninho.eggs?.find(egg => {
+        const eggAny = egg as typeof egg & {
+          localSaidaNinho?: string;
+          localAtual?: string;
+          location?: string;
+          localCriacao?: string;
+          localAlojamento?: string;
+        };
+
+        const correspondePorId =
+          eggAny.filhoteId === ave.id ||
+          (ave.birthNestId && ninho.id === ave.birthNestId);
+
+        const correspondePorAnilha =
+          Boolean(ave.ring) &&
+          eggAny.anilha === ave.ring &&
+          (!ave.ringYear ||
+            !eggAny.anoAnilha ||
+            eggAny.anoAnilha === ave.ringYear);
+
+        return correspondePorId || correspondePorAnilha;
+      });
+
+      if (ovo) {
+        const ovoAny = ovo as typeof ovo & {
+          localSaidaNinho?: string;
+          localAtual?: string;
+          location?: string;
+          localCriacao?: string;
+          localAlojamento?: string;
+        };
+
+        const localOvo = [
+          ovoAny.localSaidaNinho,
+          ovoAny.localAtual,
+          ovoAny.localCriacao,
+          ovoAny.localAlojamento,
+          ovoAny.location
+        ].find(valor => {
+          if (!valor) return false;
+
+          const valorNormalizado = String(valor).trim().toLowerCase();
+
+          return (
+            valorNormalizado !== 'ninho' &&
+            valorNormalizado !== 'caixa' &&
+            valorNormalizado !== 'não informado' &&
+            valorNormalizado !== 'nao informado'
+          );
+        });
+
+        if (localOvo) {
+          return localOvo;
+        }
+
+        // O identificador do ninho não é um local físico.
+        // Se não houver local efetivamente registrado, continuamos
+        // a busca e, ao final, exibimos "Não informado".
+      }
+    }
+
+    // Filhotes que ainda não saíram do ninho devem aparecer como
+    // "Ninho", em vez de "Não informado".
+    const statusNormalizado = String(ave.status || '').trim().toLowerCase();
+    const localSemantico = (aveAny.local || '').trim().toLowerCase();
+
+    const estaNoNinho =
+      statusNormalizado === 'no ninho' ||
+      statusNormalizado === 'ninho' ||
+      statusNormalizado === 'no_ninho' ||
+      localSemantico === 'ninho';
+
+    if (estaNoNinho) {
+      return 'Ninho';
+    }
+
+    // "caixa" não é considerado um local físico cadastrado.
+    if (
+      localSemantico &&
+      localSemantico !== 'caixa' &&
+      localSemantico !== 'não informado' &&
+      localSemantico !== 'nao informado'
+    ) {
+      return localSemantico;
+    }
+
+    return 'Não informado';
+  }
+
+  function obterClasseStatus(statusAve?: string) {
+    const statusNormalizado = statusAve?.toLowerCase();
+
+    if (statusNormalizado === 'ativo') {
+      return 'bg-emerald-100 text-emerald-700';
+    }
+
+    if (statusNormalizado === 'vendido') {
+      return 'bg-blue-100 text-blue-700';
+    }
+
+    if (statusNormalizado === 'falecido') {
+      return 'bg-red-100 text-red-700';
+    }
+
+    if (statusNormalizado === 'doado') {
+      return 'bg-purple-100 text-purple-700';
+    }
+
+    if (statusNormalizado === 'perdido') {
+      return 'bg-orange-100 text-orange-700';
+    }
+
+    return 'bg-slate-100 text-slate-600';
+  }
+
+  return (
+    <section className="space-y-5">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div>
+          <h2 className="text-2xl font-black text-slate-800">
+            Plantel de Aves
+          </h2>
+
+          <p className="text-sm text-slate-500 mt-1">
+            Gerencie, consulte e exporte os registros do seu plantel.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setMostrarFiltros(value => !value)}
+            className={`px-4 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition ${
+              mostrarFiltros || quantidadeFiltrosAtivos > 0
+                ? 'bg-slate-800 text-white'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <i className="fas fa-filter"></i>
+            FILTROS
+
+            {quantidadeFiltrosAtivos > 0 && (
+              <span className="bg-white text-slate-800 rounded-full min-w-5 h-5 px-1 flex items-center justify-center">
+                {quantidadeFiltrosAtivos}
+              </span>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onOpenModal('ave')}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+          >
+            <i className="fas fa-plus"></i>
+            ADICIONAR AVE
+          </button>
+
+          <button
+            type="button"
+            onClick={() => inputImportacaoRef.current?.click()}
+            disabled={importandoPlanilha}
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+          >
+            <i className={importandoPlanilha ? 'fas fa-spinner fa-spin' : 'fas fa-file-import'}></i>
+            {importandoPlanilha ? 'IMPORTANDO...' : 'IMPORTAR PLANILHA'}
+          </button>
+
+          <input
+            ref={inputImportacaoRef}
+            type="file"
+            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            onChange={handleImportarPlanilha}
+            className="hidden"
+          />
+
+          <button
+            type="button"
+            onClick={() => gerarPlanilhaAves(aves, config)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+          >
+            <i className="fas fa-file-excel"></i>
+            GERAR PLANILHA
+          </button>
+
+          <button
+            type="button"
+            onClick={() => gerarPlanilhaModeloAves(config, 200, aves)}
+            className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+          >
+            <i className="fas fa-file-download"></i>
+            BAIXAR MODELO
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+        <div className="relative">
+          <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+
+          <input
+            type="text"
+            value={busca}
+            onChange={event => setBusca(event.target.value)}
+            placeholder="Buscar por espécie, anilha, nome, sexo, status, criador..."
+            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+          />
+        </div>
+
+        {mostrarFiltros && (
+          <div className="mt-4 pt-4 border-t border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+              <select
+                value={filtroEspecie}
+                onChange={event => setFiltroEspecie(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Todas as espécies</option>
+
+                {especies.map(especie => (
+                  <option key={especie} value={especie}>
+                    {especie}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroSexo}
+                onChange={event => setFiltroSexo(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Todos os sexos</option>
+
+                {sexos.map(sexo => (
+                  <option key={sexo} value={sexo}>
+                    {formatarSexo(sexo)}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroStatus}
+                onChange={event => setFiltroStatus(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Todos os status</option>
+
+                {status.map(statusAve => (
+                  <option key={statusAve} value={statusAve}>
+                    {formatarStatus(statusAve)}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroCorCabeca}
+                onChange={event => setFiltroCorCabeca(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Cor da cabeça</option>
+
+                {coresCabeca.map(cor => (
+                  <option key={cor} value={cor}>
+                    {cor}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroCorPeito}
+                onChange={event => setFiltroCorPeito(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Cor do peito</option>
+
+                {coresPeito.map(cor => (
+                  <option key={cor} value={cor}>
+                    {cor}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroCorDorso}
+                onChange={event => setFiltroCorDorso(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Cor do dorso</option>
+
+                {coresDorso.map(cor => (
+                  <option key={cor} value={cor}>
+                    {cor}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroPorta}
+                onChange={event => setFiltroPorta(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Todas as portas</option>
+
+                {portas.map(porta => (
+                  <option key={porta} value={porta}>
+                    {porta}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={filtroLocal}
+                onChange={event => setFiltroLocal(event.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+              >
+                <option value="">Todos os locais</option>
+
+                {locais.map(local => (
+                  <option key={local} value={local}>
+                    {local}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {quantidadeFiltrosAtivos > 0 && (
+              <button
+                type="button"
+                onClick={limparFiltros}
+                className="mt-3 text-xs font-bold text-red-600 hover:text-red-700"
+              >
+                <i className="fas fa-times mr-1"></i>
+                Limpar filtros
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-bold text-slate-500">
+          Exibindo {avesFiltradas.length} de {aves.length} aves
+        </p>
+
+        {avesFiltradas.length > 0 && (
+          <p className="text-xs text-slate-400">
+            Clique em uma ave para visualizar os detalhes
+          </p>
+        )}
+      </div>
+
+      {avesFiltradas.length === 0 ? (
+        <div className="bg-white border border-dashed border-slate-300 rounded-2xl py-16 px-6 text-center">
+          <div className="w-16 h-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-4">
+            <i className="fas fa-dove text-2xl text-slate-400"></i>
+          </div>
+
+          <h3 className="text-lg font-black text-slate-700">
+            {aves.length === 0
+              ? 'Nenhuma ave cadastrada'
+              : 'Nenhuma ave encontrada'}
+          </h3>
+
+          <p className="text-sm text-slate-500 mt-2">
+            {aves.length === 0
+              ? 'Comece cadastrando a primeira ave do seu plantel.'
+              : 'Tente alterar os filtros ou o termo de busca.'}
+          </p>
+
+          {aves.length === 0 && (
+            <button
+              type="button"
+              onClick={() => onOpenModal('ave')}
+              className="mt-5 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black text-xs"
+            >
+              <i className="fas fa-plus mr-2"></i>
+              CADASTRAR PRIMEIRA AVE
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed text-left">
+              <colgroup>
+                <col className="w-[38%]" />
+                <col className="w-[7%]" />
+                <col className="w-[12%]" />
+                <col className="w-[18%]" />
+                <col className="w-[17%]" />
+                <col className="w-[8%]" />
+              </colgroup>
+
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
+                    Ave
+                  </th>
+
+                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
+                    Sexo
+                  </th>
+
+                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
+                    Status
+                  </th>
+
+                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
+                    Cores
+                  </th>
+
+                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
+                    Local
+                  </th>
+
+                  <th className="px-1 sm:px-2 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500 text-center">
+                    Ações
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-100">
+                {avesFiltradas.map(ave => (
+                  <tr
+                    key={ave.id}
+                    className="hover:bg-slate-50 transition"
+                  >
+                    <td className="px-2 sm:px-3 py-3 align-middle">
+                      <button
+                        type="button"
+                        onClick={() => onViewDetails?.(ave.id)}
+                        className="flex items-center gap-2 text-left min-w-0 w-full"
+                      >
+                        <div
+                          className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-emerald-50 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer"
+                          onClick={event => {
+                            event.stopPropagation();
+                            if (ave.photo) {
+                              onPhotoClick?.(ave.photo);
+                            }
+                          }}
+                          title={
+                            ave.photo
+                              ? 'Clique para ampliar a foto'
+                              : 'Representação visual das cores da ave'
+                          }
+                        >
+                          {ave.photo ? (
+                            <img
+                              src={ave.photo}
+                              alt={ave.name || ave.ring || 'Foto da ave'}
+                              className="w-full h-full object-cover"
+                              onError={event => {
+                                event.currentTarget.style.display = 'none';
+                                event.currentTarget.parentElement?.classList.add(
+                                  'bg-emerald-50'
+                                );
+                              }}
+                            />
+                          ) : (
+                            <BirdColorDiagram
+                              corCabeca={ave.corCabeca}
+                              corPeito={ave.corPeito}
+                              corDorso={ave.corDorso}
+                              className="w-full h-full"
+                            />
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <p className="font-black text-xs sm:text-sm text-slate-800 truncate">
+                            {ave.name || 'Sem nome'}
+                          </p>
+
+                          <p className="text-[10px] sm:text-[11px] text-slate-500 truncate">
+                            {ave.species || '-'}
+                          </p>
+                        </div>
+                      </button>
+                    </td>
+
+                    <td className="px-1 sm:px-2 py-3 text-center align-middle">
+                      <span
+                        className={`inline-flex items-center justify-center text-lg font-black leading-none ${
+                          ave.sex?.trim().toLowerCase() === 'macho'
+                            ? 'text-blue-500'
+                            : ave.sex?.trim().toLowerCase() === 'fêmea' ||
+                                ave.sex?.trim().toLowerCase() === 'femea'
+                              ? 'text-pink-500'
+                              : 'text-slate-400'
+                        }`}
+                        title={`Sexo: ${formatarSexo(ave.sex)}`}
+                        aria-label={`Sexo: ${formatarSexo(ave.sex)}`}
+                      >
+                        {simboloSexo(ave.sex)}
+                      </span>
+                    </td>
+
+                    <td className="px-2 sm:px-3 py-3 align-middle">
+                      <span
+                        className={`inline-flex px-2 py-1 rounded-full text-[9px] sm:text-[10px] font-black ${obterClasseStatus(
+                          ave.status
+                        )}`}
+                      >
+                        {formatarStatus(ave.status)}
+                      </span>
+                    </td>
+
+                    <td className="px-2 sm:px-3 py-3 align-middle">
+                      <div className="text-[9px] sm:text-[10px] text-slate-500 leading-4 break-words">
+                          <p>
+                            <strong>C:</strong>{' '}
+                            {ave.corCabeca || '-'}
+                          </p>
+
+                          <p>
+                            <strong>P:</strong>{' '}
+                            {ave.corPeito || '-'}
+                          </p>
+
+                          <p>
+                            <strong>D:</strong>{' '}
+                            {ave.corDorso || '-'}
+                          </p>
+                        </div>
+                    </td>
+
+                    <td className="px-2 sm:px-3 py-3 align-middle">
+                      <span className="inline-flex max-w-full px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-[9px] sm:text-[10px] font-bold break-words">
+                        {obterLocalAve(ave, ninhos)}
+                      </span>
+                    </td>
+
+                    <td className="px-0.5 sm:px-1 py-2 align-middle">
+                      <div className="flex flex-col items-center justify-center gap-0">
+                        <button
+                          type="button"
+                          onClick={() => onViewDetails?.(ave.id)}
+                          title="Visualizar detalhes"
+                          className="w-6 h-5 rounded-md flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
+                        >
+                          <i className="fas fa-eye text-xs"></i>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onOpenModal('ave', ave.id)}
+                          title="Editar ave"
+                          className="w-6 h-5 rounded-md flex items-center justify-center text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition"
+                        >
+                          <i className="fas fa-pen text-xs"></i>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onDeleteAve(ave.id)}
+                          title="Excluir ave"
+                          className="w-6 h-5 rounded-md flex items-center justify-center text-red-500 hover:bg-red-50 hover:text-red-700 transition"
+                        >
+                          <i className="fas fa-trash text-xs"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
