@@ -49,9 +49,6 @@ export interface Ave {
   corDorso?: string;
   nota?: string;
   porta?: string;
-  /** Local atual de alojamento da ave. */
-  local?: string;
-  localAtual?: string;
 }
 
 export interface Filhote {
@@ -97,9 +94,6 @@ export interface Egg {
   dataSaidaNinho?: string;
   nota?: string;
   porta?: string;
-  /** Local atual de alojamento da ave. */
-  local?: string;
-  localAtual?: string;
 }
 
 export interface Ninho {
