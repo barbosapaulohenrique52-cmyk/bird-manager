@@ -364,8 +364,7 @@ export function NinhosSection({
     return aveFilhote?.status === 'Óbito';
   };
 
-  const ovoDeveSerExibido = (egg: Egg): boolean =>
-    !filhoteEstaEmObito(egg) && !(egg as any).dataSaidaNinho;
+  const ovoDeveSerExibido = (egg: Egg): boolean => !filhoteEstaEmObito(egg);
 
   const getChaveOvo = (ninhoId: string, egg: Egg, eggIdx: number) =>
     `${ninhoId}::${egg.id || `idx-${eggIdx}`}`;
@@ -2181,18 +2180,22 @@ export function NinhosSection({
 
               <div className="mt-4">
                 <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
-                  Novo local do filhote <span className="text-rose-500">*</span>
+                  Novo local do filhote
                 </label>
                 <select
                   value={novoLocalSaida}
                   onChange={(e) => setNovoLocalSaida(e.target.value)}
-                  className="w-full h-12 border-2 border-slate-200 p-3 rounded-xl text-sm font-bold bg-white outline-none focus:border-emerald-500"
+                  className="w-full h-12 border-2 border-slate-200 px-3 rounded-xl text-sm font-bold bg-white outline-none focus:border-emerald-500"
                 >
                   <option value="">Selecione o novo local</option>
-                  {(config.locaisOvos || []).map((local: any) => {
-                    const nome = typeof local === 'string' ? local : local.nome;
-                    return nome ? <option key={nome} value={nome}>{nome}</option> : null;
-                  })}
+                  {(config.locaisOvos || []).map((local) => (
+                    <option key={local} value={local}>
+                      {local}
+                    </option>
+                  ))}
+                  {novoLocalSaida && !(config.locaisOvos || []).includes(novoLocalSaida) && (
+                    <option value={novoLocalSaida}>{novoLocalSaida}</option>
+                  )}
                 </select>
               </div>
 
@@ -2210,7 +2213,7 @@ export function NinhosSection({
                   className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-black text-xs uppercase hover:bg-emerald-700"
                 >
                   <i className="fas fa-check mr-2"></i>
-                  Confirmar saída e salvar
+                  Confirmar saída
                 </button>
               </div>
             </div>
