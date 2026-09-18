@@ -238,7 +238,7 @@ export default function App() {
 
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main className="flex-1 w-full px-2 sm:px-4 lg:ml-32 lg:px-6 pb-32 lg:pb-8">
+      <main className="flex-1 w-full min-w-0 px-2 sm:px-4 lg:px-6 pb-32 lg:pb-8 overflow-x-hidden">
         {activeTab === "dashboard" && (
           <DashboardSection
             aves={db.aves}
