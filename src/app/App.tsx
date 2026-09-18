@@ -232,11 +232,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <Header />
+      <Header onConfigClick={() => setActiveTab("config")} />
 
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main className="flex-1 w-full px-2 sm:px-4 lg:px-5 lg:ml-16 pb-32 lg:pb-8">
+      <main className="flex-1 w-full px-2 sm:px-4 lg:px-5 pb-32">
         {activeTab === "ninhos" && (
           <NinhosSection
             ninhos={db.ninhos}
