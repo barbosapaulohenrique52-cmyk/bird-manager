@@ -637,51 +637,9 @@ export function useDatabase() {
       editCount.toString()
     );
 
-    // A cada 10 edições, alertar para fazer backup
-    if (editCount % 10 === 0) {
-      const lastBackup = localStorage.getItem(
-        'gpro_v19_lastBackup'
-      );
-
-      const message = lastBackup
-        ? `Você fez ${editCount} edições desde o início. Último backup: ${new Date(
-            lastBackup
-          ).toLocaleDateString(
-            'pt-BR'
-          )}. Recomendamos fazer um novo backup!`
-        : `Você fez ${editCount} edições. Recomendamos fazer um backup dos seus dados!`;
-
-      // Usar setTimeout para não bloquear o salvamento
-      setTimeout(() => {
-        if (confirm(message + '\n\nDeseja fazer backup agora?')) {
-          const blob = new Blob(
-            [JSON.stringify(newDb)],
-            {
-              type: 'application/json'
-            }
-          );
-
-          const a = document.createElement('a');
-
-          a.href =
-            URL.createObjectURL(blob);
-
-          a.download =
-            `backup_gpro_${
-              new Date()
-                .toISOString()
-                .split('T')[0]
-            }.json`;
-
-          a.click();
-
-          localStorage.setItem(
-            'gpro_v19_lastBackup',
-            new Date().toISOString()
-          );
-        }
-      }, 100);
-    }
+    // Backup automático desativado.
+    // O contador de edições é mantido apenas para controle interno.
+    // O backup manual continua disponível pelos componentes de backup.
 
     setDb(newDb);
   }, []);
