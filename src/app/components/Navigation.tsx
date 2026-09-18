@@ -17,7 +17,7 @@ export function Navigation({ activeTab, setActiveTab }: NavigationProps) {
   ];
 
   return (
-    <nav className="bg-white border-b border-slate-100 p-2 sticky top-16 z-30">
+    <nav className="bg-white border-b border-slate-100 p-2 sticky top-0 z-30">
       <div className="w-full max-w-7xl mx-auto flex flex-wrap justify-center gap-2">
         {tabs.map((tab) => (
           <button
