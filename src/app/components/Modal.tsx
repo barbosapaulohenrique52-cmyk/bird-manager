@@ -402,6 +402,7 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
       corPeito: formData.get('corPeito') as string,
       corDorso: formData.get('corDorso') as string,
       nota: formData.get('nota') as string,
+      local: formData.get('local') as string,
       porta: formData.get('porta') as string,
       parentMaleId: selectedPai || undefined,
       parentFemaleId: selectedMae || undefined,
@@ -775,6 +776,16 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
                     placeholder="Observações sobre a ave..."
                     rows={3}
                     className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1 resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 uppercase">Local</label>
+                  <input
+                    name="local"
+                    defaultValue={(ave as (Ave & { local?: string }) | null)?.local || ''}
+                    placeholder="Ex: Ninho 01, Caixa 02, Viveiro..."
+                    className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
                   />
                 </div>
 
