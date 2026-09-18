@@ -781,12 +781,24 @@ export function Modal({ type, editId, aves, casais, colorLists, config, onClose,
 
                 <div>
                   <label className="text-[10px] font-black text-slate-400 uppercase">Local</label>
-                  <input
+                  <select
                     name="local"
                     defaultValue={(ave as (Ave & { local?: string }) | null)?.local || ''}
-                    placeholder="Ex: Ninho 01, Caixa 02, Viveiro..."
                     className="border-2 border-slate-100 p-3 rounded-xl w-full font-bold outline-none focus:border-emerald-500 transition-all bg-white text-sm mt-1"
-                  />
+                  >
+                    <option value="">Selecione um local</option>
+                    {(() => {
+                      const locaisCadastrados = config.locaisOvos || [];
+                      const localAtual = (ave as (Ave & { local?: string }) | null)?.local || '';
+                      const locaisDisponiveis = localAtual && !locaisCadastrados.includes(localAtual)
+                        ? [localAtual, ...locaisCadastrados]
+                        : locaisCadastrados;
+
+                      return locaisDisponiveis.map(local => (
+                        <option key={local} value={local}>{local}</option>
+                      ));
+                    })()}
+                  </select>
                 </div>
 
                 <div>
