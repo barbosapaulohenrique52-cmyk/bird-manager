@@ -30,6 +30,9 @@ interface CheckboxFilterProps {
   specialOption?: { value: string; label: string };
 }
 
+type SortField = 'name' | 'species' | 'sex' | 'status' | 'local';
+type SortOrder = 'asc' | 'desc';
+
 function CheckboxFilter({
   label,
   options,
@@ -140,6 +143,9 @@ export function AvesSection({
 }: AvesSectionProps) {
   const [busca, setBusca] = useState('');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
   const [filtroEspecie, setFiltroEspecie] = useState<string[]>([]);
   const [filtroSexo, setFiltroSexo] = useState<string[]>([]);
   const [filtroStatus, setFiltroStatus] = useState<string[]>(['__NAO_FALECIDAS__']);
@@ -149,6 +155,7 @@ export function AvesSection({
   const [filtroPorta, setFiltroPorta] = useState<string[]>([]);
   const [filtroLocal, setFiltroLocal] = useState<string[]>([]);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+
   const inputImportacaoRef = useRef<HTMLInputElement | null>(null);
   const [importandoPlanilha, setImportandoPlanilha] = useState(false);
   const [avesSelecionadas, setAvesSelecionadas] = useState<string[]>([]);
@@ -167,9 +174,7 @@ export function AvesSection({
     nota: ''
   });
 
-  const handleImportarPlanilha = async (
-    event: ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleImportarPlanilha = async (event: ChangeEvent<HTMLInputElement>) => {
     const arquivo = event.target.files?.[0];
     event.target.value = '';
 
@@ -205,7 +210,7 @@ export function AvesSection({
           ? error.message
           : 'Não foi possível importar a planilha.';
       window.alert(mensagem);
-    } finally {
+    } fontally {
       setImportandoPlanilha(false);
     }
   };
@@ -263,10 +268,30 @@ export function AvesSection({
       .sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [config?.locaisOvos, aves, ninhos]);
 
+  // KPIs Resumidos
+  const kpis = useMemo(() => {
+    const total = aves.length;
+    const machos = aves.filter(a => a.sex?.trim().toLowerCase() === 'macho').length;
+    const femeas = aves.filter(a => ['fêmea', 'femea'].includes(a.sex?.trim().toLowerCase() || '')).length;
+    const ativos = aves.filter(a => (a.status || 'ativo').toLowerCase() === 'ativo').length;
+    const locaisUnicos = new Set(aves.map(a => obterLocalAve(a, ninhos))).size;
+
+    return { total, machos, femeas, ativos, locaisUnicos };
+  }, [aves, ninhos]);
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
   const avesFiltradas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
 
-    return aves.filter(ave => {
+    const filtradas = aves.filter(ave => {
       const correspondeBusca =
         !termo ||
         [
@@ -333,6 +358,26 @@ export function AvesSection({
         correspondeLocal
       );
     });
+
+    return filtradas.sort((a, b) => {
+      let valA = '';
+      let valB = '';
+
+      if (sortField === 'name') valA = a.name || a.ring || '';
+      if (sortField === 'species') valA = a.species || '';
+      if (sortField === 'sex') valA = a.sex || '';
+      if (sortField === 'status') valA = a.status || '';
+      if (sortField === 'local') valA = obterLocalAve(a, ninhos);
+
+      if (sortField === 'name') valB = b.name || b.ring || '';
+      if (sortField === 'species') valB = b.species || '';
+      if (sortField === 'sex') valB = b.sex || '';
+      if (sortField === 'status') valB = b.status || '';
+      if (sortField === 'local') valB = obterLocalAve(b, ninhos);
+
+      const res = valA.localeCompare(valB, 'pt-BR');
+      return sortOrder === 'asc' ? res : -res;
+    });
   }, [
     aves,
     ninhos,
@@ -344,7 +389,9 @@ export function AvesSection({
     filtroCorPeito,
     filtroCorDorso,
     filtroPorta,
-    filtroLocal
+    filtroLocal,
+    sortField,
+    sortOrder
   ]);
 
   const quantidadeFiltrosAtivos = [
@@ -609,7 +656,7 @@ export function AvesSection({
   }
 
   return (
-    <section className="space-y-6 pb-12">
+    <section className="space-y-6 pb-20 relative">
       {/* topo: Titulo e Botoes de Acao */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -639,17 +686,6 @@ export function AvesSection({
               </span>
             )}
           </button>
-
-          {avesSelecionadas.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setMostrarEdicaoLote(true)}
-              className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-sm shadow-violet-600/20"
-            >
-              <i className="fas fa-layer-group"></i>
-              <span>Editar ({avesSelecionadas.length})</span>
-            </button>
-          )}
 
           <button
             type="button"
@@ -700,6 +736,49 @@ export function AvesSection({
             <i className="fas fa-download text-amber-500"></i>
             <span className="hidden sm:inline">Modelo</span>
           </button>
+        </div>
+      </div>
+
+      {/* KPI Cards Resumidos */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 shrink-0">
+            <i className="fas fa-dove text-base"></i>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Aves</p>
+            <h4 className="text-lg font-bold text-slate-800 leading-none mt-1">{kpis.total}</h4>
+          </div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+            <i className="fas fa-check-circle text-base"></i>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Ativas</p>
+            <h4 className="text-lg font-bold text-slate-800 leading-none mt-1">{kpis.ativos}</h4>
+          </div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+            <i className="fas fa-venus-mars text-base"></i>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">M / F</p>
+            <h4 className="text-lg font-bold text-slate-800 leading-none mt-1">{kpis.machos} <span className="text-xs text-slate-400 font-normal">/</span> {kpis.femeas}</h4>
+          </div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+            <i className="fas fa-map-marker-alt text-base"></i>
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Locais</p>
+            <h4 className="text-lg font-bold text-slate-800 leading-none mt-1">{kpis.locaisUnicos}</h4>
+          </div>
         </div>
       </div>
 
@@ -1011,7 +1090,7 @@ export function AvesSection({
           ))}
         </div>
       ) : (
-        /* VISUALIZAÇÃO EM TABELA (TABLE VIEW) */
+        /* VISUALIZAÇÃO EM TABELA COM ORDENAÇÃO DE COLUNAS */
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -1026,11 +1105,37 @@ export function AvesSection({
                       className="w-4 h-4 rounded text-violet-600 accent-violet-600 cursor-pointer"
                     />
                   </th>
-                  <th className="py-3 px-3">Ave</th>
-                  <th className="py-3 px-3 text-center">Sexo</th>
-                  <th className="py-3 px-3">Status</th>
+
+                  <th className="py-3 px-3 cursor-pointer select-none hover:text-slate-800" onClick={() => handleSort('name')}>
+                    <div className="flex items-center gap-1.5">
+                      <span>Ave</span>
+                      <i className={`fas fa-sort${sortField === 'name' ? (sortOrder === 'asc' ? '-up text-emerald-600' : '-down text-emerald-600') : ' text-slate-300'} text-[10px]`}></i>
+                    </div>
+                  </th>
+
+                  <th className="py-3 px-3 text-center cursor-pointer select-none hover:text-slate-800" onClick={() => handleSort('sex')}>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <span>Sexo</span>
+                      <i className={`fas fa-sort${sortField === 'sex' ? (sortOrder === 'asc' ? '-up text-emerald-600' : '-down text-emerald-600') : ' text-slate-300'} text-[10px]`}></i>
+                    </div>
+                  </th>
+
+                  <th className="py-3 px-3 cursor-pointer select-none hover:text-slate-800" onClick={() => handleSort('status')}>
+                    <div className="flex items-center gap-1.5">
+                      <span>Status</span>
+                      <i className={`fas fa-sort${sortField === 'status' ? (sortOrder === 'asc' ? '-up text-emerald-600' : '-down text-emerald-600') : ' text-slate-300'} text-[10px]`}></i>
+                    </div>
+                  </th>
+
                   <th className="py-3 px-3">Genótipo / Cores</th>
-                  <th className="py-3 px-3">Localização</th>
+
+                  <th className="py-3 px-3 cursor-pointer select-none hover:text-slate-800" onClick={() => handleSort('local')}>
+                    <div className="flex items-center gap-1.5">
+                      <span>Localização</span>
+                      <i className={`fas fa-sort${sortField === 'local' ? (sortOrder === 'asc' ? '-up text-emerald-600' : '-down text-emerald-600') : ' text-slate-300'} text-[10px]`}></i>
+                    </div>
+                  </th>
+
                   <th className="py-3 px-3 text-center w-28">Ações</th>
                 </tr>
               </thead>
@@ -1167,7 +1272,37 @@ export function AvesSection({
         </div>
       )}
 
-      {/* Modal de Edicao em Lote Modernizado */}
+      {/* Floating Action Bar em Lote (Fixa no Rodapé) */}
+      {avesSelecionadas.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div className="flex items-center gap-2 border-r border-slate-700 pr-4">
+            <span className="bg-violet-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+              {avesSelecionadas.length}
+            </span>
+            <span className="text-xs text-slate-300 font-medium hidden sm:inline">aves selecionadas</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setMostrarEdicaoLote(true)}
+            className="bg-violet-600 hover:bg-violet-500 text-white px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-colors"
+          >
+            <i className="fas fa-layer-group text-xs"></i>
+            <span>Editar em Lote</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAvesSelecionadas([])}
+            className="text-slate-400 hover:text-white p-1 transition-colors text-xs"
+            title="Cancelar seleção"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+      )}
+
+      {/* Modal de Edicao em Lote */}
       {mostrarEdicaoLote && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl border border-slate-100">
