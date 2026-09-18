@@ -787,6 +787,24 @@ export function useDatabase() {
     [db, save, colorLists]
   );
 
+  const updateAvesBatch = useCallback(
+    (ids: string[], updates: Partial<Ave>) => {
+      if (ids.length === 0) return;
+
+      const idsSelecionados = new Set(ids);
+      const newDb = { ...db };
+
+      newDb.aves = newDb.aves.map(ave =>
+        idsSelecionados.has(ave.id)
+          ? ({ ...ave, ...updates } as Ave)
+          : ave
+      );
+
+      save(newDb);
+    },
+    [db, save]
+  );
+
   const saveCasal = useCallback(
     (casalData: Omit<Casal, 'id'>) => {
       const newDb = { ...db };
@@ -2370,6 +2388,7 @@ export function useDatabase() {
     colorLists,
 
     saveAve,
+    updateAvesBatch,
     saveCasal,
     saveNinho,
 
