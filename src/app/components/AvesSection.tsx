@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import type { Ave, ModalType, Config } from '../App';
+import type { Ave, ModalType, Config, Ninho } from '../App';
 import BirdColorDiagram from './BirdColorDiagram';
 import {
   gerarPlanilhaAves,
@@ -10,6 +10,7 @@ import {
 
 interface AvesSectionProps {
   aves: Ave[];
+  ninhos: Ninho[];
   config?: Config;
   onOpenModal: (type: ModalType, id?: string | null) => void;
   onDeleteAve: (id: string) => void;
@@ -20,6 +21,7 @@ interface AvesSectionProps {
 
 export function AvesSection({
   aves,
+  ninhos,
   config,
   onOpenModal,
   onDeleteAve,
@@ -179,11 +181,11 @@ export function AvesSection({
   const locais = useMemo(() => {
     const locaisCadastrados = config?.locaisOvos || [];
     const locaisDasAves = aves
-      .map(ave => obterLocalAve(ave))
+      .map(ave => obterLocalAve(ave, ninhos))
       .filter(local => local && local !== 'Não informado');
 
     return Array.from(new Set([...locaisCadastrados, ...locaisDasAves])).sort();
-  }, [config?.locaisOvos, aves]);
+  }, [config?.locaisOvos, aves, ninhos]);
 
   const avesFiltradas = useMemo(() => {
     const termo = busca.trim().toLowerCase();
@@ -237,7 +239,7 @@ export function AvesSection({
         !filtroPorta || ave.porta === filtroPorta;
 
       const correspondeLocal =
-        !filtroLocal || obterLocalAve(ave) === filtroLocal;
+        !filtroLocal || obterLocalAve(ave, ninhos) === filtroLocal;
 
       return (
         correspondeBusca &&
@@ -253,6 +255,7 @@ export function AvesSection({
     });
   }, [
     aves,
+    ninhos,
     busca,
     filtroEspecie,
     filtroSexo,
@@ -329,21 +332,86 @@ export function AvesSection({
     return mapa[statusAve.toLowerCase()] || statusAve;
   }
 
-  function obterLocalAve(ave: Ave) {
+  function obterLocalAve(ave: Ave, listaNinhos: Ninho[] = []) {
     const aveAny = ave as Ave & {
       localAtual?: string;
       local?: string;
       location?: string;
       localSaidaNinho?: string;
+      porta?: string;
     };
 
-    return (
+    const localDireto =
       aveAny.localAtual ||
       aveAny.localSaidaNinho ||
-      aveAny.local ||
       aveAny.location ||
-      'Não informado'
-    );
+      aveAny.porta;
+
+    if (localDireto) {
+      return localDireto;
+    }
+
+    // Filhotes originados de ovos podem não possuir o local gravado
+    // diretamente no registro da ave. Nesse caso, recuperamos o ovo
+    // correspondente pelo filhoteId, anilha ou ano da anilha.
+    for (const ninho of listaNinhos) {
+      const ovo = ninho.eggs?.find(egg => {
+        const eggAny = egg as typeof egg & {
+          localSaidaNinho?: string;
+          localAtual?: string;
+          location?: string;
+          porta?: string;
+        };
+
+        const correspondePorId =
+          eggAny.filhoteId === ave.id ||
+          (ave.birthNestId && ninho.id === ave.birthNestId);
+
+        const correspondePorAnilha =
+          Boolean(ave.ring) &&
+          eggAny.anilha === ave.ring &&
+          (!ave.ringYear ||
+            !eggAny.anoAnilha ||
+            eggAny.anoAnilha === ave.ringYear);
+
+        return correspondePorId || correspondePorAnilha;
+      });
+
+      if (ovo) {
+        const ovoAny = ovo as typeof ovo & {
+          localSaidaNinho?: string;
+          localAtual?: string;
+          location?: string;
+          porta?: string;
+        };
+
+        const localOvo =
+          ovoAny.localSaidaNinho ||
+          ovoAny.localAtual ||
+          ovoAny.location ||
+          ovoAny.porta;
+
+        if (localOvo) {
+          return localOvo;
+        }
+
+        if (ovo.status === 'Eclodido' || ovo.filhoteAnilhado) {
+          return ninho.name || `Ninho ${ninho.id}`;
+        }
+      }
+    }
+
+    // "ninho" e "caixa" são classificações do ovo, não locais físicos.
+    const localSemantico = (aveAny.local || '').trim();
+    if (
+      localSemantico &&
+      localSemantico.toLowerCase() !== 'ninho' &&
+      localSemantico.toLowerCase() !== 'caixa'
+    ) {
+      return localSemantico;
+    }
+
+    return 'Não informado';
   }
 
   function obterClasseStatus(statusAve?: string) {
