@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
+import { Header } from "./components/Header";
 import { Navigation } from "./components/Navigation";
+import { DashboardSection } from "./components/DashboardSection";
 import { NinhosSection } from "./components/NinhosSection";
 import { AvesSection } from "./components/AvesSection";
 import { CasaisSection } from "./components/CasaisSection";
@@ -12,6 +14,7 @@ import { AveDetalhesModal } from "./components/AveDetalhesModal";
 import { useDatabase } from "./hooks/useDatabase";
 
 export type TabType =
+  | "dashboard"
   | "ninhos"
   | "aves"
   | "casais"
@@ -148,7 +151,7 @@ export interface Lancamento {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>("ninhos");
+  const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [modalType, setModalType] = useState<ModalType>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
@@ -231,9 +234,21 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
+      <Header />
+
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main className="flex-1 w-full px-2 sm:px-4 lg:px-5 pb-32">
+      <main className="flex-1 w-full px-2 sm:px-4 lg:ml-32 lg:px-6 pb-32 lg:pb-8">
+        {activeTab === "dashboard" && (
+          <DashboardSection
+            aves={db.aves}
+            casais={db.casais}
+            ninhos={db.ninhos}
+            config={db.config}
+            onNavigate={(tab) => setActiveTab(tab)}
+          />
+        )}
+
         {activeTab === "ninhos" && (
           <NinhosSection
             ninhos={db.ninhos}
