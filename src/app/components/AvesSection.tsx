@@ -258,7 +258,7 @@ export function AvesSection({
         .trim()
         .toLowerCase()
         .normalize('NFD')
-        .replace(/[\\u0300-\\u036f]/g, '');
+        .replace(/[\u0300-\u036f]/g, '');
 
       const ehAveFalecida = ['obito', 'falecido', 'morto', 'morta'].includes(
         statusNormalizado
