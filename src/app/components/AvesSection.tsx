@@ -15,6 +15,7 @@ interface AvesSectionProps {
   onOpenModal: (type: ModalType, id?: string | null) => void;
   onDeleteAve: (id: string) => void;
   onImportAves: (avesData: Array<Omit<Ave, 'id'>>) => number;
+  onUpdateAvesBatch?: (ids: string[], updates: Partial<Ave>) => void;
   onPhotoClick?: (photoUrl: string) => void;
   onViewDetails?: (aveId: string) => void;
 }
@@ -26,6 +27,7 @@ export function AvesSection({
   onOpenModal,
   onDeleteAve,
   onImportAves,
+  onUpdateAvesBatch,
   onPhotoClick,
   onViewDetails
 }: AvesSectionProps) {
@@ -41,6 +43,21 @@ export function AvesSection({
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const inputImportacaoRef = useRef<HTMLInputElement | null>(null);
   const [importandoPlanilha, setImportandoPlanilha] = useState(false);
+  const [avesSelecionadas, setAvesSelecionadas] = useState<string[]>([]);
+  const [mostrarEdicaoLote, setMostrarEdicaoLote] = useState(false);
+  const [camposLote, setCamposLote] = useState({
+    species: '',
+    sex: '',
+    status: '',
+    corCabeca: '',
+    corPeito: '',
+    corDorso: '',
+    porta: '',
+    local: '',
+    creator: '',
+    acqYear: '',
+    nota: ''
+  });
 
   const handleImportarPlanilha = async (
     event: ChangeEvent<HTMLInputElement>
@@ -304,6 +321,92 @@ export function AvesSection({
     setFiltroLocal('');
   }
 
+  const todasFiltradasSelecionadas =
+    avesFiltradas.length > 0 &&
+    avesFiltradas.every(ave => avesSelecionadas.includes(ave.id));
+
+  function alternarSelecaoAve(id: string) {
+    setAvesSelecionadas(selecionadas =>
+      selecionadas.includes(id)
+        ? selecionadas.filter(aveId => aveId !== id)
+        : [...selecionadas, id]
+    );
+  }
+
+  function alternarSelecaoTodasFiltradas() {
+    if (todasFiltradasSelecionadas) {
+      const idsFiltrados = new Set(avesFiltradas.map(ave => ave.id));
+      setAvesSelecionadas(selecionadas =>
+        selecionadas.filter(id => !idsFiltrados.has(id))
+      );
+      return;
+    }
+
+    setAvesSelecionadas(selecionadas => [
+      ...new Set([...selecionadas, ...avesFiltradas.map(ave => ave.id)])
+    ]);
+  }
+
+  function atualizarCampoLote(
+    campo: keyof typeof camposLote,
+    valor: string
+  ) {
+    setCamposLote(prev => ({ ...prev, [campo]: valor }));
+  }
+
+  function aplicarEdicaoEmLote() {
+    if (!onUpdateAvesBatch) {
+      window.alert('A edição em lote ainda não está conectada ao banco de dados.');
+      return;
+    }
+
+    if (avesSelecionadas.length === 0) {
+      window.alert('Selecione pelo menos uma ave.');
+      return;
+    }
+
+    const updates: Record<string, string> = {};
+
+    Object.entries(camposLote).forEach(([campo, valor]) => {
+      if (valor !== '') {
+        updates[campo] = valor;
+      }
+    });
+
+    if (Object.keys(updates).length === 0) {
+      window.alert('Escolha pelo menos um campo para alterar.');
+      return;
+    }
+
+    if (updates.local === 'Não informado') {
+      updates.local = 'Não informado';
+      updates.localAtual = 'Não informado';
+    }
+
+    const confirmar = window.confirm(
+      `Aplicar as alterações em ${avesSelecionadas.length} ave(s)?`
+    );
+
+    if (!confirmar) return;
+
+    onUpdateAvesBatch(avesSelecionadas, updates as Partial<Ave>);
+    setAvesSelecionadas([]);
+    setMostrarEdicaoLote(false);
+    setCamposLote({
+      species: '',
+      sex: '',
+      status: '',
+      corCabeca: '',
+      corPeito: '',
+      corDorso: '',
+      porta: '',
+      local: '',
+      creator: '',
+      acqYear: '',
+      nota: ''
+    });
+  }
+
   function formatarSexo(sexo?: string) {
     if (!sexo) return '-';
 
@@ -530,6 +633,17 @@ export function AvesSection({
             )}
           </button>
 
+          {avesSelecionadas.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setMostrarEdicaoLote(true)}
+              className="bg-violet-600 hover:bg-violet-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+            >
+              <i className="fas fa-layer-group"></i>
+              EDITAR {avesSelecionadas.length} EM LOTE
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => onOpenModal('ave')}
@@ -724,6 +838,16 @@ export function AvesSection({
         <p className="text-xs font-bold text-slate-500">
           Exibindo {avesFiltradas.length} de {aves.length} aves
         </p>
+        {avesSelecionadas.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setAvesSelecionadas([])}
+            className="text-xs font-bold text-violet-600 hover:text-violet-800"
+          >
+            <i className="fas fa-times mr-1"></i>
+            Limpar seleção ({avesSelecionadas.length})
+          </button>
+        )}
 
         {avesFiltradas.length > 0 && (
           <p className="text-xs text-slate-400">
@@ -766,7 +890,8 @@ export function AvesSection({
           <div className="overflow-x-auto">
             <table className="w-full table-fixed text-left">
               <colgroup>
-                <col className="w-[38%]" />
+                <col className="w-[4%]" />
+                <col className="w-[34%]" />
                 <col className="w-[7%]" />
                 <col className="w-[12%]" />
                 <col className="w-[18%]" />
@@ -776,6 +901,16 @@ export function AvesSection({
 
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="px-2 py-3 text-center">
+                    <input
+                      type="checkbox"
+                      checked={todasFiltradasSelecionadas}
+                      onChange={alternarSelecaoTodasFiltradas}
+                      aria-label="Selecionar todas as aves exibidas"
+                      className="w-4 h-4 accent-violet-600 cursor-pointer"
+                    />
+                  </th>
+
                   <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
                     Ave
                   </th>
@@ -806,8 +941,20 @@ export function AvesSection({
                 {avesFiltradas.map(ave => (
                   <tr
                     key={ave.id}
-                    className="hover:bg-slate-50 transition"
+                    className={`hover:bg-slate-50 transition ${
+                      avesSelecionadas.includes(ave.id) ? 'bg-violet-50' : ''
+                    }`}
                   >
+                    <td className="px-2 py-3 text-center align-middle">
+                      <input
+                        type="checkbox"
+                        checked={avesSelecionadas.includes(ave.id)}
+                        onChange={() => alternarSelecaoAve(ave.id)}
+                        aria-label={`Selecionar ${ave.name || ave.ring || 'ave'}`}
+                        className="w-4 h-4 accent-violet-600 cursor-pointer"
+                      />
+                    </td>
+
                     <td className="px-2 sm:px-3 py-3 align-middle">
                       <button
                         type="button"
@@ -948,6 +1095,134 @@ export function AvesSection({
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {mostrarEdicaoLote && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <div>
+                <h3 className="text-lg font-black text-slate-800">
+                  Editar aves em lote
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  {avesSelecionadas.length} ave(s) selecionada(s). Campos em branco não serão alterados.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMostrarEdicaoLote(false)}
+                className="w-8 h-8 rounded-lg text-slate-500 hover:bg-slate-100"
+                aria-label="Fechar"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[
+                ['species', 'Espécie', 'text'],
+                ['creator', 'Criador', 'text'],
+                ['acqYear', 'Ano de aquisição', 'text'],
+                ['nota', 'Observação', 'text']
+              ].map(([campo, rotulo]) => (
+                <label key={campo} className="block">
+                  <span className="block text-xs font-black text-slate-600 mb-1">
+                    {rotulo}
+                  </span>
+                  <input
+                    type="text"
+                    value={camposLote[campo as keyof typeof camposLote]}
+                    onChange={event =>
+                      atualizarCampoLote(
+                        campo as keyof typeof camposLote,
+                        event.target.value
+                      )
+                    }
+                    placeholder="Não alterar"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-violet-500"
+                  />
+                </label>
+              ))}
+
+              {[
+                ['sex', 'Sexo', ['Macho', 'Fêmea', 'Indefinido']],
+                ['status', 'Status', ['Ativo', 'Vendido', 'Falecido', 'Doado', 'Perdido', 'Inativo']]
+              ].map(([campo, rotulo, opcoes]) => (
+                <label key={campo as string} className="block">
+                  <span className="block text-xs font-black text-slate-600 mb-1">
+                    {rotulo as string}
+                  </span>
+                  <select
+                    value={camposLote[campo as keyof typeof camposLote]}
+                    onChange={event =>
+                      atualizarCampoLote(
+                        campo as keyof typeof camposLote,
+                        event.target.value
+                      )
+                    }
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-violet-500"
+                  >
+                    <option value="">Não alterar</option>
+                    {(opcoes as string[]).map(opcao => (
+                      <option key={opcao} value={opcao}>{opcao}</option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+
+              {[
+                ['corCabeca', 'Cor da cabeça', coresCabeca],
+                ['corPeito', 'Cor do peito', coresPeito],
+                ['corDorso', 'Cor do dorso', coresDorso],
+                ['porta', 'Porta', portas],
+                ['local', 'Local', locais]
+              ].map(([campo, rotulo, opcoes]) => (
+                <label key={campo as string} className="block">
+                  <span className="block text-xs font-black text-slate-600 mb-1">
+                    {rotulo as string}
+                  </span>
+                  <select
+                    value={camposLote[campo as keyof typeof camposLote]}
+                    onChange={event =>
+                      atualizarCampoLote(
+                        campo as keyof typeof camposLote,
+                        event.target.value
+                      )
+                    }
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm outline-none focus:ring-2 focus:ring-violet-500"
+                  >
+                    <option value="">Não alterar</option>
+                    {(opcoes as string[]).map(opcao => (
+                      <option key={opcao} value={opcao}>{opcao}</option>
+                    ))}
+                    {campo === 'local' && !locais.includes('Não informado') && (
+                      <option value="Não informado">Não informado</option>
+                    )}
+                  </select>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setMostrarEdicaoLote(false)}
+                className="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs"
+              >
+                CANCELAR
+              </button>
+              <button
+                type="button"
+                onClick={aplicarEdicaoEmLote}
+                className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-black text-xs"
+              >
+                <i className="fas fa-check mr-2"></i>
+                APLICAR ALTERAÇÕES
+              </button>
+            </div>
           </div>
         </div>
       )}
