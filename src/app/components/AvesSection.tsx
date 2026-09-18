@@ -182,9 +182,23 @@ export function AvesSection({
     const locaisCadastrados = config?.locaisOvos || [];
     const locaisDasAves = aves
       .map(ave => obterLocalAve(ave, ninhos))
-      .filter(local => local && local !== 'Não informado');
+      .filter(Boolean);
 
-    return Array.from(new Set([...locaisCadastrados, ...locaisDasAves])).sort();
+    // Inclui "Não informado" no filtro quando existir pelo menos
+    // uma ave sem local cadastrado.
+    const existeLocalNaoInformado = aves.some(
+      ave => obterLocalAve(ave, ninhos) === 'Não informado'
+    );
+
+    const locaisDisponiveis = [
+      ...locaisCadastrados,
+      ...locaisDasAves,
+      ...(existeLocalNaoInformado ? ['Não informado'] : [])
+    ];
+
+    return Array.from(new Set(locaisDisponiveis))
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }, [config?.locaisOvos, aves, ninhos]);
 
   const avesFiltradas = useMemo(() => {
