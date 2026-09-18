@@ -425,9 +425,9 @@ export function AvesSection({
           return localOvo;
         }
 
-        if (ovo.status === 'Eclodido' || ovo.filhoteAnilhado) {
-          return ninho.name || `Ninho ${ninho.id}`;
-        }
+        // O identificador do ninho não é um local físico.
+        // Se não houver local efetivamente registrado, continuamos
+        // a busca e, ao final, exibimos "Não informado".
       }
     }
 
