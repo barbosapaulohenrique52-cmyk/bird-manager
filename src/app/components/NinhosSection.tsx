@@ -1,7 +1,189 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Ninho, Casal, Egg, ModalType, Config, Ave } from '../App';
 import { CasalSelector } from './CasalSelector';
 import { AveSelector } from './AveSelector';
+
+// Formata datas para a visualização compacta: DD/MM/AA.
+// Mantém sempre dois dígitos para dia e mês.
+const formatarDataCurta = (value?: string | null): string => {
+  if (!value) return '--';
+
+  const match = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (match) {
+    const [, ano, mes, dia] = match;
+    return `${dia.padStart(2, '0')}/${mes.padStart(2, '0')}/${ano.slice(-2)}`;
+  }
+
+  const data = new Date(value);
+  if (Number.isNaN(data.getTime())) return value;
+
+  const dia = String(data.getDate()).padStart(2, '0');
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const ano = String(data.getFullYear()).slice(-2);
+  return `${dia}/${mes}/${ano}`;
+};
+
+interface DataCompactaProps {
+  value: string;
+  onChange: (value: string) => void;
+  className?: string;
+  ariaLabel?: string;
+}
+
+// Exibe DD/MM/AA, mas mantém o seletor nativo de calendário para edição.
+function DataCompacta({
+  value,
+  onChange,
+  className = '',
+  ariaLabel = 'Selecionar data'
+}: DataCompactaProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className={`relative ${className}`}>
+      <div className="flex items-center justify-between gap-1 w-full h-full">
+        <span className="truncate">
+          {formatarDataCurta(value)}
+        </span>
+        <i className="fas fa-calendar text-slate-400 text-[8px] shrink-0"></i>
+      </div>
+
+      <input
+        ref={inputRef}
+        type="date"
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={ariaLabel}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+      />
+    </div>
+  );
+}
+
+
+interface StatusSelectorProps {
+  status: Egg['status'];
+  onChange: (status: Egg['status']) => void;
+  onChocar: () => void;
+}
+
+function StatusIcon({ status }: { status: Egg['status'] }) {
+  if (status === 'Em Espera') {
+    return <span className="text-[14px] leading-none" title="Em Espera">⏳</span>;
+  }
+
+  if (status === 'Eclodido') {
+    return <span className="text-[16px] leading-none" title="Eclodido">🐣</span>;
+  }
+
+  if (status === 'Perdido') {
+    return <span className="text-[14px] leading-none" title="Perdido">⚠️</span>;
+  }
+
+  return (
+    <svg
+      width="22"
+      height="25"
+      viewBox="0 0 28 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label={status}
+      role="img"
+    >
+      {/* Ovo */}
+      <path
+        d="M14 2.5C9.1 2.5 4.5 11.5 4.5 19.3C4.5 25.5 8.5 29.5 14 29.5C19.5 29.5 23.5 25.5 23.5 19.3C23.5 11.5 18.9 2.5 14 2.5Z"
+        fill={status === 'Fértil' ? '#FFF7ED' : 'white'}
+        stroke={status === 'Chocando' ? '#C2410C' : status === 'Fértil' ? '#F59E0B' : '#64748B'}
+        strokeWidth="1.7"
+      />
+
+      {/* Gema do ovo fértil */}
+      {status === 'Fértil' && (
+        <circle
+          cx="14"
+          cy="19"
+          r="5"
+          fill="#F59E0B"
+          stroke="#D97706"
+          strokeWidth="1"
+        />
+      )}
+
+      {/* Ave sobre o ovo quando está chocando */}
+      {status === 'Chocando' && (
+        <>
+          <circle cx="14" cy="5.5" r="3.2" fill="#FBBF24" />
+          <ellipse cx="14" cy="9.2" rx="5.2" ry="3.1" fill="#FBBF24" />
+          <circle cx="15.1" cy="5" r="0.65" fill="#1E293B" />
+          <path d="M17.2 6L20 7.2L17.2 8Z" fill="#F97316" />
+          <path d="M10.5 8.2L7.5 6.7L8.4 9.6Z" fill="#F59E0B" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+function StatusSelector({ status, onChange, onChocar }: StatusSelectorProps) {
+  const [open, setOpen] = useState(false);
+
+  const opcoes: Array<{ value: Egg['status']; label: string }> = [
+    { value: 'Em Espera', label: 'Em Espera' },
+    { value: 'Chocando', label: 'Chocando' },
+    { value: 'Fértil', label: 'Fértil' },
+    { value: 'Infértil', label: 'Infértil' },
+    { value: 'Eclodido', label: 'Eclodido' },
+    { value: 'Perdido', label: 'Perdido' },
+  ];
+
+  const selecionar = (novoStatus: Egg['status']) => {
+    setOpen(false);
+
+    if (novoStatus === 'Chocando') {
+      onChocar();
+      return;
+    }
+
+    onChange(novoStatus);
+  };
+
+  return (
+    <div className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((valor) => !valor)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        className="w-9 h-9 flex items-center justify-center rounded border border-slate-200 bg-white hover:bg-slate-50 transition-colors"
+        title={status}
+        aria-label={`Status: ${status}`}
+      >
+        <StatusIcon status={status} />
+      </button>
+
+      {open && (
+        <div className="absolute z-40 top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-1 min-w-[125px]">
+          {opcoes.map((opcao) => (
+            <button
+              key={opcao.value}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => selecionar(opcao.value)}
+              className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[9px] font-bold hover:bg-slate-50 ${
+                status === opcao.value ? 'bg-slate-100' : ''
+              }`}
+              title={opcao.label}
+            >
+              <span className="w-6 flex justify-center">
+                <StatusIcon status={opcao.value} />
+              </span>
+              <span>{opcao.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface NinhosSectionProps {
   ninhos: Ninho[];
@@ -14,6 +196,7 @@ interface NinhosSectionProps {
   onUpdateEgg: (ninhoId: string, eggIdx: number, field: keyof Egg, value: any) => void;
   onEclodirOvo: (ninhoId: string, eggIdx: number, dataEclosao: string) => void;
   onAnilharFilhote: (ninhoId: string, eggIdx: number, anilha: string, anoAnilha: number) => void;
+  onRegistrarSaidaDoNinho?: (ninhoId: string, eggIdx: number, dataSaidaNinho: string, novoLocal: string) => void;
   onReverterEclosao: (ninhoId: string, eggIdx: number) => void;
   onUpdateNinhoCasal: (ninhoId: string, casalId: string) => void;
   onSaveCasal: (data: Omit<Casal, 'id'>) => string;
@@ -34,6 +217,7 @@ export function NinhosSection({
   onUpdateEgg,
   onEclodirOvo,
   onAnilharFilhote,
+  onRegistrarSaidaDoNinho,
   onReverterEclosao,
   onUpdateNinhoCasal,
   onSaveCasal,
@@ -45,6 +229,10 @@ export function NinhosSection({
   const [eclosaoModal, setEclosaoModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
   const [chocaModal, setChocaModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
   const [anilhamentoModal, setAnilhamentoModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
+  const [anilhaEditando, setAnilhaEditando] = useState(false);
+  const [saidaNinhoModal, setSaidaNinhoModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
+  const [dataSaidaNinho, setDataSaidaNinho] = useState(new Date().toISOString().split('T')[0]);
+  const [novoLocalSaida, setNovoLocalSaida] = useState('');
   const [editCasalNinhoId, setEditCasalNinhoId] = useState<string | null>(null);
   const [dataEclosao, setDataEclosao] = useState(new Date().toISOString().split('T')[0]);
   const [chocaData, setChocaData] = useState({
@@ -87,6 +275,9 @@ export function NinhosSection({
   // Estados para dropdown de seleção de espécie
   const [especieDropdownAberto, setEspecieDropdownAberto] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
   const [especieBusca, setEspecieBusca] = useState('');
+
+  // Estado da forma de visualização dos ovos. Por padrão, os ovos são agrupados por local.
+  const [modoVisualizacao, setModoVisualizacao] = useState<'local' | 'casal'>('local');
 
   // Estado para controlar quais ninhos estão expandidos
   const [ninhosExpandidos, setNinhosExpandidos] = useState<Set<string>>(new Set());
@@ -133,10 +324,310 @@ export function NinhosSection({
   };
   
   // Estados para edição em lote
-  const [edicaoLoteModal, setEdicaoLoteModal] = useState<string | null>(null); // ID do ninho
-  const [loteStatus, setLoteStatus] = useState('');
-  const [loteData, setLoteData] = useState('');
-  const [loteTipo, setLoteTipo] = useState<'status' | 'postura' | 'inicioChoca'>('status');
+  // Seleção de ovos para edição em lote
+  // A chave usa o ID do ninho + ID do ovo (ou índice como fallback),
+  // garantindo que a seleção continue correta mesmo com os ovos agrupados por local.
+  const [ovosSelecionados, setOvosSelecionados] = useState<Set<string>>(new Set());
+  const [fotoCasalZoom, setFotoCasalZoom] = useState<string | null>(null);
+
+  const [edicaoLoteAberta, setEdicaoLoteAberta] = useState(false);
+  const [loteCampos, setLoteCampos] = useState({
+    postura: false, local: false, species: false, status: false,
+    inicioChoca: false, casalChocandoId: false, localChoca: false,
+    dataEclosao: false, filhoteId: false,
+  });
+  const [loteValores, setLoteValores] = useState({
+    postura: '', local: '', species: '', status: 'Em Espera' as Egg['status'],
+    inicioChoca: '', casalChocandoId: '', localChoca: '', dataEclosao: '', filhoteId: '',
+  });
+
+  // Um filhote que foi marcado como Óbito na aba Plantel não deve mais
+  // aparecer na listagem de ovos/ninhos. O registro do ovo permanece salvo
+  // no banco de dados para preservar o histórico, mas fica oculto na tela.
+  const filhoteEstaEmObito = (egg: Egg): boolean => {
+    if (!egg.filhoteId) return false;
+
+    const identificador = String(egg.filhoteId).trim().toLowerCase();
+
+    const aveFilhote = aves.find((ave) => {
+      const id = String(ave.id || '').trim().toLowerCase();
+      const anilha = String(ave.ring || '').trim().toLowerCase();
+      const anilhaComAno = `${anilha}-${ave.ringYear || ''}`.replace(/-$/, '');
+
+      return (
+        id === identificador ||
+        anilha === identificador ||
+        anilhaComAno === identificador
+      );
+    });
+
+    return aveFilhote?.status === 'Óbito';
+  };
+
+  const ovoDeveSerExibido = (egg: Egg): boolean => !filhoteEstaEmObito(egg);
+
+  const getChaveOvo = (ninhoId: string, egg: Egg, eggIdx: number) =>
+    `${ninhoId}::${egg.id || `idx-${eggIdx}`}`;
+
+  const todosOvos = ninhos.flatMap((ninho) =>
+    ninho.eggs
+      .map((egg, eggIdx) => ({
+        ninho,
+        egg,
+        eggIdx,
+        chave: getChaveOvo(ninho.id, egg, eggIdx),
+      }))
+      .filter(({ egg }) => ovoDeveSerExibido(egg))
+  );
+
+  const toggleOvoSelecionado = (chave: string) => {
+    setOvosSelecionados((atual) => {
+      const novo = new Set(atual);
+      if (novo.has(chave)) {
+        novo.delete(chave);
+      } else {
+        novo.add(chave);
+      }
+      return novo;
+    });
+  };
+
+  const toggleTodosOvos = () => {
+    setOvosSelecionados((atual) => {
+      if (atual.size === todosOvos.length) {
+        return new Set();
+      }
+
+      return new Set(todosOvos.map((item) => item.chave));
+    });
+  };
+
+  const toggleTodosOvosDoNinho = (ninhoId: string) => {
+    const ovosDoNinho = todosOvos.filter((item) => item.ninho.id === ninhoId);
+    setOvosSelecionados((atual) => {
+      const novo = new Set(atual);
+      const todosSelecionados = ovosDoNinho.every((item) => novo.has(item.chave));
+
+      ovosDoNinho.forEach((item) => {
+        if (todosSelecionados) {
+          novo.delete(item.chave);
+        } else {
+          novo.add(item.chave);
+        }
+      });
+
+      return novo;
+    });
+  };
+
+  const limparSelecaoOvos = () => {
+    setOvosSelecionados(new Set());
+  };
+
+  const resetarEdicaoLote = () => {
+    setLoteCampos({
+      postura: false,
+      local: false,
+      species: false,
+      status: false,
+      inicioChoca: false,
+      casalChocandoId: false,
+      localChoca: false,
+      dataEclosao: false,
+      filhoteId: false,
+    });
+
+    setLoteValores({
+      postura: '',
+      local: '',
+      species: '',
+      status: 'Em Espera',
+      inicioChoca: '',
+      casalChocandoId: '',
+      localChoca: '',
+      dataEclosao: '',
+      filhoteId: '',
+    });
+  };
+
+  const abrirEdicaoLote = () => {
+    if (ovosSelecionados.size === 0) {
+      alert('Selecione pelo menos um ovo para editar.');
+      return;
+    }
+
+    resetarEdicaoLote();
+    setEdicaoLoteAberta(true);
+  };
+
+  const aplicarEdicaoLote = () => {
+    if (ovosSelecionados.size === 0) return;
+
+    if (!Object.values(loteCampos).some(Boolean)) {
+      alert('Marque pelo menos um campo para alterar.');
+      return;
+    }
+
+    // Regras de segurança para manter os dados coerentes.
+    if (
+      loteCampos.status &&
+      loteValores.status === 'Chocando' &&
+      !loteCampos.inicioChoca
+    ) {
+      alert(
+        'Para marcar os ovos como "Chocando", marque também "Início da choca" e informe a data.'
+      );
+      return;
+    }
+
+    if (
+      loteCampos.status &&
+      loteValores.status === 'Eclodido' &&
+      !loteCampos.dataEclosao
+    ) {
+      alert(
+        'Para marcar os ovos como "Eclodido", marque também "Data de eclosão" e informe a data.'
+      );
+      return;
+    }
+
+    if (loteCampos.postura && !loteValores.postura) {
+      alert('Informe a data de postura.');
+      return;
+    }
+
+    if (loteCampos.inicioChoca && !loteValores.inicioChoca) {
+      alert('Informe a data de início da choca.');
+      return;
+    }
+
+    if (loteCampos.dataEclosao && !loteValores.dataEclosao) {
+      alert('Informe a data de eclosão.');
+      return;
+    }
+
+    if (loteCampos.status && loteValores.status === 'Chocando' && loteCampos.casalChocandoId) {
+      const casalId = loteValores.casalChocandoId;
+
+      if (casalId) {
+        const ovosAlvoComNinho = todosOvos.filter((item) =>
+          ovosSelecionados.has(item.chave)
+        );
+
+        const conflito = ovosAlvoComNinho.some(
+          ({ ninho }) => casalId === ninho.casalId
+        );
+
+        if (conflito) {
+          // É permitido usar o próprio casal dos pais. A restrição de
+          // "não ser o mesmo casal" existe apenas quando a choca é do tipo amas.
+        }
+      }
+    }
+
+    const ovosAlvo = todosOvos.filter((item) =>
+      ovosSelecionados.has(item.chave)
+    );
+
+    ovosAlvo.forEach(({ ninho, eggIdx }) => {
+      if (loteCampos.postura) {
+        onUpdateEgg(ninho.id, eggIdx, 'postura', loteValores.postura);
+      }
+
+      if (loteCampos.local) {
+        if (loteValores.local.trim()) {
+          onUpdateEgg(ninho.id, eggIdx, 'local', loteValores.local);
+        }
+      }
+
+      if (loteCampos.species) {
+        if (loteValores.species.trim()) {
+          onUpdateEgg(ninho.id, eggIdx, 'species', loteValores.species);
+        }
+      }
+
+      if (loteCampos.status) {
+        onUpdateEgg(ninho.id, eggIdx, 'status', loteValores.status);
+      }
+
+      if (loteCampos.inicioChoca) {
+        onUpdateEgg(
+          ninho.id,
+          eggIdx,
+          'inicioChoca',
+          loteValores.inicioChoca || undefined
+        );
+      }
+
+      if (loteCampos.casalChocandoId) {
+        onUpdateEgg(
+          ninho.id,
+          eggIdx,
+          'casalChocandoId',
+          loteValores.casalChocandoId || undefined
+        );
+      }
+
+      if (loteCampos.localChoca) {
+        onUpdateEgg(
+          ninho.id,
+          eggIdx,
+          'localChoca',
+          loteValores.localChoca || undefined
+        );
+      }
+
+      if (loteCampos.dataEclosao) {
+        onUpdateEgg(
+          ninho.id,
+          eggIdx,
+          'dataEclosao',
+          loteValores.dataEclosao || undefined
+        );
+      }
+
+      if (loteCampos.filhoteId) {
+        onUpdateEgg(
+          ninho.id,
+          eggIdx,
+          'filhoteId',
+          loteValores.filhoteId || undefined
+        );
+      }
+    });
+
+    alert(
+      `Edição aplicada a ${ovosAlvo.length} ${
+        ovosAlvo.length === 1 ? 'ovo' : 'ovos'
+      }.`
+    );
+
+    setEdicaoLoteAberta(false);
+    setOvosSelecionados(new Set());
+    resetarEdicaoLote();
+  };
+
+  // Mantém a seleção sincronizada quando um ovo é excluído ou os dados mudam.
+  useEffect(() => {
+    const chavesValidas = new Set(
+      ninhos.flatMap((ninho) =>
+        ninho.eggs.map((egg, eggIdx) => getChaveOvo(ninho.id, egg, eggIdx))
+      )
+    );
+
+    setOvosSelecionados((atual) => {
+      const filtrado = new Set(
+        Array.from(atual).filter((chave) => chavesValidas.has(chave))
+      );
+
+      if (filtrado.size === atual.size) {
+        return atual;
+      }
+
+      return filtrado;
+    });
+  }, [ninhos]);
+
   
   // Obter todas as espécies disponíveis (usa lista do config)
   const getEspeciesDisponiveis = () => {
@@ -248,11 +739,50 @@ export function NinhosSection({
   };
 
   const handleAnilhar = () => {
-    if (anilhamentoModal && anilhaData.numero) {
-      onAnilharFilhote(anilhamentoModal.ninhoId, anilhamentoModal.eggIdx, anilhaData.numero, anilhaData.ano);
-      setAnilhamentoModal(null);
-      setAnilhaData({ numero: '', ano: new Date().getFullYear() });
+    if (!anilhamentoModal) return;
+
+    /*
+     * Quando estamos editando, o campo pode ser apagado.
+     * Nesse caso o useDatabase interpreta a anilha vazia
+     * como "desfazer anilhamento" e retorna o ovo para
+     * "Anilha pendente".
+     */
+    if (!anilhaEditando && !anilhaData.numero.trim()) {
+      return;
     }
+
+    onAnilharFilhote(
+      anilhamentoModal.ninhoId,
+      anilhamentoModal.eggIdx,
+      anilhaData.numero,
+      anilhaData.ano
+    );
+
+    setAnilhamentoModal(null);
+    setAnilhaEditando(false);
+    setAnilhaData({ numero: '', ano: new Date().getFullYear() });
+  };
+
+  const handleRegistrarSaidaNinho = () => {
+    if (!saidaNinhoModal) return;
+
+    if (!onRegistrarSaidaDoNinho) {
+      alert(
+        'A função de saída do ninho ainda não está conectada ao sistema.'
+      );
+      return;
+    }
+
+    onRegistrarSaidaDoNinho(
+      saidaNinhoModal.ninhoId,
+      saidaNinhoModal.eggIdx,
+      dataSaidaNinho,
+      novoLocalSaida
+    );
+
+    setSaidaNinhoModal(null);
+    setDataSaidaNinho(new Date().toISOString().split('T')[0]);
+    setNovoLocalSaida('');
   };
 
   const getStatusColor = (status: string) => {
@@ -274,6 +804,8 @@ export function NinhosSection({
 
   ninhos.forEach((ninho) => {
     ninho.eggs.forEach((egg, eggIdx) => {
+      if (!ovoDeveSerExibido(egg)) return;
+
       const local = egg.local?.trim() || 'Sem local definido';
 
       if (!ovosPorLocal.has(local)) {
@@ -292,25 +824,78 @@ export function NinhosSection({
     a[0].localeCompare(b[0], 'pt-BR')
   );
 
+  // Agrupa os ovos por casal quando essa visualização é selecionada.
+  const ovosPorCasal = new Map<string, Array<{ egg: Egg; ninho: Ninho; eggIdx: number }>>();
+
+  ninhos.forEach((ninho) => {
+    ninho.eggs.forEach((egg, eggIdx) => {
+      if (!ovoDeveSerExibido(egg)) return;
+
+      const casal = casais.find((item) => item.id === ninho.casalId);
+      const macho = casal ? aves.find((ave) => ave.id === casal.mId) : undefined;
+      const femea = casal ? aves.find((ave) => ave.id === casal.fId) : undefined;
+      const nomeMacho = macho?.name || macho?.ring || 'Macho não definido';
+      const nomeFemea = femea?.name || femea?.ring || 'Fêmea não definida';
+      const chave = casal
+        ? `${nomeMacho} × ${nomeFemea}`
+        : 'Sem casal definido';
+
+      if (!ovosPorCasal.has(chave)) {
+        ovosPorCasal.set(chave, []);
+      }
+
+      ovosPorCasal.get(chave)!.push({ egg, ninho, eggIdx });
+    });
+  });
+
+  const gruposExibicao = modoVisualizacao === 'local'
+    ? locaisOrdenados
+    : Array.from(ovosPorCasal.entries()).sort((a, b) =>
+        a[0].localeCompare(b[0], 'pt-BR')
+      );
+
   return (
     <section className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold text-slate-800 tracking-tight uppercase italic">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase italic">
           Ninhos Ativos
         </h2>
-        <button
-          onClick={() => onOpenModal('ninho')}
-          className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold text-[10px] shadow-lg"
-        >
-          <i className="fas fa-plus mr-1"></i>
-          NOVO NINHO
-        </button>
+
+        <div className="flex items-center gap-2">
+          <label className="sr-only" htmlFor="modo-visualizacao-ovos">
+            Visualizar ovos por
+          </label>
+          <div className="relative">
+            <i className={`fas ${modoVisualizacao === 'local' ? 'fa-map-marker-alt' : 'fa-heart'} absolute left-2.5 top-1/2 -translate-y-1/2 text-emerald-600 text-[10px] pointer-events-none`}></i>
+            <select
+              id="modo-visualizacao-ovos"
+              value={modoVisualizacao}
+              onChange={(e) => setModoVisualizacao(e.target.value as 'local' | 'casal')}
+              className="appearance-none bg-white border-2 border-slate-200 text-slate-700 pl-7 pr-7 py-2 rounded-xl text-[10px] font-black uppercase outline-none focus:border-emerald-500 cursor-pointer"
+              title="Escolher forma de visualização dos ovos"
+            >
+              <option value="local">Por local</option>
+              <option value="casal">Por casal</option>
+            </select>
+            <i className="fas fa-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[8px] pointer-events-none"></i>
+          </div>
+
+          <button
+            onClick={() => onOpenModal('ninho')}
+            className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl font-black text-[10px] shadow-lg"
+          >
+            <i className="fas fa-plus mr-1"></i>
+            NOVO NINHO
+          </button>
+        </div>
       </div>
 
-      {/* Ninhos continuam sendo usados para definir a origem dos ovos.
-          A visualização dos ovos abaixo é agrupada pelo local atual. */}
-      <div className="space-y-4">
-        {ninhos.length === 0 ? (
+      {/* A visualização abaixo utiliza exclusivamente o agrupamento selecionado:
+          egg.local quando o modo é Por local, ou o casal quando o modo é Por casal.
+          As ações continuam apontando para o ninho/ovo original. */}
+      {false && modoVisualizacao === 'local' && (
+        <div className="space-y-4">
+          {ninhos.length === 0 ? (
           <div className="bg-white p-12 rounded-3xl text-center border-2 border-slate-100">
             <i className="fas fa-dove text-5xl text-slate-200 mb-4"></i>
             <p className="text-slate-500 font-bold">Nenhum ninho ativo</p>
@@ -346,12 +931,12 @@ export function NinhosSection({
                           }
                         }}
                         autoFocus
-                        className="bg-white text-emerald-600 px-2 py-1 rounded text-sm font-bold uppercase outline-none"
+                        className="bg-white text-emerald-600 px-2 py-1 rounded text-sm font-black uppercase outline-none"
                         placeholder="Nome do ninho..."
                       />
                     ) : (
                       <h3
-                        className="text-sm font-bold uppercase cursor-pointer hover:underline"
+                        className="text-sm font-black uppercase cursor-pointer hover:underline"
                         onClick={() => {
                           setEditandoNomeNinho(ninho.id);
                           setNomeNinhoTemp(ninho.name || '');
@@ -366,17 +951,22 @@ export function NinhosSection({
                   <div className="flex gap-2">
                     {ninho.eggs.length > 0 && (
                       <button
-                        onClick={() => setEdicaoLoteModal(ninho.id)}
-                        className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl font-bold text-[10px] uppercase shadow-md transition-all"
-                        title="Edição em lote"
+                        onClick={() => toggleTodosOvosDoNinho(ninho.id)}
+                        className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl font-black text-[10px] uppercase shadow-md transition-all"
+                        title="Selecionar/desselecionar todos os ovos deste ninho para edição em lote"
                       >
-                        <i className="fas fa-edit"></i> LOTE
+                        <i className="fas fa-check-square mr-1"></i>
+                        {ninho.eggs.every((egg, eggIdx) =>
+                          ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))
+                        )
+                          ? 'DESMARCAR'
+                          : 'SELECIONAR'}
                       </button>
                     )}
 
                     <button
                       onClick={() => onAddEgg(ninho.id)}
-                      className="bg-white text-emerald-600 px-4 py-2 rounded-xl font-bold text-[10px] uppercase shadow-md hover:bg-emerald-50 transition-all"
+                      className="bg-white text-emerald-600 px-4 py-2 rounded-xl font-black text-[10px] uppercase shadow-md hover:bg-emerald-50 transition-all"
                     >
                       <i className="fas fa-plus mr-1"></i>
                       Ovo
@@ -384,7 +974,7 @@ export function NinhosSection({
 
                     <button
                       onClick={() => onDeleteNinho(ninho.id)}
-                      className="bg-rose-500 hover:bg-rose-600 text-white px-3 py-2 rounded-xl font-bold text-[10px] uppercase shadow-md transition-all"
+                      className="bg-rose-500 hover:bg-rose-600 text-white px-3 py-2 rounded-xl font-black text-[10px] uppercase shadow-md transition-all"
                       title="Excluir ninho"
                     >
                       <i className="fas fa-trash"></i>
@@ -409,32 +999,159 @@ export function NinhosSection({
                 </div>
               </div>
 
-              {/* Resumo do ninho - os ovos agora são exibidos por local abaixo */}
+              {/* Resumo / expansão dos ovos do casal */}
               <div className="p-2">
                 {ninho.eggs.length === 0 ? (
                   <div className="text-center py-6 text-slate-400">
                     <i className="fas fa-egg text-2xl mb-2"></i>
                     <p className="text-sm">Nenhum ovo registrado</p>
                   </div>
+                ) : !ninhosExpandidos.has(ninho.id) ? (
+                  <div
+                    onClick={() => toggleNinhoExpandido(ninho.id)}
+                    className="bg-gradient-to-r from-emerald-50 to-blue-50 border-2 border-emerald-200 rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                          <i className="fas fa-egg text-emerald-600 text-lg"></i>
+                        </div>
+                        <div>
+                          <h4 className="font-black text-slate-800 uppercase text-xs">
+                            Ovos deste casal
+                          </h4>
+                          <p className="text-[10px] font-bold text-slate-500 mt-0.5">
+                            {ninho.eggs.length} {ninho.eggs.length === 1 ? 'ovo registrado' : 'ovos registrados'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleNinhoExpandido(ninho.id);
+                        }}
+                        className="bg-emerald-600 text-white px-3 py-2 rounded-lg font-black text-[9px] uppercase flex items-center gap-1.5 shadow-sm"
+                      >
+                        <i className="fas fa-chevron-down"></i>
+                        Expandir
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4">
-                    <div className="bg-gradient-to-r from-emerald-50 to-blue-50 border-2 border-emerald-200 p-4 rounded-xl text-center">
-                      <div className="text-3xl font-bold text-emerald-600">{ninho.eggs.length}</div>
-                      <div className="text-[10px] font-bold text-emerald-600 uppercase mt-1">Total de Ovos</div>
+                  <div className="border-2 border-emerald-200 rounded-2xl overflow-hidden">
+                    <div className="bg-emerald-50 px-3 py-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <i className="fas fa-egg text-emerald-600 text-xs"></i>
+                        <span className="text-[10px] font-black text-emerald-700 uppercase">
+                          Ovos deste casal ({ninho.eggs.length})
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleNinhoExpandido(ninho.id)}
+                        className="text-emerald-700 hover:text-emerald-900 px-2 py-1 rounded-lg hover:bg-white transition-colors"
+                        title="Recolher ovos"
+                      >
+                        <i className="fas fa-chevron-up text-[10px]"></i>
+                      </button>
                     </div>
 
-                    <div className="bg-purple-50 border-2 border-purple-100 p-4 rounded-xl text-center">
-                      <div className="text-3xl font-bold text-purple-600">
-                        {ninho.eggs.filter(e => e.status === 'Chocando' && e.status !== 'Fértil' && e.status !== 'Infértil').length}
-                      </div>
-                      <div className="text-[10px] font-bold text-purple-600 uppercase mt-1">Pend. Fertilidade</div>
-                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="py-2 px-2 text-left text-[8px] font-black text-slate-500 uppercase">Postura</th>
+                            <th className="py-2 px-2 text-left text-[8px] font-black text-slate-500 uppercase">Espécie</th>
+                            <th className="py-2 px-2 text-left text-[8px] font-black text-slate-500 uppercase">Local</th>
+                            <th className="py-2 px-2 text-center text-[8px] font-black text-slate-500 uppercase">Status</th>
+                            <th className="py-2 px-2 text-center text-[8px] font-black text-slate-500 uppercase">Ação</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {ninho.eggs.map((egg, eggIdx) => (
+                            <tr
+                              key={`${ninho.id}-resumo-${egg.id || eggIdx}`}
+                              className={`border-b border-emerald-100/70 last:border-b-0 transition-colors ${
+                                eggIdx % 2 === 0
+                                  ? 'bg-white hover:bg-emerald-50'
+                                  : 'bg-emerald-50/50 hover:bg-emerald-100/60'
+                              }`}
+                            >
+                              <td className="py-2 px-2">
+                                <DataCompacta
+                                  value={egg.postura || ''}
+                                  onChange={(value) =>
+                                    onUpdateEgg(ninho.id, eggIdx, 'postura', value)
+                                  }
+                                  className="text-[9px] font-bold text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-1 w-[88px] h-7"
+                                  ariaLabel="Data da postura"
+                                />
+                              </td>
 
-                    <div className="bg-amber-50 border-2 border-amber-100 p-4 rounded-xl text-center">
-                      <div className="text-3xl font-bold text-amber-600">
-                        {ninho.eggs.filter(e => e.status === 'Eclodido' && !e.filhoteAnilhado).length}
-                      </div>
-                      <div className="text-[10px] font-bold text-amber-600 uppercase mt-1">A Anilhar</div>
+                              <td className="py-2 px-2">
+                                <span className="text-[9px] font-bold text-slate-700">
+                                  {egg.species || '--'}
+                                </span>
+                              </td>
+
+                              <td className="py-2 px-2">
+                                <select
+                                  value={egg.local || ''}
+                                  onChange={(e) =>
+                                    onUpdateEgg(ninho.id, eggIdx, 'local', e.target.value)
+                                  }
+                                  className="text-[9px] font-bold text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-1 max-w-[120px]"
+                                >
+                                  <option value="">Sem local</option>
+                                  {(config.locaisOvos || []).map((localCadastrado) => (
+                                    <option key={localCadastrado} value={localCadastrado}>
+                                      {localCadastrado}
+                                    </option>
+                                  ))}
+                                  {egg.local && !(config.locaisOvos || []).includes(egg.local) && (
+                                    <option value={egg.local}>{egg.local}</option>
+                                  )}
+                                </select>
+                              </td>
+
+                              <td className="py-2 px-2 text-center">
+                                <StatusSelector
+                                  status={egg.status}
+                                  onChange={(novoStatus) =>
+                                    onUpdateEgg(ninho.id, eggIdx, 'status', novoStatus)
+                                  }
+                                  onChocar={() => {
+                                    setChocaModal({
+                                      ninhoId: ninho.id,
+                                      eggIdx
+                                    });
+                                    setChocaData({
+                                      tipo: 'pais',
+                                      dataInicio: new Date().toISOString().split('T')[0],
+                                      casalAmasId: '',
+                                      localChoca: ''
+                                    });
+                                  }}
+                                />
+                              </td>
+
+                              <td className="py-2 px-2 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => onRemoveEgg(ninho.id, eggIdx)}
+                                  className="w-7 h-7 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                  title="Excluir ovo"
+                                >
+                                  <i className="fas fa-trash text-[9px]"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 )}
@@ -442,40 +1159,95 @@ export function NinhosSection({
             </div>
           ))
         )}
-      </div>
+        </div>
+      )}
 
       {/* ============================================================
-          OVOS AGRUPADOS PELO LOCAL ATUAL
+          OVOS AGRUPADOS PELO MODO SELECIONADO
           ============================================================ */}
-      {ninhos.some(n => n.eggs.length > 0) && (
+      {todosOvos.length > 0 && (
         <div className="pt-2">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-slate-800 tracking-tight uppercase italic">
-              Ovos por Local
-            </h2>
-            <span className="text-[10px] font-bold text-slate-400 uppercase">
-              {ninhos.reduce((total, ninho) => total + ninho.eggs.length, 0)} ovos
-            </span>
+          <div className="flex flex-col gap-3 mb-4">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase italic">
+                Ovos por {modoVisualizacao === 'local' ? 'Local' : 'Casal'}
+              </h2>
+              <span className="text-[10px] font-black text-slate-400 uppercase whitespace-nowrap">
+                {todosOvos.length} ovos
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 bg-white border-2 border-slate-200 rounded-2xl p-2">
+
+              <label className="flex items-center gap-2 px-2 py-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={todosOvos.length > 0 && ovosSelecionados.size === todosOvos.length}
+                  onChange={toggleTodosOvos}
+                  className="w-4 h-4 rounded border-2 border-amber-300 text-amber-500 focus:ring-2 focus:ring-amber-400 cursor-pointer"
+                />
+                <span className="text-[9px] font-black text-slate-600 uppercase">
+                  Selecionar todos
+                </span>
+              </label>
+
+              <span className="text-[9px] font-black text-amber-600 uppercase px-2">
+                {ovosSelecionados.size} {ovosSelecionados.size === 1 ? 'ovo selecionado' : 'ovos selecionados'}
+              </span>
+
+              {ovosSelecionados.size > 0 && (
+                <button
+                  type="button"
+                  onClick={abrirEdicaoLote}
+                  className="bg-amber-500 hover:bg-amber-600 text-white text-[9px] font-black uppercase px-3 py-1.5 rounded-lg shadow-sm transition-colors"
+                >
+                  <i className="fas fa-edit mr-1"></i>
+                  Editar selecionados
+                </button>
+              )}
+
+              {ovosSelecionados.size > 0 && (
+                <button
+                  type="button"
+                  onClick={limparSelecaoOvos}
+                  className="ml-auto text-[9px] font-black text-slate-500 hover:text-rose-600 px-2 py-1.5 rounded-lg hover:bg-rose-50 transition-colors uppercase"
+                >
+                  <i className="fas fa-times mr-1"></i>
+                  Limpar seleção
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="space-y-6">
-            {locaisOrdenados.map(([local, ovos]) => (
+            {gruposExibicao.map(([grupo, ovos]) => (
               <div
-                key={local}
+                key={grupo}
                 className="bg-white rounded-[24px] border-2 border-slate-200 overflow-hidden shadow-sm"
               >
                 <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 p-4">
                   <div className="flex items-center justify-between">
                     <div className="text-white">
-                      <h3 className="text-sm font-bold uppercase flex items-center gap-2">
-                        <i className="fas fa-map-marker-alt"></i>
-                        {local}
+                      <h3 className="text-sm font-black uppercase flex items-center gap-2">
+                        <i className={`fas ${modoVisualizacao === 'local' ? 'fa-map-marker-alt' : 'fa-heart'}`}></i>
+                        {grupo}
                       </h3>
                       <p className="text-[10px] font-bold text-emerald-100 mt-1 uppercase">
                         {ovos.length} {ovos.length === 1 ? 'ovo' : 'ovos'}
                       </p>
                     </div>
-                    <i className="fas fa-egg text-white text-xl opacity-80"></i>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onAddEgg(ovos[0].ninho.id)}
+                        className="bg-white text-emerald-700 hover:bg-emerald-50 px-2.5 py-1.5 rounded-lg font-black text-[9px] uppercase shadow-sm transition-colors"
+                        title={`Adicionar ovo em ${modoVisualizacao === 'local' ? 'um ninho deste local' : 'um ninho deste casal'}`}
+                      >
+                        <i className="fas fa-plus mr-1"></i>
+                        Ovo
+                      </button>
+                      <i className="fas fa-egg text-white text-xl opacity-80"></i>
+                    </div>
                   </div>
                 </div>
 
@@ -484,17 +1256,20 @@ export function NinhosSection({
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="bg-slate-50">
-                          <th className="py-2 px-1 text-left text-[9px] font-bold text-slate-600 uppercase">Postura</th>
-                          <th className="py-2 px-1 text-left text-[9px] font-bold text-slate-600 uppercase">Espécie</th>
-                          <th className="py-2 px-1 text-left text-[9px] font-bold text-slate-600 uppercase">Origem / Casal</th>
-                          <th className="py-2 px-1 text-left text-[9px] font-bold text-slate-600 uppercase">Local</th>
-                          <th className="py-2 px-1 text-left text-[9px] font-bold text-slate-600 uppercase">Status</th>
-                          <th className="py-2 px-1 text-left text-[9px] font-bold text-slate-600 uppercase">Início</th>
-                          <th className="py-2 px-1 text-left text-[9px] font-bold text-slate-600 uppercase">Fertil.</th>
-                          <th className="py-2 px-1 text-left text-[9px] font-bold text-slate-600 uppercase">Eclosão</th>
-                          <th className="py-2 px-1 text-left text-[9px] font-bold text-slate-600 uppercase">Anilhar</th>
-                          <th className="py-2 px-1 text-left text-[9px] font-bold text-slate-600 uppercase">Anilha</th>
-                          <th className="py-2 px-1 text-center text-[9px] font-bold text-slate-600 uppercase">Ações</th>
+                          <th className="py-2 px-1 text-center text-[9px] font-black text-slate-600 uppercase">
+                            <i className="fas fa-check-square"></i>
+                          </th>
+                          <th className="py-2 px-1 text-left text-[9px] font-black text-slate-600 uppercase">Postura</th>
+                          <th className="py-2 px-1 text-left text-[9px] font-black text-slate-600 uppercase">Espécie</th>
+                          <th className="py-2 px-1 text-left text-[9px] font-black text-slate-600 uppercase">Origem / Casal</th>
+                          <th className="py-2 px-1 text-left text-[9px] font-black text-slate-600 uppercase">Local</th>
+                          <th className="py-2 px-1 text-left text-[9px] font-black text-slate-600 uppercase">Status</th>
+                          <th className="py-2 px-1 text-left text-[9px] font-black text-slate-600 uppercase">Início</th>
+                          <th className="py-2 px-1 text-left text-[9px] font-black text-slate-600 uppercase">Fertil.</th>
+                          <th className="py-2 px-1 text-left text-[9px] font-black text-slate-600 uppercase">Eclosão</th>
+                          <th className="py-2 px-1 text-left text-[9px] font-black text-slate-600 uppercase">Anilhar</th>
+                          <th className="py-2 px-1 text-left text-[9px] font-black text-slate-600 uppercase">Anilha</th>
+                          <th className="py-2 px-1 text-center text-[9px] font-black text-slate-600 uppercase">Ações</th>
                         </tr>
                       </thead>
 
@@ -517,14 +1292,36 @@ export function NinhosSection({
                           const especieEditada = egg.species && egg.species !== especieEsperada;
 
                           return (
-                            <tr key={`${ninho.id}-${egg.id || eggIdx}`} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                            <tr
+                              key={`${ninho.id}-${egg.id || eggIdx}`}
+                              className={`border-b border-emerald-100/70 transition-colors ${
+                                ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))
+                                  ? 'bg-amber-50/60 hover:bg-amber-100/60'
+                                  : eggIdx % 2 === 0
+                                    ? 'bg-white hover:bg-emerald-50'
+                                    : 'bg-emerald-50/50 hover:bg-emerald-100/60'
+                              }`}
+                            >
+                              {/* Seleção para edição em lote */}
+                              <td className="py-1.5 px-1 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))}
+                                  onChange={() =>
+                                    toggleOvoSelecionado(getChaveOvo(ninho.id, egg, eggIdx))
+                                  }
+                                  className="w-4 h-4 rounded border-2 border-amber-300 text-amber-500 focus:ring-2 focus:ring-amber-400 cursor-pointer"
+                                  title="Selecionar este ovo para edição em lote"
+                                />
+                              </td>
+
                               {/* Data Postura */}
                               <td className="py-1.5 px-1">
-                                <input
-                                  type="date"
+                                <DataCompacta
                                   value={egg.postura || ''}
-                                  onChange={(e) => onUpdateEgg(ninho.id, eggIdx, 'postura', e.target.value)}
-                                  className="text-[9px] font-bold text-slate-700 bg-transparent outline-none border border-slate-200 rounded px-1 py-0.5 w-28"
+                                  onChange={(value) => onUpdateEgg(ninho.id, eggIdx, 'postura', value)}
+                                  className="text-[9px] font-bold text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-1 w-24 h-7"
+                                  ariaLabel="Data da postura"
                                 />
                               </td>
 
@@ -581,7 +1378,7 @@ export function NinhosSection({
                                                 });
                                                 setEspecieDropdownAberto(null);
                                               }}
-                                              className="flex-shrink-0 text-[9px] font-bold px-2 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-all"
+                                              className="flex-shrink-0 text-[9px] font-black px-2 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-all"
                                               title="Criar nova espécie"
                                             >
                                               <i className="fas fa-plus"></i>
@@ -633,7 +1430,7 @@ export function NinhosSection({
                                                   setEspecieDropdownAberto(null);
                                                   setEspecieBusca('');
                                                 }}
-                                                className="text-[8px] font-bold px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition-all whitespace-nowrap"
+                                                className="text-[8px] font-black px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition-all whitespace-nowrap"
                                               >
                                                 Usar "{especieBusca}"
                                               </button>
@@ -645,7 +1442,7 @@ export function NinhosSection({
                                   </div>
 
                                   {especieEditada && (
-                                    <span className="text-[8px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-1 w-fit">
+                                    <span className="text-[8px] font-black text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-1 w-fit">
                                       <i className="fas fa-edit text-[7px]"></i>
                                       EDITADO
                                     </span>
@@ -655,20 +1452,83 @@ export function NinhosSection({
 
                               {/* Origem / Casal */}
                               <td className="py-1.5 px-1">
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-[9px] font-bold text-slate-700 uppercase">
-                                    {ninho.name || 'Ninho s/ nome'}
-                                  </span>
-                                  {casal ? (
-                                    <span className="text-[8px] font-bold text-slate-400">
-                                      Casal: {casal.cage || 'S/ Gaiola'}
-                                    </span>
-                                  ) : (
-                                    <span className="text-[8px] font-bold text-rose-400">
+                                {casal ? (() => {
+                                  const macho = aves.find(a => a.id === casal.mId);
+                                  const femea = aves.find(a => a.id === casal.fId);
+
+                                  const machoIdentificacao = macho?.ring || macho?.name || 'S/ anilha';
+                                  const femeaIdentificacao = femea?.ring || femea?.name || 'S/ anilha';
+                                  const machoNome = macho?.name || 'Macho';
+                                  const femeaNome = femea?.name || 'Fêmea';
+
+                                  return (
+                                    <div
+                                      className="flex flex-col items-start gap-1 min-w-0 max-w-[92px]"
+                                      title={`Macho: ${machoNome} | Fêmea: ${femeaNome} | Ninho: ${ninho.name || 'S/ nome'} | Gaiola: ${casal.cage || 'S/ Gaiola'}`}
+                                    >
+                                      {/* Fotos do casal */}
+                                      <div className="flex items-center flex-shrink-0">
+                                        <div
+                                          className="w-7 h-7 rounded-full border-2 border-white shadow-sm overflow-hidden bg-slate-100 flex items-center justify-center"
+                                          title={`♂ ${machoIdentificacao}`}
+                                        >
+                                          {macho?.photo ? (
+                                            <img
+                                              src={macho.photo}
+                                              alt={machoNome}
+                                              onClick={() => setFotoCasalZoom(macho.photo)}
+                              className="cursor-zoom-in w-full h-full object-cover"
+                                            />
+                                          ) : (
+                                            <i className="fas fa-mars text-blue-500 text-[10px]"></i>
+                                          )}
+                                        </div>
+
+                                        <div
+                                          className="w-7 h-7 rounded-full border-2 border-white shadow-sm overflow-hidden bg-slate-100 flex items-center justify-center -ml-2"
+                                          title={`♀ ${femeaIdentificacao}`}
+                                        >
+                                          {femea?.photo ? (
+                                            <img
+                                              src={femea.photo}
+                                              alt={femeaNome}
+                              onClick={() => setFotoCasalZoom(femea.photo)}
+                              className="cursor-zoom-in w-full h-full object-cover"
+                                            />
+                                          ) : (
+                                            <i className="fas fa-venus text-pink-500 text-[10px]"></i>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* Identificação compacta: macho e fêmea em linhas separadas */}
+                                      <div
+                                        className="flex flex-col gap-0 leading-tight min-w-0 max-w-full"
+                                        title={`${machoNome} × ${femeaNome}`}
+                                      >
+                                        <span className="text-[8px] font-black text-blue-700 truncate max-w-full">
+                                          ♂ {machoIdentificacao}
+                                        </span>
+                                        <span className="text-[8px] font-black text-pink-700 truncate max-w-full">
+                                          ♀ {femeaIdentificacao}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })() : (
+                                  <div
+                                    className="flex items-center gap-1.5 min-w-0 max-w-[92px]"
+                                    title={`Ninho: ${ninho.name || 'S/ nome'} | Sem casal associado`}
+                                  >
+                                    <div className="w-7 h-7 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center flex-shrink-0">
+                                      <i className="fas fa-heart-broken text-rose-400 text-[10px]"></i>
+                                    </div>
+
+                                    <span className="text-[8px] font-bold text-rose-400 whitespace-nowrap">
                                       Sem casal
                                     </span>
-                                  )}
-                                </div>
+                                  </div>
+                                )}
                               </td>
 
                               {/* Local */}
@@ -692,38 +1552,25 @@ export function NinhosSection({
 
                               {/* Status */}
                               <td className="py-1.5 px-1">
-                                <select
-                                  value={egg.status}
-                                  onChange={(e) => {
-                                    const novoStatus = e.target.value;
+                                <StatusSelector
+                                  status={egg.status}
+                                  onChange={(novoStatus) =>
+                                    onUpdateEgg(ninho.id, eggIdx, 'status', novoStatus)
+                                  }
+                                  onChocar={() => {
+                                    setChocaModal({
+                                      ninhoId: ninho.id,
+                                      eggIdx
+                                    });
 
-                                    if (novoStatus === 'Chocando') {
-                                      setChocaModal({
-                                        ninhoId: ninho.id,
-                                        eggIdx
-                                      });
-
-                                      setChocaData({
-                                        tipo: 'pais',
-                                        dataInicio: new Date().toISOString().split('T')[0],
-                                        casalAmasId: '',
-                                        localChoca: ''
-                                      });
-
-                                      return;
-                                    }
-
-                                    onUpdateEgg(ninho.id, eggIdx, 'status', novoStatus);
+                                    setChocaData({
+                                      tipo: 'pais',
+                                      dataInicio: new Date().toISOString().split('T')[0],
+                                      casalAmasId: '',
+                                      localChoca: ''
+                                    });
                                   }}
-                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded outline-none border ${getStatusColor(egg.status)}`}
-                                >
-                                  <option value="Em Espera">Em Espera</option>
-                                  <option value="Chocando">Chocando</option>
-                                  <option value="Fértil">Fértil</option>
-                                  <option value="Infértil">Infértil</option>
-                                  <option value="Eclodido">Eclodido</option>
-                                  <option value="Perdido">Perdido</option>
-                                </select>
+                                />
                               </td>
 
                               {/* Início Choca */}
@@ -739,24 +1586,36 @@ export function NinhosSection({
                                         localChoca: ''
                                       });
                                     }}
-                                    className="text-[8px] font-bold px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition-all whitespace-nowrap"
+                                    className="text-[8px] font-black px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition-all whitespace-nowrap"
                                   >
                                     Iniciar
                                   </button>
                                 ) : (
                                   <div className="flex flex-col gap-1">
-                                    <input
-                                      type="date"
+                                    <DataCompacta
                                       value={egg.inicioChoca || ''}
-                                      onChange={(e) => onUpdateEgg(ninho.id, eggIdx, 'inicioChoca', e.target.value)}
-                                      className="text-[10px] font-bold text-slate-700 bg-transparent outline-none border border-slate-200 rounded-lg px-2 py-1"
+                                      onChange={(value) => onUpdateEgg(ninho.id, eggIdx, 'inicioChoca', value)}
+                                      className="text-[10px] font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-1 w-24 h-7"
+                                      ariaLabel="Data de início da choca"
                                     />
-                                    {egg.casalChocandoId && egg.casalChocandoId !== ninho.casalId && (
-                                      <span className="text-[8px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
-                                        <i className="fas fa-users text-[7px] mr-1"></i>
-                                        AMAS
-                                      </span>
-                                    )}
+                                    {egg.casalChocandoId && egg.casalChocandoId !== ninho.casalId && (() => {
+                                      const casalAmas = casais.find(c => c.id === egg.casalChocandoId);
+                                      const machoAmas = casalAmas ? aves.find(a => a.id === casalAmas.mId) : undefined;
+                                      const femeaAmas = casalAmas ? aves.find(a => a.id === casalAmas.fId) : undefined;
+
+                                      const machoAmasId = machoAmas?.ring || machoAmas?.name || 'S/ anilha';
+                                      const femeaAmasId = femeaAmas?.ring || femeaAmas?.name || 'S/ anilha';
+
+                                      return (
+                                        <span
+                                          className="text-[8px] font-black text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded"
+                                          title={`Casal de amas: ${machoAmas?.name || machoAmasId} × ${femeaAmas?.name || femeaAmasId}`}
+                                        >
+                                          <i className="fas fa-users text-[7px] mr-1"></i>
+                                          AMAS: {machoAmasId} × {femeaAmasId}
+                                        </span>
+                                      );
+                                    })()}
                                   </div>
                                 )}
                               </td>
@@ -767,14 +1626,14 @@ export function NinhosSection({
                                   <div className="flex items-center gap-2">
                                     <div className="flex flex-col gap-1">
                                       {(egg.status === 'Fértil' || egg.status === 'Infértil') && (
-                                        <span className={`text-[8px] font-bold uppercase ${
+                                        <span className={`text-[8px] font-black uppercase ${
                                           egg.status === 'Fértil' ? 'text-emerald-600' : 'text-rose-600'
                                         }`}>
                                           {egg.status === 'Fértil' ? 'Fértil em:' : 'Infértil em:'}
                                         </span>
                                       )}
                                       <span className="text-[9px] font-bold text-slate-600">
-                                        {new Date(dataFertilidade).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                        {formatarDataCurta(dataFertilidade)}
                                       </span>
                                       {egg.status === 'Chocando' && (
                                         <div className="flex items-center gap-2">
@@ -835,14 +1694,14 @@ export function NinhosSection({
                                   <div className="flex items-center gap-2">
                                     <div className="flex flex-col gap-1">
                                       {egg.status === 'Eclodido' && (
-                                        <span className="text-[8px] font-bold text-emerald-600 uppercase">
+                                        <span className="text-[8px] font-black text-emerald-600 uppercase">
                                           Eclodido em:
                                         </span>
                                       )}
                                       <span className="text-[10px] font-bold text-slate-600">
                                         {egg.status === 'Eclodido' && egg.dataEclosao
-                                          ? new Date(egg.dataEclosao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-                                          : new Date(dataEclosao).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                                          ? formatarDataCurta(egg.dataEclosao)
+                                          : formatarDataCurta(dataEclosao)
                                         }
                                       </span>
                                       {(egg.status === 'Chocando' || egg.status === 'Fértil' || egg.status === 'Eclodido') && (
@@ -879,34 +1738,91 @@ export function NinhosSection({
                               <td className="py-1.5 px-1">
                                 {dataAnilhamento ? (
                                   <div className="text-[10px] font-bold text-slate-600">
-                                    {new Date(dataAnilhamento).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                    {formatarDataCurta(dataAnilhamento)}
                                   </div>
                                 ) : (
                                   <span className="text-[10px] text-slate-400">--</span>
                                 )}
                               </td>
 
-                              {/* Data Anilhamento */}
+                              {/* Data Anilhamento / Saída do Ninho */}
                               <td className="py-1.5 px-1">
                                 {egg.status === 'Eclodido' ? (
-                                  egg.filhoteAnilhado ? (
-                                    <div className="flex items-center gap-1">
-                                      <i className="fas fa-check-circle text-emerald-600 text-[8px]"></i>
-                                      <span className="text-[9px] font-bold text-slate-600">
-                                        {egg.anilha}
-                                      </span>
-                                    </div>
-                                  ) : (
-                                    <button
-                                      onClick={() => {
-                                        setAnilhamentoModal({ ninhoId: ninho.id, eggIdx });
-                                        setAnilhaData({ numero: '', ano: new Date().getFullYear() });
-                                      }}
-                                      className="text-[8px] font-bold px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all whitespace-nowrap"
-                                    >
-                                      Anilhar
-                                    </button>
-                                  )
+                                  <div className="flex flex-col gap-1.5 min-w-[90px]">
+                                    {egg.filhoteAnilhado ? (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setAnilhamentoModal({
+                                              ninhoId: ninho.id,
+                                              eggIdx
+                                            });
+                                            setAnilhaEditando(true);
+                                            setAnilhaData({
+                                              numero: egg.anilha || '',
+                                              ano: egg.anoAnilha || new Date().getFullYear()
+                                            });
+                                          }}
+                                          className={`flex items-center gap-1 text-[9px] font-bold rounded px-1.5 py-1 text-left transition-all ${
+                                            (egg as any).dataSaidaNinho
+                                              ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                              : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                                          }`}
+                                          title="Editar anilha"
+                                        >
+                                          <i className="fas fa-ring text-[8px]"></i>
+                                          <span className="truncate">{egg.anilha}</span>
+                                          <i className="fas fa-pencil-alt text-[7px] ml-auto"></i>
+                                        </button>
+
+                                        {(egg as any).dataSaidaNinho ? (
+                                          <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded whitespace-nowrap">
+                                            <i className="fas fa-check-circle mr-1"></i>
+                                            Saiu {formatarDataCurta((egg as any).dataSaidaNinho)}
+                                          </span>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setSaidaNinhoModal({
+                                                ninhoId: ninho.id,
+                                                eggIdx
+                                              });
+                                              setDataSaidaNinho(
+                                                new Date().toISOString().split('T')[0]
+                                              );
+                                            }}
+                                            disabled={!onRegistrarSaidaDoNinho}
+                                            className="text-[8px] font-black px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                            title="Registrar que o filhote saiu do ninho e incluí-lo no Plantel"
+                                          >
+                                            <i className="fas fa-sign-out-alt mr-1"></i>
+                                            Sair do ninho
+                                          </button>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setAnilhamentoModal({
+                                            ninhoId: ninho.id,
+                                            eggIdx
+                                          });
+                                          setAnilhaEditando(false);
+                                          setAnilhaData({
+                                            numero: '',
+                                            ano: new Date().getFullYear()
+                                          });
+                                        }}
+                                        className="text-[8px] font-black px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all whitespace-nowrap"
+                                      >
+                                        <i className="fas fa-ring mr-1"></i>
+                                        Anilhar
+                                      </button>
+                                    )}
+                                  </div>
                                 ) : (
                                   <span className="text-[10px] text-slate-400">--</span>
                                 )}
@@ -942,7 +1858,7 @@ export function NinhosSection({
         <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4">
           <div className="flex items-center gap-2 text-amber-700">
             <i className="fas fa-exclamation-triangle"></i>
-            <span className="text-xs font-bold uppercase">
+            <span className="text-xs font-black uppercase">
               Há ovos sem local definido. Selecione um local na coluna &quot;Local&quot;.
             </span>
           </div>
@@ -953,21 +1869,21 @@ export function NinhosSection({
       {eclosaoModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold text-slate-800 uppercase mb-4 flex items-center gap-2">
+            <h3 className="text-lg font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
               <i className="fas fa-egg text-emerald-600"></i>
               Marcar como Eclodido
             </h3>
             
             <div className="space-y-4">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                   Data de Eclosão
                 </label>
-                <input
-                  type="date"
+                <DataCompacta
                   value={dataEclosao}
-                  onChange={(e) => setDataEclosao(e.target.value)}
-                  className="w-full border-2 border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-emerald-500"
+                  onChange={setDataEclosao}
+                  className="w-full h-12 border-2 border-slate-200 p-3 rounded-xl text-sm font-bold bg-white outline-none focus-within:border-emerald-500"
+                  ariaLabel="Data de eclosão"
                 />
                 <p className="text-[9px] text-slate-400 mt-1">Padrão: dia vigente</p>
               </div>
@@ -975,13 +1891,13 @@ export function NinhosSection({
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => setEclosaoModal(null)}
-                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-xs uppercase"
+                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-black text-xs uppercase"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleEclodir}
-                  className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold text-xs uppercase"
+                  className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-black text-xs uppercase"
                 >
                   Confirmar Eclosão
                 </button>
@@ -995,33 +1911,33 @@ export function NinhosSection({
       {chocaModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold text-slate-800 uppercase mb-4 flex items-center gap-2">
+            <h3 className="text-lg font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
               <i className="fas fa-play-circle text-indigo-600"></i>
               Iniciar Choca
             </h3>
             
             <div className="space-y-4">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                   Data de Início
                 </label>
-                <input
-                  type="date"
+                <DataCompacta
                   value={chocaData.dataInicio}
-                  onChange={(e) => setChocaData({ ...chocaData, dataInicio: e.target.value })}
-                  className="w-full border-2 border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-indigo-500"
+                  onChange={(value) => setChocaData({ ...chocaData, dataInicio: value })}
+                  className="w-full h-12 border-2 border-slate-200 p-3 rounded-xl text-sm font-bold bg-white outline-none focus-within:border-indigo-500"
+                  ariaLabel="Data de início da choca"
                 />
                 <p className="text-[9px] text-slate-400 mt-1">Padrão: dia vigente</p>
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                   Tipo de Choca
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => setChocaData({ ...chocaData, tipo: 'pais' })}
-                    className={`py-3 px-4 rounded-xl font-bold text-xs uppercase transition-all ${
+                    className={`py-3 px-4 rounded-xl font-black text-xs uppercase transition-all ${
                       chocaData.tipo === 'pais'
                         ? 'bg-indigo-600 text-white'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -1032,7 +1948,7 @@ export function NinhosSection({
                   </button>
                   <button
                     onClick={() => setChocaData({ ...chocaData, tipo: 'amas' })}
-                    className={`py-3 px-4 rounded-xl font-bold text-xs uppercase transition-all ${
+                    className={`py-3 px-4 rounded-xl font-black text-xs uppercase transition-all ${
                       chocaData.tipo === 'amas'
                         ? 'bg-purple-600 text-white'
                         : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -1047,7 +1963,7 @@ export function NinhosSection({
               {chocaData.tipo === 'amas' && (
                 <>
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                       Casal de Amas
                     </label>
                     <CasalSelector
@@ -1065,7 +1981,7 @@ export function NinhosSection({
                   {criandoCasalAmas && (
                     <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-xs font-bold text-purple-700 uppercase">
+                        <h4 className="text-xs font-black text-purple-700 uppercase">
                           <i className="fas fa-plus-circle mr-1"></i>
                           Criar Novo Casal de Amas
                         </h4>
@@ -1078,7 +1994,7 @@ export function NinhosSection({
                       </div>
 
                       <div>
-                        <label className="text-[9px] font-bold text-purple-600 uppercase block mb-1">
+                        <label className="text-[9px] font-black text-purple-600 uppercase block mb-1">
                           Macho
                         </label>
                         <select
@@ -1096,7 +2012,7 @@ export function NinhosSection({
                       </div>
 
                       <div>
-                        <label className="text-[9px] font-bold text-purple-600 uppercase block mb-1">
+                        <label className="text-[9px] font-black text-purple-600 uppercase block mb-1">
                           Fêmea
                         </label>
                         <select
@@ -1114,7 +2030,7 @@ export function NinhosSection({
                       </div>
 
                       <div>
-                        <label className="text-[9px] font-bold text-purple-600 uppercase block mb-1">
+                        <label className="text-[9px] font-black text-purple-600 uppercase block mb-1">
                           Gaiola
                         </label>
                         <input
@@ -1129,7 +2045,7 @@ export function NinhosSection({
                   )}
 
                   <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                       Local do Ninho
                     </label>
                     <input
@@ -1146,14 +2062,14 @@ export function NinhosSection({
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => setChocaModal(null)}
-                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-xs uppercase"
+                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-black text-xs uppercase"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleConfirmarChoca}
                   disabled={chocaData.tipo === 'amas' && (!chocaData.casalAmasId || !chocaData.localChoca)}
-                  className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold text-xs uppercase disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-black text-xs uppercase disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Confirmar Choca
                 </button>
@@ -1163,18 +2079,18 @@ export function NinhosSection({
         </div>
       )}
 
-      {/* Modal de Anilhamento */}
+      {/* Modal de Anilhamento / Edição da Anilha */}
       {anilhamentoModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full">
-            <h3 className="text-lg font-bold text-slate-800 uppercase mb-4 flex items-center gap-2">
+            <h3 className="text-lg font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
               <i className="fas fa-ring text-amber-600"></i>
-              Anilhar Filhote
+              {anilhaEditando ? 'Editar Anilha' : 'Anilhar Filhote'}
             </h3>
             
             <div className="space-y-4">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                   Número da Anilha
                 </label>
                 <input
@@ -1187,7 +2103,7 @@ export function NinhosSection({
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                   Ano da Anilha
                 </label>
                 <input
@@ -1199,19 +2115,27 @@ export function NinhosSection({
                 <p className="text-[9px] text-slate-400 mt-1">Padrão: ano vigente</p>
               </div>
 
+              {anilhaEditando && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[9px] text-amber-800 font-bold">
+                  <i className="fas fa-info-circle mr-1"></i>
+                  Se apagar completamente a anilha e salvar, o filhote volta para
+                  <strong> Anilha pendente</strong>.
+                </div>
+              )}
+
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => setAnilhamentoModal(null)}
-                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-xs uppercase"
+                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-black text-xs uppercase"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleAnilhar}
-                  disabled={!anilhaData.numero}
-                  className="flex-1 bg-amber-600 text-white py-3 rounded-xl font-bold text-xs uppercase disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!anilhaEditando && !anilhaData.numero.trim()}
+                  className="flex-1 bg-amber-600 text-white py-3 rounded-xl font-black text-xs uppercase disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Anilhar e Mover para Plantel
+                  {anilhaEditando ? 'Salvar Anilha' : 'Confirmar Anilhamento'}
                 </button>
               </div>
             </div>
@@ -1219,111 +2143,78 @@ export function NinhosSection({
         </div>
       )}
 
-      {/* Modal de Edição em Lote */}
-      {edicaoLoteModal && (() => {
-        const ninho = ninhos.find(n => n.id === edicaoLoteModal);
-        if (!ninho) return null;
-
-        const handleAplicarLote = () => {
-          if (loteTipo === 'status' && loteStatus) {
-            ninho.eggs.forEach((_, idx) => {
-              onUpdateEgg(ninho.id, idx, 'status', loteStatus);
-            });
-            alert(`Status alterado para "${loteStatus}" em ${ninho.eggs.length} ovo(s)`);
-          } else if (loteTipo === 'postura' && loteData) {
-            ninho.eggs.forEach((_, idx) => {
-              onUpdateEgg(ninho.id, idx, 'postura', loteData);
-            });
-            alert(`Data de postura alterada em ${ninho.eggs.length} ovo(s)`);
-          } else if (loteTipo === 'inicioChoca' && loteData) {
-            ninho.eggs.forEach((_, idx) => {
-              onUpdateEgg(ninho.id, idx, 'inicioChoca', loteData);
-            });
-            alert(`Data de início de choca alterada em ${ninho.eggs.length} ovo(s)`);
-          }
-          setEdicaoLoteModal(null);
-          setLoteStatus('');
-          setLoteData('');
-        };
+      {/* Modal de Saída do Ninho */}
+      {saidaNinhoModal && (() => {
+        const ninhoSaida = ninhos.find(n => n.id === saidaNinhoModal.ninhoId);
+        const eggSaida = ninhoSaida?.eggs[saidaNinhoModal.eggIdx];
 
         return (
           <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl p-6 max-w-md w-full">
-              <h3 className="text-lg font-bold text-slate-800 uppercase mb-4 flex items-center gap-2">
-                <i className="fas fa-edit text-amber-600"></i>
-                Edição em Lote - {ninho.eggs.length} ovo(s)
+            <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl">
+              <h3 className="text-lg font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
+                <i className="fas fa-sign-out-alt text-emerald-600"></i>
+                Registrar saída do ninho
               </h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
-                    Campo a Editar
-                  </label>
-                  <select
-                    value={loteTipo}
-                    onChange={(e) => setLoteTipo(e.target.value as any)}
-                    className="w-full border-2 border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-amber-500"
-                  >
-                    <option value="status">Status</option>
-                    <option value="postura">Data de Postura</option>
-                    <option value="inicioChoca">Data de Início da Choca</option>
-                  </select>
-                </div>
 
-                {loteTipo === 'status' && (
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
-                      Novo Status
-                    </label>
-                    <select
-                      value={loteStatus}
-                      onChange={(e) => setLoteStatus(e.target.value)}
-                      className="w-full border-2 border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-amber-500"
-                    >
-                      <option value="">Selecione...</option>
-                      <option value="Em Espera">Em Espera</option>
-                      <option value="Chocando">Chocando</option>
-                      <option value="Fértil">Fértil</option>
-                      <option value="Infértil">Infértil</option>
-                      <option value="Eclodido">Eclodido</option>
-                      <option value="Perdido">Perdido</option>
-                    </select>
-                  </div>
-                )}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4">
+                <p className="text-[10px] font-bold text-emerald-800">
+                  Filhote <strong>{eggSaida?.anilha || 'sem anilha'}</strong>
+                </p>
+                <p className="text-[9px] text-emerald-700 mt-1">
+                  Ao confirmar, o filhote será incluído no Plantel e o registro
+                  continuará no ninho e no histórico do casal.
+                </p>
+              </div>
 
-                {(loteTipo === 'postura' || loteTipo === 'inicioChoca') && (
-                  <div>
-                    <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
-                      Nova Data
-                    </label>
-                    <input
-                      type="date"
-                      value={loteData}
-                      onChange={(e) => setLoteData(e.target.value)}
-                      className="w-full border-2 border-slate-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-amber-500"
-                    />
-                  </div>
-                )}
+              <div>
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
+                  Data de saída do ninho
+                </label>
+                <DataCompacta
+                  value={dataSaidaNinho}
+                  onChange={setDataSaidaNinho}
+                  className="w-full h-12 border-2 border-slate-200 p-3 rounded-xl text-sm font-bold bg-white outline-none focus-within:border-emerald-500"
+                  ariaLabel="Data de saída do ninho"
+                />
+              </div>
 
-                <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={() => {
-                      setEdicaoLoteModal(null);
-                      setLoteStatus('');
-                      setLoteData('');
-                    }}
-                    className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-xs uppercase"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleAplicarLote}
-                    disabled={loteTipo === 'status' ? !loteStatus : !loteData}
-                    className="flex-1 bg-amber-600 text-white py-3 rounded-xl font-bold text-xs uppercase disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Aplicar a Todos
-                  </button>
-                </div>
+              <div className="mt-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
+                  Novo local do filhote
+                </label>
+                <select
+                  value={novoLocalSaida}
+                  onChange={(e) => setNovoLocalSaida(e.target.value)}
+                  className="w-full h-12 border-2 border-slate-200 px-3 rounded-xl text-sm font-bold bg-white outline-none focus:border-emerald-500"
+                >
+                  <option value="">Selecione o novo local</option>
+                  {(config.locaisOvos || []).map((local) => (
+                    <option key={local} value={local}>
+                      {local}
+                    </option>
+                  ))}
+                  {novoLocalSaida && !(config.locaisOvos || []).includes(novoLocalSaida) && (
+                    <option value={novoLocalSaida}>{novoLocalSaida}</option>
+                  )}
+                </select>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setSaidaNinhoModal(null)}
+                  className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-black text-xs uppercase hover:bg-slate-200"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRegistrarSaidaNinho}
+                  className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-black text-xs uppercase hover:bg-emerald-700"
+                >
+                  <i className="fas fa-check mr-2"></i>
+                  Confirmar saída
+                </button>
               </div>
             </div>
           </div>
@@ -1360,14 +2251,14 @@ export function NinhosSection({
         return (
           <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-3xl p-6 max-w-md w-full">
-              <h3 className="text-lg font-bold text-slate-800 uppercase mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
                 <i className="fas fa-heart text-indigo-600"></i>
                 Criar Novo Casal
               </h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                     Macho
                   </label>
                   <AveSelector
@@ -1380,7 +2271,7 @@ export function NinhosSection({
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                     Fêmea
                   </label>
                   <AveSelector
@@ -1393,7 +2284,7 @@ export function NinhosSection({
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                     Número da Gaiola
                   </label>
                   <input
@@ -1414,14 +2305,14 @@ export function NinhosSection({
                       setNovoCasalDropdownFemea('');
                       setNovoCasalDropdownGaiola('');
                     }}
-                    className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-xs uppercase"
+                    className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-black text-xs uppercase"
                   >
                     Cancelar
                   </button>
                   <button
                     onClick={handleCriarCasal}
                     disabled={!novoCasalDropdownMacho || !novoCasalDropdownFemea}
-                    className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold text-xs uppercase disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-black text-xs uppercase disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Criar e Associar
                   </button>
@@ -1433,17 +2324,108 @@ export function NinhosSection({
       })()}
 
       {/* Modal de Criar Nova Espécie */}
+      {/* ============================================================
+          MODAL DE EDIÇÃO EM LOTE
+          ============================================================ */}
+      {edicaoLoteAberta && (
+        <div className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="bg-amber-500 text-white px-5 py-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black uppercase">Editar ovos selecionados</h3>
+                <p className="text-[10px] font-bold text-amber-100 mt-1">{ovosSelecionados.size} {ovosSelecionados.size === 1 ? 'ovo selecionado' : 'ovos selecionados'}</p>
+              </div>
+              <button type="button" onClick={() => setEdicaoLoteAberta(false)} className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center"><i className="fas fa-times"></i></button>
+            </div>
+            <div className="p-5 overflow-y-auto space-y-3">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-[10px] text-amber-800 font-bold">
+                Marque <strong>Alterar</strong> somente nos campos que deseja modificar.
+                Os demais permanecerão como estão em cada ovo.
+              </div>
+
+              {loteCampos.status && loteValores.status === 'Chocando' && (
+                <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 text-[10px] text-purple-800 font-bold">
+                  <i className="fas fa-info-circle mr-1"></i>
+                  Para ovos marcados como <strong>Chocando</strong>, informe também
+                  o <strong>Início da choca</strong>. Casal e local da choca são
+                  opcionais e só serão alterados se você marcar esses campos.
+                </div>
+              )}
+
+              {loteCampos.status && loteValores.status === 'Eclodido' && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-[10px] text-emerald-800 font-bold">
+                  <i className="fas fa-info-circle mr-1"></i>
+                  Para ovos marcados como <strong>Eclodido</strong>, informe também
+                  a <strong>Data de eclosão</strong>.
+                </div>
+              )}
+
+              {[
+                ['postura','Data de postura','date'],
+                ['local','Local','selectLocal'],
+                ['species','Espécie','selectSpecies'],
+                ['status','Status','selectStatus'],
+                ['inicioChoca','Início da choca','date'],
+                ['casalChocandoId','Casal que está chocando','selectCasal'],
+                ['localChoca','Local da choca','text'],
+                ['dataEclosao','Data de eclosão','date'],
+                ['filhoteId','ID do filhote associado','text'],
+              ].map(([campo, label, tipo]) => {
+                const key = campo as keyof typeof loteCampos;
+                return (
+                  <div key={campo} className="border border-slate-200 rounded-xl p-3">
+                    <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                      <input type="checkbox" checked={loteCampos[key]} onChange={(e) => setLoteCampos(v => ({ ...v, [key]: e.target.checked }))} className="w-4 h-4 text-amber-500 rounded" />
+                      <span className="text-[10px] font-black uppercase text-slate-700">Alterar {label.toLowerCase()}</span>
+                    </label>
+                    {tipo === 'selectLocal' ? (
+                      <select disabled={!loteCampos[key]} value={loteValores.local} onChange={(e) => setLoteValores(v => ({ ...v, local: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400">
+                        <option value="">Sem local</option>{(config.locaisOvos || []).map(local => <option key={local} value={local}>{local}</option>)}
+                      </select>
+                    ) : tipo === 'selectSpecies' ? (
+                      <select disabled={!loteCampos[key]} value={loteValores.species} onChange={(e) => setLoteValores(v => ({ ...v, species: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400">
+                        <option value="">Sem espécie</option>{getEspeciesDisponiveis().map(esp => <option key={esp} value={esp}>{esp}</option>)}
+                      </select>
+                    ) : tipo === 'selectStatus' ? (
+                      <select disabled={!loteCampos[key]} value={loteValores.status} onChange={(e) => setLoteValores(v => ({ ...v, status: e.target.value as Egg['status'] }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400">
+                        {(['Em Espera','Chocando','Fértil','Infértil','Eclodido','Perdido'] as Egg['status'][]).map(status => <option key={status} value={status}>{status}</option>)}
+                      </select>
+                    ) : tipo === 'selectCasal' ? (
+                      <select disabled={!loteCampos[key]} value={loteValores.casalChocandoId} onChange={(e) => setLoteValores(v => ({ ...v, casalChocandoId: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400">
+                        <option value="">Sem casal</option>{casais.map(casal => { const macho=aves.find(a=>a.id===casal.mId); const femea=aves.find(a=>a.id===casal.fId); return <option key={casal.id} value={casal.id}>{macho?.ring || macho?.name || 'Macho'} × {femea?.ring || femea?.name || 'Fêmea'}</option>; })}
+                      </select>
+                    ) : (
+                      <input type={tipo === 'date' ? 'date' : 'text'} disabled={!loteCampos[key]} value={loteValores[key as keyof typeof loteValores] as string} onChange={(e) => setLoteValores(v => ({ ...v, [key]: e.target.value }))} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400" />
+                    )}
+                  </div>
+                );
+              })}
+
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[9px] text-slate-600 font-bold">
+                <i className="fas fa-lock mr-1 text-slate-400"></i>
+                Anilha, ano da anilha e o estado de anilhamento não são alterados por esta função.
+                A anilhagem continua sendo feita individualmente pelo botão <strong>Anilhar</strong>.
+              </div>
+            </div>
+            <div className="border-t border-slate-200 p-4 flex gap-2 bg-white">
+              <button type="button" onClick={() => setEdicaoLoteAberta(false)} className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-black text-xs uppercase hover:bg-slate-200">Cancelar</button>
+              <button type="button" onClick={aplicarEdicaoLote} className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-black text-xs uppercase hover:bg-amber-600"><i className="fas fa-check mr-2"></i>Aplicar alterações</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {criarEspecieModal && (
         <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-xl w-full">
-            <h3 className="text-lg font-bold text-slate-800 uppercase mb-4 flex items-center gap-2">
+            <h3 className="text-lg font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
               <i className="fas fa-feather-alt text-emerald-600"></i>
               Criar Nova Espécie
             </h3>
             
             <div className="space-y-4">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                   Nome da Espécie *
                 </label>
                 <input
@@ -1458,7 +2440,7 @@ export function NinhosSection({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                     <i className="fas fa-calendar-check text-[8px] mr-1"></i>
                     Dias p/ Verificar Fertilidade
                   </label>
@@ -1472,7 +2454,7 @@ export function NinhosSection({
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                     <i className="fas fa-egg text-[8px] mr-1"></i>
                     Duração da Choca (dias)
                   </label>
@@ -1486,7 +2468,7 @@ export function NinhosSection({
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                     <i className="fas fa-ring text-[8px] mr-1"></i>
                     Dias p/ Anilhamento
                   </label>
@@ -1500,7 +2482,7 @@ export function NinhosSection({
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase block mb-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
                     <i className="fas fa-sign-out-alt text-[8px] mr-1"></i>
                     Dias p/ Saída do Ninho
                   </label>
@@ -1534,7 +2516,7 @@ export function NinhosSection({
                     diasSaidaNinho: 21
                   });
                 }}
-                className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-xs uppercase hover:bg-slate-200 transition-all"
+                className="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-black text-xs uppercase hover:bg-slate-200 transition-all"
               >
                 Cancelar
               </button>
@@ -1576,12 +2558,39 @@ export function NinhosSection({
                   });
                 }}
                 disabled={!novaEspecieData.nome.trim()}
-                className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-bold text-xs uppercase hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-black text-xs uppercase hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <i className="fas fa-check mr-2"></i>
                 Criar Espécie
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {fotoCasalZoom && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4"
+          onClick={() => setFotoCasalZoom(null)}
+        >
+          <div
+            className="relative max-w-5xl max-h-[90vh] flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setFotoCasalZoom(null)}
+              className="absolute -top-3 -right-3 z-10 w-9 h-9 rounded-full bg-white text-slate-700 shadow-lg font-black hover:bg-emerald-50"
+              aria-label="Fechar foto ampliada"
+              title="Fechar"
+            >
+              ×
+            </button>
+            <img
+              src={fotoCasalZoom}
+              alt="Foto ampliada do casal"
+              className="max-w-[90vw] max-h-[90vh] object-contain rounded-2xl shadow-2xl"
+            />
           </div>
         </div>
       )}
