@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Header } from "./components/Header";
 import { Navigation } from "./components/Navigation";
 import { DashboardSection } from "./components/DashboardSection";
 import { NinhosSection } from "./components/NinhosSection";
@@ -234,7 +233,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <Header />
 
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
