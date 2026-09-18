@@ -787,156 +787,6 @@ export function useDatabase() {
     [db, save, colorLists]
   );
 
-  const importAves = useCallback(
-    (avesData: Array<Omit<Ave, 'id'>>) => {
-      if (!avesData.length) {
-        return 0;
-      }
-
-      const newDb: Database = {
-        ...db,
-        aves: [...db.aves],
-        config: {
-          ...db.config,
-          especies: [...db.config.especies]
-        }
-      };
-
-      const newColorLists = {
-        coresCabeca: [...colorLists.coresCabeca],
-        coresPeito: [...colorLists.coresPeito],
-        coresDorso: [...colorLists.coresDorso]
-      };
-
-      const baseId = Date.now();
-
-      /*
-       * Primeiro criamos todas as aves importadas com seus IDs.
-       * Assim, um filho pode localizar o pai ou a mãe mesmo quando
-       * o registro do pai/mãe aparece depois dele na planilha.
-       */
-      const avesImportadasComId: Array<{
-        ave: Ave;
-        dados: Omit<Ave, 'id'> & {
-          pai?: string;
-          mae?: string;
-          parentMaleId?: string;
-          parentFemaleId?: string;
-        };
-      }> = avesData.map((aveData, index) => ({
-        ave: {
-          id: `${baseId}-${index}`,
-          ...aveData,
-          // Nome padrão da ave: anilha-ano.
-          // Durante a importação, o padrão é mantido mesmo que
-          // a planilha traga "sem nome" ou deixe o campo vazio.
-          name:
-            aveData.ring && aveData.ringYear
-              ? `${String(aveData.ring).trim()}-${aveData.ringYear}`
-              : aveData.name || 'sem nome'
-        } as Ave,
-        dados: aveData as Omit<Ave, 'id'> & {
-          pai?: string;
-          mae?: string;
-          parentMaleId?: string;
-          parentFemaleId?: string;
-        }
-      }));
-
-      const todasAvesDisponiveis = [
-        ...newDb.aves,
-        ...avesImportadasComId.map((item) => item.ave)
-      ];
-
-      const localizarAve = (referencia?: string): Ave | undefined => {
-        const valor = String(referencia ?? '').trim();
-
-        if (!valor) {
-          return undefined;
-        }
-
-        return todasAvesDisponiveis.find((ave) => {
-          return (
-            ave.id === valor ||
-            ave.name?.trim().toLowerCase() === valor.toLowerCase() ||
-            ave.ring?.trim().toLowerCase() === valor.toLowerCase()
-          );
-        });
-      };
-
-      avesImportadasComId.forEach(({ ave, dados }) => {
-        const paiImportado =
-          dados.pai || dados.parentMaleId || '';
-
-        const maeImportada =
-          dados.mae || dados.parentFemaleId || '';
-
-        const paiEncontrado = localizarAve(paiImportado);
-        const maeEncontrada = localizarAve(maeImportada);
-
-        if (paiEncontrado) {
-          ave.parentMaleId = paiEncontrado.id;
-        }
-
-        if (maeEncontrada) {
-          ave.parentFemaleId = maeEncontrada.id;
-        }
-
-        // Os campos pai/mae são auxiliares da planilha e não fazem
-        // parte do modelo principal da ave.
-        delete (ave as Ave & { pai?: string }).pai;
-        delete (ave as Ave & { mae?: string }).mae;
-
-        newDb.aves.push(ave);
-
-        if (
-          ave.species &&
-          ave.species.trim() !== '' &&
-          !newDb.config.especies.includes(ave.species)
-        ) {
-          newDb.config.especies.push(ave.species);
-        }
-
-        if (
-          ave.corCabeca &&
-          ave.corCabeca.trim() !== '' &&
-          !newColorLists.coresCabeca.includes(ave.corCabeca)
-        ) {
-          newColorLists.coresCabeca.push(ave.corCabeca);
-        }
-
-        if (
-          ave.corPeito &&
-          ave.corPeito.trim() !== '' &&
-          !newColorLists.coresPeito.includes(ave.corPeito)
-        ) {
-          newColorLists.coresPeito.push(ave.corPeito);
-        }
-
-        if (
-          ave.corDorso &&
-          ave.corDorso.trim() !== '' &&
-          !newColorLists.coresDorso.includes(ave.corDorso)
-        ) {
-          newColorLists.coresDorso.push(ave.corDorso);
-        }
-      });
-
-      if (JSON.stringify(newColorLists) !== JSON.stringify(colorLists)) {
-        localStorage.setItem(
-          'gpro_v19_colors',
-          JSON.stringify(newColorLists)
-        );
-        setColorLists(newColorLists);
-      }
-
-      save(newDb);
-
-      return avesData.length;
-    },
-    [db, save, colorLists]
-  );
-
   const saveCasal = useCallback(
     (casalData: Omit<Casal, 'id'>) => {
       const newDb = { ...db };
@@ -969,11 +819,7 @@ export function useDatabase() {
         if (idx !== -1) {
           newDb.ninhos[idx] = {
             ...newDb.ninhos[idx],
-            ...ninho,
-            active:
-              ninho.active ??
-              newDb.ninhos[idx].active ??
-              true
+            ...ninho
           } as Ninho;
         }
       } else {
@@ -981,9 +827,8 @@ export function useDatabase() {
           id: Date.now().toString(),
           name: ninho.name || '',
           casalId: ninho.casalId || '',
-          eggs: [],
-          active: ninho.active ?? true
-        });
+          eggs: []
+        } as Ninho);
       }
 
       save(newDb);
@@ -1255,20 +1100,15 @@ export function useDatabase() {
         ninho &&
         ninho.eggs[eggIdx]
       ) {
-        const eggAtualizado: Egg = {
-          ...ninho.eggs[eggIdx],
-          [field]: value
-        } as Egg;
+        ninho.eggs[eggIdx][field] =
+          value as any;
 
-        ninho.eggs[eggIdx] =
-          eggAtualizado;
-
-        // Se está atualizando a espécie,
-        // adicionar à lista central se não existir
+        // ✨ Se está atualizando a espécie, adicionar à lista central se não existir
         if (
           field === 'species' &&
           value &&
-          value !== 'Não especificado' &&
+          value !==
+            'Não especificado' &&
           !newDb.config.especies.includes(
             value
           )
@@ -1599,7 +1439,8 @@ export function useDatabase() {
     (
       ninhoId: string,
       eggIdx: number,
-      dataSaidaNinho: string
+      dataSaidaNinho: string,
+      novoLocal?: string
     ) => {
       const newDb = { ...db };
 
@@ -1757,10 +1598,15 @@ export function useDatabase() {
       ave.ring = egg.anilha;
       ave.ringYear = egg.anoAnilha!;
 
-      egg.dataSaidaNinho = dataSaidaNinho;
-       (egg as any).localAtual = novoLocal;
-       (ave as any).localAtual = novoLocal;
-       (ave as any).saiuDoNinho = true;
+      egg.dataSaidaNinho =
+        dataSaidaNinho;
+
+      // Preserva o local escolhido no momento da saída.
+      if (novoLocal && novoLocal.trim()) {
+        (egg as any).localSaidaNinho = novoLocal.trim();
+      } else {
+        delete (egg as any).localSaidaNinho;
+      }
 
       /*
        * Garantir que o histórico esteja vinculado à mesma ave.
@@ -1903,6 +1749,7 @@ export function useDatabase() {
        * Apenas a saída é desfeita.
        */
       delete egg.dataSaidaNinho;
+      delete (egg as any).localSaidaNinho;
 
       /*
        * O histórico permanece.
@@ -2523,7 +2370,6 @@ export function useDatabase() {
     colorLists,
 
     saveAve,
-    importAves,
     saveCasal,
     saveNinho,
 
