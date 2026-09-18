@@ -338,17 +338,32 @@ export function AvesSection({
       local?: string;
       location?: string;
       localSaidaNinho?: string;
-      porta?: string;
+      localCriacao?: string;
+      localAlojamento?: string;
     };
 
-    const localDireto =
-      aveAny.localAtual ||
-      aveAny.localSaidaNinho ||
-      aveAny.location ||
-      aveAny.porta;
+    const localDireto = [
+      aveAny.localAtual,
+      aveAny.localSaidaNinho,
+      aveAny.localCriacao,
+      aveAny.localAlojamento,
+      aveAny.location,
+      aveAny.local
+    ].find(valor => {
+      if (!valor) return false;
+
+      const valorNormalizado = String(valor).trim().toLowerCase();
+
+      return (
+        valorNormalizado !== 'ninho' &&
+        valorNormalizado !== 'caixa' &&
+        valorNormalizado !== 'não informado' &&
+        valorNormalizado !== 'nao informado'
+      );
+    });
 
     if (localDireto) {
-      return localDireto;
+      return String(localDireto).trim();
     }
 
     // Filhotes originados de ovos podem não possuir o local gravado
@@ -360,7 +375,8 @@ export function AvesSection({
           localSaidaNinho?: string;
           localAtual?: string;
           location?: string;
-          porta?: string;
+          localCriacao?: string;
+          localAlojamento?: string;
         };
 
         const correspondePorId =
@@ -382,14 +398,28 @@ export function AvesSection({
           localSaidaNinho?: string;
           localAtual?: string;
           location?: string;
-          porta?: string;
+          localCriacao?: string;
+          localAlojamento?: string;
         };
 
-        const localOvo =
-          ovoAny.localSaidaNinho ||
-          ovoAny.localAtual ||
-          ovoAny.location ||
-          ovoAny.porta;
+        const localOvo = [
+          ovoAny.localSaidaNinho,
+          ovoAny.localAtual,
+          ovoAny.localCriacao,
+          ovoAny.localAlojamento,
+          ovoAny.location
+        ].find(valor => {
+          if (!valor) return false;
+
+          const valorNormalizado = String(valor).trim().toLowerCase();
+
+          return (
+            valorNormalizado !== 'ninho' &&
+            valorNormalizado !== 'caixa' &&
+            valorNormalizado !== 'não informado' &&
+            valorNormalizado !== 'nao informado'
+          );
+        });
 
         if (localOvo) {
           return localOvo;
@@ -853,7 +883,7 @@ export function AvesSection({
 
                     <td className="px-2 sm:px-3 py-3 align-middle">
                       <span className="inline-flex max-w-full px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-[9px] sm:text-[10px] font-bold break-words">
-                        {obterLocalAve(ave)}
+                        {obterLocalAve(ave, ninhos)}
                       </span>
                     </td>
 
