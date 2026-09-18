@@ -254,8 +254,21 @@ export function AvesSection({
       const correspondeSexo =
         !filtroSexo || ave.sex === filtroSexo;
 
-      const correspondeStatus =
-        !filtroStatus || ave.status === filtroStatus;
+      const statusNormalizado = String(ave.status || '')
+        .trim()
+        .toLowerCase();
+
+      const ehObito =
+        statusNormalizado === 'falecido' ||
+        statusNormalizado === 'óbito' ||
+        statusNormalizado === 'obito';
+
+      // Por padrão, aves em óbito ficam ocultas no Plantel.
+      // Quando o usuário selecionar um status específico no filtro,
+      // o filtro passa a respeitar exatamente o status escolhido.
+      const correspondeStatus = filtroStatus
+        ? ave.status === filtroStatus
+        : !ehObito;
 
       const correspondeCorCabeca =
         !filtroCorCabeca || ave.corCabeca === filtroCorCabeca;
@@ -441,6 +454,8 @@ export function AvesSection({
       ativo: 'Ativo',
       vendido: 'Vendido',
       falecido: 'Falecido',
+      óbito: 'Óbito',
+      obito: 'Óbito',
       doado: 'Doado',
       perdido: 'Perdido',
       inativo: 'Inativo'
@@ -585,7 +600,11 @@ export function AvesSection({
       return 'bg-blue-100 text-blue-700';
     }
 
-    if (statusNormalizado === 'falecido') {
+    if (
+      statusNormalizado === 'falecido' ||
+      statusNormalizado === 'óbito' ||
+      statusNormalizado === 'obito'
+    ) {
       return 'bg-red-100 text-red-700';
     }
 
