@@ -712,26 +712,26 @@ export function AvesSection({
   }
 
   return (
-    <section className="space-y-5">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+    <section className="space-y-4">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between bg-white rounded-2xl border border-slate-200 shadow-sm px-4 py-3">
         <div>
-          <h2 className="text-2xl font-black text-slate-800">
+          <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
             Plantel de Aves
           </h2>
 
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
             Gerencie, consulte e exporte os registros do seu plantel.
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
             onClick={() => setMostrarFiltros(value => !value)}
-            className={`px-4 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition ${
+            className={`px-3 py-2 rounded-lg font-bold text-[10px] flex items-center gap-2 transition ${
               mostrarFiltros || quantidadeFiltrosAtivos > 0
-                ? 'bg-slate-800 text-white'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200'
             }`}
           >
             <i className="fas fa-filter"></i>
@@ -748,7 +748,7 @@ export function AvesSection({
             <button
               type="button"
               onClick={() => setMostrarEdicaoLote(true)}
-              className="bg-violet-600 hover:bg-violet-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+              className="bg-violet-600 hover:bg-violet-700 text-white px-3.5 py-2 rounded-lg font-bold text-[10px] flex items-center gap-2 transition"
             >
               <i className="fas fa-layer-group"></i>
               EDITAR {avesSelecionadas.length} EM LOTE
@@ -758,7 +758,7 @@ export function AvesSection({
           <button
             type="button"
             onClick={() => onOpenModal('ave')}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg font-bold text-[10px] flex items-center gap-2 transition"
           >
             <i className="fas fa-plus"></i>
             ADICIONAR AVE
@@ -768,7 +768,7 @@ export function AvesSection({
             type="button"
             onClick={() => inputImportacaoRef.current?.click()}
             disabled={importandoPlanilha}
-            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-3.5 py-2 rounded-lg font-bold text-[10px] flex items-center gap-2 transition"
           >
             <i className={importandoPlanilha ? 'fas fa-spinner fa-spin' : 'fas fa-file-import'}></i>
             {importandoPlanilha ? 'IMPORTANDO...' : 'IMPORTAR PLANILHA'}
@@ -785,7 +785,7 @@ export function AvesSection({
           <button
             type="button"
             onClick={() => gerarPlanilhaAves(aves, config)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg font-bold text-[10px] flex items-center gap-2 transition"
           >
             <i className="fas fa-file-excel"></i>
             GERAR PLANILHA
@@ -794,7 +794,7 @@ export function AvesSection({
           <button
             type="button"
             onClick={() => gerarPlanilhaModeloAves(config, 200, aves)}
-            className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] flex items-center gap-2 transition"
+            className="bg-amber-500 hover:bg-amber-600 text-white px-3.5 py-2 rounded-lg font-bold text-[10px] flex items-center gap-2 transition"
           >
             <i className="fas fa-file-download"></i>
             BAIXAR MODELO
@@ -802,7 +802,7 @@ export function AvesSection({
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-3">
         <div className="relative">
           <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
 
@@ -811,13 +811,13 @@ export function AvesSection({
             value={busca}
             onChange={event => setBusca(event.target.value)}
             placeholder="Buscar por espécie, anilha, nome, sexo, status, criador..."
-            className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
           />
         </div>
 
         {mostrarFiltros && (
-          <div className="mt-4 pt-4 border-t border-slate-100">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+          <div className="mt-3 pt-3 border-t border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-2.5">
               <CheckboxFilter
                 label="Espécie"
                 options={especies}
@@ -893,7 +893,7 @@ export function AvesSection({
         )}
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-1">
         <p className="text-xs font-bold text-slate-500">
           Exibindo {avesFiltradas.length} de {aves.length} aves
         </p>
@@ -959,8 +959,8 @@ export function AvesSection({
               </colgroup>
 
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="px-2 py-3 text-center">
+                <tr className="bg-slate-50/70 border-b border-slate-200">
+                  <th className="px-2 py-2.5 text-center">
                     <input
                       type="checkbox"
                       checked={todasFiltradasSelecionadas}
@@ -970,23 +970,23 @@ export function AvesSection({
                     />
                   </th>
 
-                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
+                  <th className="px-2 sm:px-3 py-2.5 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
                     Ave
                   </th>
 
-                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
+                  <th className="px-2 sm:px-3 py-2.5 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
                     Sexo
                   </th>
 
-                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
+                  <th className="px-2 sm:px-3 py-2.5 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
                     Status
                   </th>
 
-                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
+                  <th className="px-2 sm:px-3 py-2.5 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
                     Cores
                   </th>
 
-                  <th className="px-2 sm:px-3 py-3 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
+                  <th className="px-2 sm:px-3 py-2.5 text-[9px] sm:text-[10px] font-black uppercase text-slate-500">
                     Local
                   </th>
 
@@ -1000,11 +1000,11 @@ export function AvesSection({
                 {avesFiltradas.map(ave => (
                   <tr
                     key={ave.id}
-                    className={`hover:bg-slate-50 transition ${
+                    className={`hover:bg-slate-50/80 transition-colors duration-150 ${
                       avesSelecionadas.includes(ave.id) ? 'bg-violet-50' : ''
                     }`}
                   >
-                    <td className="px-2 py-3 text-center align-middle">
+                    <td className="px-2 py-2.5 text-center align-middle">
                       <input
                         type="checkbox"
                         checked={avesSelecionadas.includes(ave.id)}
@@ -1014,14 +1014,14 @@ export function AvesSection({
                       />
                     </td>
 
-                    <td className="px-2 sm:px-3 py-3 align-middle">
+                    <td className="px-2 sm:px-3 py-2.5 align-middle">
                       <button
                         type="button"
                         onClick={() => onViewDetails?.(ave.id)}
                         className="flex items-center gap-2 text-left min-w-0 w-full"
                       >
                         <div
-                          className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-emerald-50 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer"
+                          className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-emerald-50 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer"
                           onClick={event => {
                             event.stopPropagation();
                             if (ave.photo) {
@@ -1068,7 +1068,7 @@ export function AvesSection({
                       </button>
                     </td>
 
-                    <td className="px-1 sm:px-2 py-3 text-center align-middle">
+                    <td className="px-1 sm:px-2 py-2.5 text-center align-middle">
                       <span
                         className={`inline-flex items-center justify-center text-lg font-black leading-none ${
                           ave.sex?.trim().toLowerCase() === 'macho'
@@ -1085,7 +1085,7 @@ export function AvesSection({
                       </span>
                     </td>
 
-                    <td className="px-2 sm:px-3 py-3 align-middle">
+                    <td className="px-2 sm:px-3 py-2.5 align-middle">
                       <span
                         className={`inline-flex px-2 py-1 rounded-full text-[9px] sm:text-[10px] font-black ${obterClasseStatus(
                           ave.status
@@ -1095,7 +1095,7 @@ export function AvesSection({
                       </span>
                     </td>
 
-                    <td className="px-2 sm:px-3 py-3 align-middle">
+                    <td className="px-2 sm:px-3 py-2.5 align-middle">
                       <div className="text-[9px] sm:text-[10px] text-slate-500 leading-4 break-words">
                           <p>
                             <strong>C:</strong>{' '}
@@ -1114,7 +1114,7 @@ export function AvesSection({
                         </div>
                     </td>
 
-                    <td className="px-2 sm:px-3 py-3 align-middle">
+                    <td className="px-2 sm:px-3 py-2.5 align-middle">
                       <span className="inline-flex max-w-full px-2 py-1 rounded-lg bg-slate-100 text-slate-700 text-[9px] sm:text-[10px] font-bold break-words">
                         {obterLocalAve(ave, ninhos)}
                       </span>
@@ -1126,7 +1126,7 @@ export function AvesSection({
                           type="button"
                           onClick={() => onViewDetails?.(ave.id)}
                           title="Visualizar detalhes"
-                          className="w-6 h-5 rounded-md flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition"
                         >
                           <i className="fas fa-eye text-xs"></i>
                         </button>
@@ -1135,7 +1135,7 @@ export function AvesSection({
                           type="button"
                           onClick={() => onOpenModal('ave', ave.id)}
                           title="Editar ave"
-                          className="w-6 h-5 rounded-md flex items-center justify-center text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-blue-500 hover:bg-blue-50 hover:text-blue-700 transition"
                         >
                           <i className="fas fa-pen text-xs"></i>
                         </button>
@@ -1144,7 +1144,7 @@ export function AvesSection({
                           type="button"
                           onClick={() => onDeleteAve(ave.id)}
                           title="Excluir ave"
-                          className="w-6 h-5 rounded-md flex items-center justify-center text-red-500 hover:bg-red-50 hover:text-red-700 transition"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 hover:text-red-700 transition"
                         >
                           <i className="fas fa-trash text-xs"></i>
                         </button>
