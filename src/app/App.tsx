@@ -21,6 +21,13 @@ export type TabType =
   | "financeiro"
   | "config";
 
+export type DashboardFiltro =
+  | { tipo: "aves"; status?: string }
+  | { tipo: "ninhos"; statusOvo?: Egg["status"] }
+  | { tipo: "casais" }
+  | { tipo: "calendario" }
+  | undefined;
+
 export type ModalType =
   | "ave"
   | "aves-lote"
@@ -151,6 +158,18 @@ export interface Lancamento {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
+  const [dashboardFiltro, setDashboardFiltro] =
+    useState<DashboardFiltro>(undefined);
+
+  const navegar = (
+    tab: TabType,
+    filtro?: DashboardFiltro,
+  ) => {
+    setDashboardFiltro(filtro);
+    setActiveTab(tab);
+  };
+
+  void dashboardFiltro;
   const [modalType, setModalType] = useState<ModalType>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
@@ -243,7 +262,7 @@ export default function App() {
             casais={db.casais}
             ninhos={db.ninhos}
             config={db.config}
-            onNavigate={(tab) => setActiveTab(tab)}
+            onNavigate={(tab) => navegar(tab)}
           />
         )}
 
