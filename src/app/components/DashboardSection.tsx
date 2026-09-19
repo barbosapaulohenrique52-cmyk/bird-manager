@@ -286,9 +286,19 @@ export function DashboardSection({
               <button
                 key={String(label)}
                 type="button"
-                onClick={() => navegarParaNinhosComFiltro(
-                  label === 'Em espera' ? 'Em Espera' : String(label) as 'Chocando' | 'Fértil' | 'Eclodido' | 'Infértil' | 'Perdido'
-                )}
+                onClick={() => {
+                  const filtroPorLabel: Record<string, 'Em Espera' | 'Chocando' | 'Fértil' | 'Infértil' | 'Eclodido' | 'Perdido'> = {
+                    'Chocando': 'Chocando',
+                    'Férteis': 'Fértil',
+                    'Eclodidos': 'Eclodido',
+                    'Em espera': 'Em Espera',
+                    'Inférteis': 'Infértil',
+                    'Perdidos': 'Perdido',
+                  };
+
+                  const filtro = filtroPorLabel[String(label)];
+                  if (filtro) navegarParaNinhosComFiltro(filtro);
+                }}
                 className="text-left rounded-xl p-2 hover:bg-slate-50 transition-all"
               >
                 <div className="flex items-center justify-between">
