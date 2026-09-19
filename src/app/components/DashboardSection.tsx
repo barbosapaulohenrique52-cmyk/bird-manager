@@ -148,16 +148,62 @@ function CardKpi({
   valor,
   detalhe,
   icon,
-  iconClass
+  iconClass,
+  onClick
 }: {
   titulo: string;
   valor: string | number;
   detalhe?: string;
   icon: string;
   iconClass: string;
+  onClick?: () => void;
 }) {
+  const conteudo = (
+    <>
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${iconClass}`}>
+        <i className={`fas ${icon} text-base`}></i>
+      </div>
+
+      <div className="min-w-0 text-left">
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider truncate">
+          {titulo}
+        </p>
+        <div className="flex items-end gap-2 mt-1">
+          <h3 className="text-xl font-bold text-slate-800 leading-none">
+            {valor}
+          </h3>
+          {detalhe && (
+            <span className="text-[10px] text-slate-400 mb-0.5 truncate">
+              {detalhe}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {onClick && (
+        <i className="fas fa-chevron-right text-[9px] text-slate-300 ml-auto shrink-0"></i>
+      )}
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex items-center gap-3 text-left hover:border-slate-300 hover:shadow-md transition-all"
+      >
+        {conteudo}
+      </button>
+    );
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex items-center gap-3">
+      {conteudo}
+    </div>
+  );
+}
       <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${iconClass}`}>
         <i className={`fas ${icon} text-base`}></i>
       </div>
@@ -186,18 +232,25 @@ function BarraStatus({
   valor,
   total,
   icon,
-  iconClass
+  iconClass,
+  onClick
 }: {
   label: string;
   valor: number;
   total: number;
   icon: string;
   iconClass: string;
+  onClick?: () => void;
 }) {
   const percentual = total > 0 ? Math.min(100, (valor / total) * 100) : 0;
 
   return (
-    <div>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!onClick}
+      className={`w-full text-left ${onClick ? 'cursor-pointer hover:bg-slate-50 rounded-lg p-1 -m-1 transition-colors' : 'cursor-default'}`}
+    >
       <div className="flex items-center justify-between gap-3 mb-1.5">
         <div className="flex items-center gap-2 min-w-0">
           <i className={`fas ${icon} text-[11px] ${iconClass}`}></i>
@@ -212,7 +265,7 @@ function BarraStatus({
           style={{ width: `${percentual}%` }}
         />
       </div>
-    </div>
+    </button>
   );
 }
 
@@ -506,6 +559,7 @@ export function DashboardSection({
           detalhe={`${machos} M / ${femeas} F`}
           icon="fa-dove"
           iconClass="bg-slate-100 text-slate-600"
+          onClick={() => onNavigate('aves')}
         />
 
         <CardKpi
@@ -514,6 +568,7 @@ export function DashboardSection({
           detalhe={`${casaisAtivos} ativos`}
           icon="fa-heart"
           iconClass="bg-rose-50 text-rose-600"
+          onClick={() => onNavigate('casais')}
         />
 
         <CardKpi
@@ -522,6 +577,7 @@ export function DashboardSection({
           detalhe={`${ninhosAtivos} ativos`}
           icon="fa-home"
           iconClass="bg-amber-50 text-amber-600"
+          onClick={() => onNavigate('ninhos')}
         />
 
         <CardKpi
@@ -530,6 +586,7 @@ export function DashboardSection({
           detalhe={`${ovosChocando} chocando`}
           icon="fa-egg"
           iconClass="bg-emerald-50 text-emerald-600"
+          onClick={() => onNavigate('ninhos')}
         />
 
         <CardKpi
@@ -538,6 +595,7 @@ export function DashboardSection({
           detalhe="histórico"
           icon="fa-feather"
           iconClass="bg-violet-50 text-violet-600"
+          onClick={() => onNavigate('casais')}
         />
       </div>
 
@@ -567,6 +625,7 @@ export function DashboardSection({
               valor={ovosChocando}
               total={ovos.length}
               icon="fa-fire"
+              onClick={() => onNavigate('ninhos')}
               iconClass="text-orange-500"
             />
 
@@ -575,6 +634,7 @@ export function DashboardSection({
               valor={ovosFerteis}
               total={ovos.length}
               icon="fa-check-circle"
+              onClick={() => onNavigate('ninhos')}
               iconClass="text-emerald-500"
             />
 
@@ -583,6 +643,7 @@ export function DashboardSection({
               valor={ovosEclodidos}
               total={ovos.length}
               icon="fa-feather-alt"
+              onClick={() => onNavigate('ninhos')}
               iconClass="text-violet-500"
             />
 
@@ -591,6 +652,7 @@ export function DashboardSection({
               valor={ovosEmEspera}
               total={ovos.length}
               icon="fa-clock"
+              onClick={() => onNavigate('ninhos')}
               iconClass="text-slate-400"
             />
 
@@ -599,6 +661,7 @@ export function DashboardSection({
               valor={ovosInferteis}
               total={ovos.length}
               icon="fa-minus-circle"
+              onClick={() => onNavigate('ninhos')}
               iconClass="text-blue-500"
             />
 
@@ -607,6 +670,7 @@ export function DashboardSection({
               valor={ovosPerdidos}
               total={ovos.length}
               icon="fa-exclamation-circle"
+              onClick={() => onNavigate('ninhos')}
               iconClass="text-red-500"
             />
           </div>
