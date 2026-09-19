@@ -71,12 +71,15 @@ export function DashboardSection({
     expandir = false
   ) => {
     (window as any).__gouldproExpandirNinhos = expandir;
-    onNavigate('ninhos');
+    // O Dashboard pode estar montado enquanto Ninhos está desmontado.
+    // Portanto, o filtro precisa ficar disponível antes da navegação.
+    (window as any).__gouldproNinhosFiltro = filtro;
     window.dispatchEvent(
       new CustomEvent('gouldpro-ninhos-filtro', {
         detail: { filtro }
       })
     );
+    onNavigate('ninhos');
   };
 
   const proximasAcoes = (() => {
