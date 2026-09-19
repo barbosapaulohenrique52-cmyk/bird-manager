@@ -287,12 +287,12 @@ export function NinhosSection({
   // Guarda o ninho/casal de origem escolhido para adicionar ovos em cada local.
   const [ninhoSelecionadoPorLocal, setNinhoSelecionadoPorLocal] = useState<Record<string, string>>({});
 
-  const [filtroStatusOvo, setFiltroStatusOvo] = useState<Egg['status'] | ''>('');
-
   useEffect(() => {
     if (dashboardFiltro?.tipo !== 'ninhos') return;
-    setFiltroStatusOvo(dashboardFiltro.statusOvo || '');
-    setVisualizacaoOvos('local');
+    if (dashboardFiltro.statusOvo) {
+      // O filtro é aplicado diretamente na exibição dos ovos abaixo.
+
+    }
   }, [dashboardFiltro]);
 
   const toggleNinhoExpandido = (ninhoId: string) => {
@@ -379,26 +379,18 @@ export function NinhosSection({
     });
   };
 
-  const ovosVisiveis = todosOvos.filter((item) => !filtroStatusOvo || item.egg.status === filtroStatusOvo);
-
   const toggleTodosOvos = () => {
     setOvosSelecionados((atual) => {
-      const todasVisiveisSelecionadas = ovosVisiveis.length > 0 && ovosVisiveis.every((item) => atual.has(item.chave));
-
-      if (todasVisiveisSelecionadas) {
-        const novo = new Set(atual);
-        ovosVisiveis.forEach((item) => novo.delete(item.chave));
-        return novo;
+      if (atual.size === todosOvos.length) {
+        return new Set();
       }
 
-      const novo = new Set(atual);
-      ovosVisiveis.forEach((item) => novo.add(item.chave));
-      return novo;
+      return new Set(todosOvos.map((item) => item.chave));
     });
   };
 
   const toggleTodosOvosDoNinho = (ninhoId: string) => {
-    const ovosDoNinho = ovosVisiveis.filter((item) => item.ninho.id === ninhoId);
+    const ovosDoNinho = todosOvos.filter((item) => item.ninho.id === ninhoId);
     setOvosSelecionados((atual) => {
       const novo = new Set(atual);
       const todosSelecionados = ovosDoNinho.every((item) => novo.has(item.chave));
@@ -824,7 +816,8 @@ export function NinhosSection({
     );
   };
 
-  const statusOvoDashboard: Egg['status'] | undefined = filtroStatusOvo || undefined;
+  const statusOvoDashboard: Egg['status'] | undefined =
+    dashboardFiltro?.tipo === 'ninhos' ? dashboardFiltro.statusOvo : undefined;
 
   const deveExibirOvoDashboard = (egg: Egg) =>
     !statusOvoDashboard || egg.status === statusOvoDashboard;
@@ -862,15 +855,16 @@ export function NinhosSection({
     });
   });
 
-  // Inclui também os locais cadastrados que ainda não possuem ovos.
-  const locaisParaExibir = new Map(ovosPorLocal);
-  (config.locaisOvos || []).forEach((local) => {
-    if (!locaisParaExibir.has(local)) locaisParaExibir.set(local, []);
-  });
-
-  const locaisOrdenados = Array.from(locaisParaExibir.entries()).sort((a, b) =>
-    a[0].localeCompare(b[0], 'pt-BR')
-  );
+  // Exibe somente locais que possuem pelo menos um ovo visível.
+  // Não criamos cartões vazios a partir da lista de locais cadastrados.
+  // Assim, locais sem ovos (ou sem filhotes registrados nos ovos) não aparecem.
+  const locaisOrdenados = Array.from(ovosPorLocal.entries())
+    .map(([local, ovos]) => [
+      local,
+      ovos.filter(({ egg }) => deveExibirOvoDashboard(egg))
+    ] as [string, Array<{ egg: Egg; ninho: Ninho; eggIdx: number }>])
+    .filter(([, ovos]) => ovos.length > 0)
+    .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
 
   const adicionarOvoAoLocal = (local: string) => {
     const ninhoId = ninhoSelecionadoPorLocal[local] || ninhos[0]?.id;
@@ -897,33 +891,7 @@ export function NinhosSection({
           Ninhos Ativos
         </h2>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2">
-            <i className="fas fa-filter text-emerald-600 text-[10px]"></i>
-            <label htmlFor="filtro-status-ovos" className="text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap">
-              Filtrar ovos
-            </label>
-            <select
-              id="filtro-status-ovos"
-              value={filtroStatusOvo}
-              onChange={(e) => setFiltroStatusOvo(e.target.value as Egg['status'] | '')}
-              className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[9px] font-bold text-slate-700 outline-none focus:border-emerald-500"
-            >
-              <option value="">Todos os status</option>
-              <option value="Em Espera">Em Espera</option>
-              <option value="Chocando">Chocando</option>
-              <option value="Fértil">Fértil</option>
-              <option value="Infértil">Infértil</option>
-              <option value="Eclodido">Eclodido</option>
-              <option value="Perdido">Perdido</option>
-            </select>
-            {filtroStatusOvo && (
-              <span className="text-[8px] font-black text-emerald-600 uppercase whitespace-nowrap">
-                {ovosVisiveis.length} {ovosVisiveis.length === 1 ? 'ovo' : 'ovos'}
-              </span>
-            )}
-          </div>
-
+        <div className="flex items-center gap-2">
           <div className="flex items-center bg-slate-100 border border-slate-200 rounded-xl p-1">
             <button
               type="button"
@@ -1073,7 +1041,7 @@ export function NinhosSection({
 
               {/* Resumo / expansão dos ovos do casal */}
               <div className="p-2">
-                {ninho.eggs.filter(deveExibirOvoDashboard).length === 0 ? (
+                {ninho.eggs.length === 0 ? (
                   <div className="text-center py-6 text-slate-400">
                     <i className="fas fa-egg text-2xl mb-2"></i>
                     <p className="text-sm">Nenhum ovo registrado</p>
@@ -1093,7 +1061,7 @@ export function NinhosSection({
                             Ovos deste casal
                           </h4>
                           <p className="text-[10px] font-bold text-slate-500 mt-0.5">
-                            {ninho.eggs.filter(deveExibirOvoDashboard).length} {ninho.eggs.filter(deveExibirOvoDashboard).length === 1 ? 'ovo registrado' : 'ovos registrados'}
+                            {ninho.eggs.length} {ninho.eggs.length === 1 ? 'ovo registrado' : 'ovos registrados'}
                           </p>
                         </div>
                       </div>
@@ -1117,7 +1085,7 @@ export function NinhosSection({
                       <div className="flex items-center gap-2">
                         <i className="fas fa-egg text-emerald-600 text-xs"></i>
                         <span className="text-[10px] font-bold text-emerald-700 uppercase">
-                          Ovos deste casal ({ninho.eggs.filter(deveExibirOvoDashboard).length})
+                          Ovos deste casal ({ninho.eggs.length})
                         </span>
                       </div>
 
@@ -1854,7 +1822,7 @@ export function NinhosSection({
                 Ovos por Local
               </h2>
               <span className="text-[10px] font-bold text-slate-400 uppercase">
-                {ovosVisiveis.length} ovos
+                {ninhos.reduce((total, ninho) => total + ninho.eggs.length, 0)} ovos
               </span>
             </div>
 
@@ -1862,7 +1830,7 @@ export function NinhosSection({
               <label className="flex items-center gap-2 px-2 py-1.5 cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={ovosVisiveis.length > 0 && ovosVisiveis.every((item) => ovosSelecionados.has(item.chave))}
+                  checked={todosOvos.length > 0 && ovosSelecionados.size === todosOvos.length}
                   onChange={toggleTodosOvos}
                   className="w-4 h-4 rounded border-2 border-amber-300 text-amber-500 focus:ring-2 focus:ring-amber-400 cursor-pointer"
                 />
