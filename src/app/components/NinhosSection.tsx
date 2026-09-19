@@ -284,15 +284,20 @@ export function NinhosSection({
   const [ninhosExpandidos, setNinhosExpandidos] = useState<Set<string>>(new Set());
   // Alterna entre a visualização dos ovos por casal/ninho e por local atual.
   const [visualizacaoOvos, setVisualizacaoOvos] = useState<'casal' | 'local'>('local');
+
+  // Filtro de status dos ovos. Por padrão, todos os ovos são exibidos.
+  // Quando o Dashboard abre esta aba, o filtro recebido é aplicado automaticamente.
+  const [filtroStatusOvo, setFiltroStatusOvo] = useState<Egg['status'] | 'Todos'>('Todos');
+
   // Guarda o ninho/casal de origem escolhido para adicionar ovos em cada local.
   const [ninhoSelecionadoPorLocal, setNinhoSelecionadoPorLocal] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (dashboardFiltro?.tipo !== 'ninhos') return;
-    if (dashboardFiltro.statusOvo) {
-      // O filtro é aplicado diretamente na exibição dos ovos abaixo.
 
-    }
+    setFiltroStatusOvo(dashboardFiltro.statusOvo || 'Todos');
+    // Sempre que vier do Dashboard, a visualização desejada é Por local.
+    setVisualizacaoOvos('local');
   }, [dashboardFiltro]);
 
   const toggleNinhoExpandido = (ninhoId: string) => {
@@ -816,11 +821,8 @@ export function NinhosSection({
     );
   };
 
-  const statusOvoDashboard: Egg['status'] | undefined =
-    dashboardFiltro?.tipo === 'ninhos' ? dashboardFiltro.statusOvo : undefined;
-
-  const deveExibirOvoDashboard = (egg: Egg) =>
-    !statusOvoDashboard || egg.status === statusOvoDashboard;
+  const deveExibirOvo = (egg: Egg) =>
+    filtroStatusOvo === 'Todos' || egg.status === filtroStatusOvo;
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -861,10 +863,14 @@ export function NinhosSection({
   const locaisOrdenados = Array.from(ovosPorLocal.entries())
     .map(([local, ovos]) => [
       local,
-      ovos.filter(({ egg }) => deveExibirOvoDashboard(egg))
+      ovos.filter(({ egg }) => deveExibirOvo(egg))
     ] as [string, Array<{ egg: Egg; ninho: Ninho; eggIdx: number }>])
     .filter(([, ovos]) => ovos.length > 0)
     .sort((a, b) => a[0].localeCompare(b[0], 'pt-BR'));
+
+  const totalOvosVisiveis = Array.from(ovosPorLocal.values())
+    .flat()
+    .filter(({ egg }) => deveExibirOvo(egg)).length;
 
   const adicionarOvoAoLocal = (local: string) => {
     const ninhoId = ninhoSelecionadoPorLocal[local] || ninhos[0]?.id;
@@ -1822,11 +1828,30 @@ export function NinhosSection({
                 Ovos por Local
               </h2>
               <span className="text-[10px] font-bold text-slate-400 uppercase">
-                {ninhos.reduce((total, ninho) => total + ninho.eggs.length, 0)} ovos
+                {totalOvosVisiveis} ovos
               </span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 bg-white border-2 border-slate-200 rounded-2xl p-2">
+              <div className="flex items-center gap-2">
+                <label className="text-[9px] font-bold text-slate-500 uppercase">
+                  Status dos ovos
+                </label>
+                <select
+                  value={filtroStatusOvo}
+                  onChange={(e) => setFiltroStatusOvo(e.target.value as Egg['status'] | 'Todos')}
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[9px] font-bold text-slate-700 uppercase outline-none focus:ring-2 focus:ring-emerald-300"
+                >
+                  <option value="Todos">Todos</option>
+                  <option value="Em Espera">Em Espera</option>
+                  <option value="Chocando">Chocando</option>
+                  <option value="Fértil">Fértil</option>
+                  <option value="Infértil">Infértil</option>
+                  <option value="Eclodido">Eclodido</option>
+                  <option value="Perdido">Perdido</option>
+                </select>
+              </div>
+
               <label className="flex items-center gap-2 px-2 py-1.5 cursor-pointer">
                 <input
                   type="checkbox"
