@@ -333,6 +333,7 @@ export default function App() {
             onUpdateNinho={updateNinho}
             onSaveConfig={saveConfig}
             onViewDetails={setAveDetalheId}
+            filtro={ninhosFiltro}
           />
         )}
 
