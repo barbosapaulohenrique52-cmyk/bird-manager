@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import type { Ave, Casal, Config, Egg, Ninho, TabType } from '../App';
+import type { Ave, Casal, Config, Egg, Ninho, TabType, DashboardFiltro } from '../App';
 
 interface DashboardSectionProps {
   aves: Ave[];
   casais: Casal[];
   ninhos: Ninho[];
   config: Config;
-  onNavigate: (tab: TabType) => void;
+  onNavigate: (tab: TabType, filtro?: DashboardFiltro) => void;
 }
 
 function formatarData(data?: string) {
@@ -453,7 +453,7 @@ export function DashboardSection({
 
         <button
           type="button"
-          onClick={() => onNavigate('calendario')}
+          onClick={() => onNavigate('calendario', { tipo: 'calendario' })}
           className="self-start xl:self-center bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-[11px] flex items-center gap-2 transition-all"
         >
           <i className="fas fa-calendar-alt text-emerald-600"></i>
@@ -530,7 +530,7 @@ export function DashboardSection({
           detalhe={`${machos} M / ${femeas} F`}
           icon="fa-dove"
           iconClass="bg-slate-100 text-slate-600"
-          onClick={() => onNavigate('aves')}
+          onClick={() => onNavigate('aves', { tipo: 'aves', status: 'Ativo' })}
         />
 
         <CardKpi
@@ -539,7 +539,7 @@ export function DashboardSection({
           detalhe={`${casaisAtivos} ativos`}
           icon="fa-heart"
           iconClass="bg-rose-50 text-rose-600"
-          onClick={() => onNavigate('casais')}
+          onClick={() => onNavigate('casais', { tipo: 'casais' })}
         />
 
         <CardKpi
@@ -548,7 +548,7 @@ export function DashboardSection({
           detalhe={`${ninhosAtivos} ativos`}
           icon="fa-home"
           iconClass="bg-amber-50 text-amber-600"
-          onClick={() => onNavigate('ninhos')}
+          onClick={() => onNavigate('ninhos', { tipo: 'ninhos' })}
         />
 
         <CardKpi
@@ -557,7 +557,7 @@ export function DashboardSection({
           detalhe={`${ovosChocando} chocando`}
           icon="fa-egg"
           iconClass="bg-emerald-50 text-emerald-600"
-          onClick={() => onNavigate('ninhos')}
+          onClick={() => onNavigate('ninhos', { tipo: 'ninhos' })}
         />
 
         <CardKpi
@@ -566,7 +566,7 @@ export function DashboardSection({
           detalhe="histórico"
           icon="fa-feather"
           iconClass="bg-violet-50 text-violet-600"
-          onClick={() => onNavigate('casais')}
+          onClick={() => onNavigate('casais', { tipo: 'casais' })}
         />
       </div>
 
@@ -583,7 +583,7 @@ export function DashboardSection({
 
             <button
               type="button"
-              onClick={() => onNavigate('ninhos')}
+              onClick={() => onNavigate('ninhos', { tipo: 'ninhos' })}
               className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 uppercase"
             >
               Ver ninhos
@@ -596,7 +596,7 @@ export function DashboardSection({
               valor={ovosChocando}
               total={ovos.length}
               icon="fa-fire"
-              onClick={() => onNavigate('ninhos')}
+              onClick={() => onNavigate('ninhos', { tipo: 'ninhos', statusOvo: 'Chocando' })}
               iconClass="text-orange-500"
             />
 
@@ -605,7 +605,7 @@ export function DashboardSection({
               valor={ovosFerteis}
               total={ovos.length}
               icon="fa-check-circle"
-              onClick={() => onNavigate('ninhos')}
+              onClick={() => onNavigate('ninhos', { tipo: 'ninhos', statusOvo: 'Fértil' })}
               iconClass="text-emerald-500"
             />
 
@@ -614,7 +614,7 @@ export function DashboardSection({
               valor={ovosEclodidos}
               total={ovos.length}
               icon="fa-feather-alt"
-              onClick={() => onNavigate('ninhos')}
+              onClick={() => onNavigate('ninhos', { tipo: 'ninhos', statusOvo: 'Eclodido' })}
               iconClass="text-violet-500"
             />
 
@@ -623,7 +623,7 @@ export function DashboardSection({
               valor={ovosEmEspera}
               total={ovos.length}
               icon="fa-clock"
-              onClick={() => onNavigate('ninhos')}
+              onClick={() => onNavigate('ninhos', { tipo: 'ninhos', statusOvo: 'Em Espera' })}
               iconClass="text-slate-400"
             />
 
@@ -632,7 +632,7 @@ export function DashboardSection({
               valor={ovosInferteis}
               total={ovos.length}
               icon="fa-minus-circle"
-              onClick={() => onNavigate('ninhos')}
+              onClick={() => onNavigate('ninhos', { tipo: 'ninhos', statusOvo: 'Infértil' })}
               iconClass="text-blue-500"
             />
 
@@ -641,7 +641,7 @@ export function DashboardSection({
               valor={ovosPerdidos}
               total={ovos.length}
               icon="fa-exclamation-circle"
-              onClick={() => onNavigate('ninhos')}
+              onClick={() => onNavigate('ninhos', { tipo: 'ninhos', statusOvo: 'Perdido' })}
               iconClass="text-red-500"
             />
           </div>
@@ -722,6 +722,7 @@ export function DashboardSection({
           {[
             {
               tab: 'aves' as TabType,
+              filtro: { tipo: 'aves', status: 'Ativo' } as DashboardFiltro,
               label: 'Plantel',
               detalhe: `${avesAtivas.length} aves ativas`,
               icon: 'fa-dove',
@@ -729,6 +730,7 @@ export function DashboardSection({
             },
             {
               tab: 'casais' as TabType,
+              filtro: { tipo: 'casais' } as DashboardFiltro,
               label: 'Casais',
               detalhe: `${casais.length} cadastrados`,
               icon: 'fa-heart',
@@ -736,6 +738,7 @@ export function DashboardSection({
             },
             {
               tab: 'ninhos' as TabType,
+              filtro: { tipo: 'ninhos' } as DashboardFiltro,
               label: 'Ninhos',
               detalhe: `${ninhos.length} cadastrados`,
               icon: 'fa-egg',
@@ -743,6 +746,7 @@ export function DashboardSection({
             },
             {
               tab: 'calendario' as TabType,
+              filtro: { tipo: 'calendario' } as DashboardFiltro,
               label: 'Calendário',
               detalhe: 'Ver agenda',
               icon: 'fa-calendar-alt',
@@ -752,7 +756,7 @@ export function DashboardSection({
             <button
               key={item.tab}
               type="button"
-              onClick={() => onNavigate(item.tab)}
+              onClick={() => onNavigate(item.tab, item.filtro)}
               className={`text-left rounded-xl p-3.5 transition-all ${item.className}`}
             >
               <div className="flex items-center justify-between gap-2">
