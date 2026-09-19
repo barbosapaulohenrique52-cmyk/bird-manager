@@ -13,6 +13,17 @@ import { PhotoZoom } from "./components/PhotoZoom";
 import { AveDetalhesModal } from "./components/AveDetalhesModal";
 import { useDatabase } from "./hooks/useDatabase";
 
+export type NinhosFiltro =
+  | "todos"
+  | "ovos"
+  | "filhotes"
+  | "Em Espera"
+  | "Chocando"
+  | "Fértil"
+  | "Infértil"
+  | "Eclodido"
+  | "Perdido";
+
 export type TabType =
   | "dashboard"
   | "ninhos"
@@ -151,14 +162,7 @@ export default function App() {
   const [editId, setEditId] = useState<string | null>(null);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
   const [aveDetalheId, setAveDetalheId] = useState<string | null>(null);
-
-  // Alvo reservado para a próxima etapa:
-  // quando o Dashboard informar um ovo específico, o App guardará
-  // sua identificação e abrirá a aba Ninhos.
-  const [ovoDashboardAlvo, setOvoDashboardAlvo] = useState<{
-    ninhoId: string;
-    eggId: string;
-  } | null>(null);
+  const [ninhosFiltro, setNinhosFiltro] = useState<NinhosFiltro>("todos");
 
   const {
     db,
@@ -225,16 +229,35 @@ export default function App() {
 
       if (!ninhoId || !eggId) return;
 
-      setOvoDashboardAlvo({ ninhoId, eggId });
+      // A abertura de um ovo específico não deve esconder outros ovos por filtro.
+      setNinhosFiltro("todos");
+      (window as any).__gouldproNinhosFiltro = "todos";
+      (window as any).__gouldproOvoAlvo = { ninhoId, eggId };
+      setActiveTab("ninhos");
+    };
+
+    const handleDashboardFiltroNinhos = (event: Event) => {
+      const customEvent = event as CustomEvent<{ filtro?: NinhosFiltro }>;
+      const filtro = customEvent.detail?.filtro;
+      if (!filtro) return;
+      setNinhosFiltro(filtro);
+      (window as any).__gouldproNinhosFiltro = filtro;
       setActiveTab("ninhos");
     };
 
     window.addEventListener("gouldpro-open-ovo", handleDashboardOvo);
+    window.addEventListener("gouldpro-ninhos-filtro", handleDashboardFiltroNinhos);
 
     return () => {
       window.removeEventListener("gouldpro-open-ovo", handleDashboardOvo);
+      window.removeEventListener("gouldpro-ninhos-filtro", handleDashboardFiltroNinhos);
     };
   }, []);
+
+  const navegarParaNinhos = (filtro: NinhosFiltro = "todos") => {
+    setNinhosFiltro(filtro);
+    setActiveTab("ninhos");
+  };
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -264,14 +287,28 @@ export default function App() {
 
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main className="flex-1 w-full px-2 sm:px-4 lg:ml-32 lg:px-6 pb-32 lg:pb-8">
+      <main className="flex-1 w-full px-2 sm:px-4 lg:ml-16 lg:px-6 pb-32 lg:pb-8">
         {activeTab === "dashboard" && (
           <DashboardSection
             aves={db.aves}
             casais={db.casais}
             ninhos={db.ninhos}
             config={db.config}
-            onNavigate={(tab) => setActiveTab(tab)}
+            onNavigate={(tab) => {
+              if (tab === "ninhos") {
+                const expandir = (window as any).__gouldproExpandirNinhos;
+                const filtro = expandir ? "ovos" : "todos";
+                setNinhosFiltro(filtro);
+                (window as any).__gouldproNinhosFiltro = filtro;
+              }
+              setActiveTab(tab);
+            }}
+            onOpenOvo={(ninhoId, eggId) => {
+              setNinhosFiltro("todos");
+              (window as any).__gouldproNinhosFiltro = "todos";
+              (window as any).__gouldproOvoAlvo = { ninhoId, eggId };
+              setActiveTab("ninhos");
+            }}
           />
         )}
 
