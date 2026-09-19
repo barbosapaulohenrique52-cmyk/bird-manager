@@ -21,13 +21,6 @@ export type TabType =
   | "financeiro"
   | "config";
 
-export type DashboardFiltro =
-  | { tipo: "aves"; status?: string }
-  | { tipo: "ninhos"; statusOvo?: Egg["status"] }
-  | { tipo: "casais" }
-  | { tipo: "calendario" }
-  | undefined;
-
 export type ModalType =
   | "ave"
   | "aves-lote"
@@ -158,17 +151,6 @@ export interface Lancamento {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
-  const [dashboardFiltro, setDashboardFiltro] =
-    useState<DashboardFiltro>(undefined);
-
-  const navegar = (
-    tab: TabType,
-    filtro?: DashboardFiltro,
-  ) => {
-    setDashboardFiltro(filtro);
-    setActiveTab(tab);
-  };
-
   const [modalType, setModalType] = useState<ModalType>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
@@ -261,7 +243,7 @@ export default function App() {
             casais={db.casais}
             ninhos={db.ninhos}
             config={db.config}
-            onNavigate={(tab, filtro) => navegar(tab, filtro)}
+            onNavigate={(tab) => setActiveTab(tab)}
           />
         )}
 
@@ -286,7 +268,6 @@ export default function App() {
             onUpdateNinho={updateNinho}
             onSaveConfig={saveConfig}
             onViewDetails={setAveDetalheId}
-            dashboardFiltro={dashboardFiltro}
           />
         )}
 
@@ -301,7 +282,6 @@ export default function App() {
             onUpdateAvesBatch={updateAvesBatch}
             onPhotoClick={setZoomPhoto}
             onViewDetails={setAveDetalheId}
-            dashboardFiltro={dashboardFiltro}
           />
         )}
 
