@@ -196,7 +196,7 @@ interface NinhosSectionProps {
   onUpdateEgg: (ninhoId: string, eggIdx: number, field: keyof Egg, value: any) => void;
   onEclodirOvo: (ninhoId: string, eggIdx: number, dataEclosao: string) => void;
   onAnilharFilhote: (ninhoId: string, eggIdx: number, anilha: string, anoAnilha: number) => void;
-  onRegistrarSaidaDoNinho?: (ninhoId: string, eggIdx: number, dataSaidaNinho: string) => void;
+  onRegistrarSaidaDoNinho?: (ninhoId: string, eggIdx: number, dataSaidaNinho: string, novoLocal: string) => void;
   onReverterEclosao: (ninhoId: string, eggIdx: number) => void;
   onUpdateNinhoCasal: (ninhoId: string, casalId: string) => void;
   onSaveCasal: (data: Omit<Casal, 'id'>) => string;
@@ -232,6 +232,7 @@ export function NinhosSection({
   const [anilhaEditando, setAnilhaEditando] = useState(false);
   const [saidaNinhoModal, setSaidaNinhoModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
   const [dataSaidaNinho, setDataSaidaNinho] = useState(new Date().toISOString().split('T')[0]);
+  const [novoLocalSaida, setNovoLocalSaida] = useState('');
   const [editCasalNinhoId, setEditCasalNinhoId] = useState<string | null>(null);
   const [dataEclosao, setDataEclosao] = useState(new Date().toISOString().split('T')[0]);
   const [chocaData, setChocaData] = useState({
@@ -775,11 +776,13 @@ export function NinhosSection({
     onRegistrarSaidaDoNinho(
       saidaNinhoModal.ninhoId,
       saidaNinhoModal.eggIdx,
-      dataSaidaNinho
+      dataSaidaNinho,
+      novoLocalSaida
     );
 
     setSaidaNinhoModal(null);
     setDataSaidaNinho(new Date().toISOString().split('T')[0]);
+    setNovoLocalSaida('');
   };
 
   const getStatusColor = (status: string) => {
@@ -2173,6 +2176,27 @@ export function NinhosSection({
                   className="w-full h-12 border-2 border-slate-200 p-3 rounded-xl text-sm font-bold bg-white outline-none focus-within:border-emerald-500"
                   ariaLabel="Data de saída do ninho"
                 />
+              </div>
+
+              <div className="mt-4">
+                <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">
+                  Novo local do filhote
+                </label>
+                <select
+                  value={novoLocalSaida}
+                  onChange={(e) => setNovoLocalSaida(e.target.value)}
+                  className="w-full h-12 border-2 border-slate-200 px-3 rounded-xl text-sm font-bold bg-white outline-none focus:border-emerald-500"
+                >
+                  <option value="">Selecione o novo local</option>
+                  {(config.locaisOvos || []).map((local) => (
+                    <option key={local} value={local}>
+                      {local}
+                    </option>
+                  ))}
+                  {novoLocalSaida && !(config.locaisOvos || []).includes(novoLocalSaida) && (
+                    <option value={novoLocalSaida}>{novoLocalSaida}</option>
+                  )}
+                </select>
               </div>
 
               <div className="flex gap-2 pt-4">
