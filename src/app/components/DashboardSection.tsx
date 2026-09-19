@@ -160,6 +160,44 @@ function CardKpi({
 }) {
   const conteudo = (
     <>
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${iconClass}`}>
+        <i className={`fas ${icon} text-base`}></i>
+      </div>
+      <div className="min-w-0 text-left">
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider truncate">
+          {titulo}
+        </p>
+        <div className="flex items-end gap-2 mt-1">
+          <h3 className="text-xl font-bold text-slate-800 leading-none">{valor}</h3>
+          {detalhe && (
+            <span className="text-[10px] text-slate-400 mb-0.5 truncate">{detalhe}</span>
+          )}
+        </div>
+      </div>
+      {onClick && (
+        <i className="fas fa-chevron-right text-[9px] text-slate-300 ml-auto shrink-0"></i>
+      )}
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="w-full bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex items-center gap-3 text-left hover:border-slate-300 hover:shadow-md transition-all"
+      >
+        {conteudo}
+      </button>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 flex items-center gap-3">
+      {conteudo}
+    </div>
+  );
+}
 
 function BarraStatus({
   label,
@@ -192,7 +230,6 @@ function BarraStatus({
         </div>
         <span className="text-xs font-bold text-slate-700">{valor}</span>
       </div>
-
       <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
         <div
           className={`h-full rounded-full ${iconClass.replace('text-', 'bg-')}`}
