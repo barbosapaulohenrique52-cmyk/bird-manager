@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Ninho, Casal, Egg, ModalType, Config, Ave, DashboardFiltro } from '../App';
+import type { Ninho, Casal, Egg, ModalType, Config, Ave } from '../App';
 import { CasalSelector } from './CasalSelector';
 import { AveSelector } from './AveSelector';
 
@@ -204,8 +204,6 @@ interface NinhosSectionProps {
   onUpdateNinho?: (ninhoId: string, field: keyof Ninho, value: any) => void;
   onSaveConfig: (config: Config) => void;
   onViewDetails?: (aveId: string) => void;
-  onDesfazerSaidaDoNinho?: (ninhoId: string, eggIdx: number) => void;
-  dashboardFiltro?: DashboardFiltro;
 }
 
 export function NinhosSection({
@@ -226,9 +224,7 @@ export function NinhosSection({
   onDeleteNinho,
   onUpdateNinho,
   onSaveConfig,
-  onViewDetails,
-  onDesfazerSaidaDoNinho: _onDesfazerSaidaDoNinho,
-  dashboardFiltro: _dashboardFiltro
+  onViewDetails
 }: NinhosSectionProps) {
   const [eclosaoModal, setEclosaoModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
   const [chocaModal, setChocaModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
