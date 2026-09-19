@@ -182,6 +182,9 @@ export function DashboardSection({
         .trim()
         .toLowerCase();
 
+      // A data da ação é parte obrigatória do agrupamento.
+      // Assim, ovos do mesmo ninho só são agrupados quando a ação
+      // realmente ocorre na mesma data.
       const chave = [
         acao.tipo,
         acao.titulo.trim().toLowerCase(),
