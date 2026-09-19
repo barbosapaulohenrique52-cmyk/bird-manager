@@ -185,6 +185,17 @@ function StatusSelector({ status, onChange, onChocar }: StatusSelectorProps) {
   );
 }
 
+type NinhosFiltro =
+  | "todos"
+  | "ovos"
+  | "filhotes"
+  | "Em Espera"
+  | "Chocando"
+  | "Fértil"
+  | "Infértil"
+  | "Eclodido"
+  | "Perdido";
+
 interface NinhosSectionProps {
   ninhos: Ninho[];
   casais: Casal[];
@@ -205,6 +216,7 @@ interface NinhosSectionProps {
   onUpdateNinho?: (ninhoId: string, field: keyof Ninho, value: any) => void;
   onSaveConfig: (config: Config) => void;
   onViewDetails?: (aveId: string) => void;
+  filtro?: NinhosFiltro;
 }
 
 export function NinhosSection({
@@ -226,7 +238,8 @@ export function NinhosSection({
   onDeleteNinho,
   onUpdateNinho,
   onSaveConfig,
-  onViewDetails
+  onViewDetails,
+  filtro = "todos"
 }: NinhosSectionProps) {
   const [eclosaoModal, setEclosaoModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
   const [chocaModal, setChocaModal] = useState<{ ninhoId: string; eggIdx: number } | null>(null);
@@ -284,9 +297,26 @@ export function NinhosSection({
   const [ovoDashboardDestacado, setOvoDashboardDestacado] = useState<string | null>(null);
   const [ovoDashboardPiscando, setOvoDashboardPiscando] = useState(false);
   // Alterna entre a visualização dos ovos por casal/ninho e por local atual.
-  const [visualizacaoOvos, setVisualizacaoOvos] = useState<'casal' | 'local'>('casal');
+  const [visualizacaoOvos, setVisualizacaoOvos] = useState<'casal' | 'local'>('local');
+  const [filtroInterno, setFiltroInterno] = useState<NinhosFiltro>(() => {
+    const filtroSalvo = (window as any).__gouldproNinhosFiltro as NinhosFiltro | undefined;
+    return filtroSalvo || filtro;
+  });
+  const filtroAtual = filtroInterno;
   // Guarda o ninho/casal de origem escolhido para adicionar ovos em cada local.
   const [ninhoSelecionadoPorLocal, setNinhoSelecionadoPorLocal] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const handleFiltro = (event: Event) => {
+      const customEvent = event as CustomEvent<{ filtro?: NinhosFiltro }>;
+      const novoFiltro = customEvent.detail?.filtro;
+      if (!novoFiltro) return;
+      setFiltroInterno(novoFiltro);
+    };
+
+    window.addEventListener('gouldpro-ninhos-filtro', handleFiltro);
+    return () => window.removeEventListener('gouldpro-ninhos-filtro', handleFiltro);
+  }, []);
 
   useEffect(() => {
     const handleAbrirOvo = (event: Event) => {
@@ -898,6 +928,40 @@ export function NinhosSection({
     );
   };
 
+  const ovoPassaNoFiltro = (egg: Egg): boolean => {
+    switch (filtroAtual) {
+      case "ovos":
+        return true;
+      case "filhotes":
+        return Boolean(egg.filhoteId);
+      case "Em Espera":
+      case "Chocando":
+      case "Fértil":
+      case "Infértil":
+      case "Eclodido":
+      case "Perdido":
+        return egg.status === filtroAtual;
+      case "todos":
+      default:
+        return true;
+    }
+  };
+
+  const quantidadeOvosVisiveis = (ninho: Ninho) =>
+    ninho.eggs.filter(ovoPassaNoFiltro).length;
+
+  const ninhosVisiveis = filtroAtual === "todos"
+    ? ninhos
+    : ninhos.filter((ninho) => quantidadeOvosVisiveis(ninho) > 0);
+
+  const alterarFiltro = (novoFiltro: NinhosFiltro) => {
+    window.dispatchEvent(
+      new CustomEvent("gouldpro-ninhos-filtro", {
+        detail: { filtro: novoFiltro }
+      })
+    );
+  };
+
   const getStatusColor = (status: string) => {
     switch(status) {
       case 'Em Espera': return 'bg-blue-50 text-blue-700 border-blue-200';
@@ -917,6 +981,8 @@ export function NinhosSection({
 
   ninhos.forEach((ninho) => {
     ninho.eggs.forEach((egg, eggIdx) => {
+      if (!ovoPassaNoFiltro(egg)) return;
+
       const local = egg.local?.trim() || 'Sem local definido';
 
       if (!ovosPorLocal.has(local)) {
@@ -933,9 +999,11 @@ export function NinhosSection({
 
   // Inclui também os locais cadastrados que ainda não possuem ovos.
   const locaisParaExibir = new Map(ovosPorLocal);
-  (config.locaisOvos || []).forEach((local) => {
-    if (!locaisParaExibir.has(local)) locaisParaExibir.set(local, []);
-  });
+  if (filtroAtual === 'todos') {
+    (config.locaisOvos || []).forEach((local) => {
+      if (!locaisParaExibir.has(local)) locaisParaExibir.set(local, []);
+    });
+  }
 
   const locaisOrdenados = Array.from(locaisParaExibir.entries()).sort((a, b) =>
     a[0].localeCompare(b[0], 'pt-BR')
@@ -1004,6 +1072,41 @@ export function NinhosSection({
         </div>
       </div>
 
+      <div className="bg-white border-2 border-slate-200 rounded-2xl p-2.5 shadow-sm">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[9px] font-black text-slate-500 uppercase mr-1">Filtrar:</span>
+          {[
+            ["todos", "Todos"],
+            ["ovos", "Ovos"],
+            ["filhotes", "Filhotes"],
+            ["Em Espera", "Em espera"],
+            ["Chocando", "Chocando"],
+            ["Fértil", "Férteis"],
+            ["Infértil", "Inférteis"],
+            ["Eclodido", "Eclodidos"],
+            ["Perdido", "Perdidos"]
+          ].map(([valor, label]) => (
+            <button
+              key={valor}
+              type="button"
+              onClick={() => alterarFiltro(valor as NinhosFiltro)}
+              className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${
+                filtroAtual === valor
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+          {filtroAtual !== "todos" && (
+            <span className="ml-auto text-[9px] font-black text-emerald-700 uppercase">
+              {ninhosVisiveis.reduce((total, ninho) => total + quantidadeOvosVisiveis(ninho), 0)} ovos encontrados
+            </span>
+          )}
+        </div>
+      </div>
+
       {visualizacaoOvos === 'casal' && (
         <>
           {/* Ninhos continuam sendo usados para definir a origem dos ovos. */}
@@ -1014,8 +1117,14 @@ export function NinhosSection({
             <p className="text-slate-500 font-bold">Nenhum ninho ativo</p>
             <p className="text-xs text-slate-400 mt-1">Crie um ninho para começar</p>
           </div>
+        ) : ninhosVisiveis.length === 0 ? (
+          <div className="bg-white p-12 rounded-3xl text-center border-2 border-slate-100">
+            <i className="fas fa-filter text-4xl text-slate-200 mb-4"></i>
+            <p className="text-slate-500 font-bold">Nenhum registro encontrado</p>
+            <p className="text-xs text-slate-400 mt-1">Não há ovos para o filtro selecionado.</p>
+          </div>
         ) : (
-          ninhos.map((ninho) => (
+          ninhosVisiveis.map((ninho) => (
             <div
               key={ninho.id}
               className="bg-white rounded-[24px] border-2 border-slate-200 overflow-hidden shadow-sm"
@@ -1062,15 +1171,15 @@ export function NinhosSection({
                   </div>
 
                   <div className="flex gap-2">
-                    {ninho.eggs.length > 0 && (
+                    {quantidadeOvosVisiveis(ninho) > 0 && (
                       <button
                         onClick={() => toggleTodosOvosDoNinho(ninho.id)}
                         className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl font-bold text-[10px] uppercase shadow-md transition-all"
                         title="Selecionar/desselecionar todos os ovos deste ninho para edição em lote"
                       >
                         <i className="fas fa-check-square mr-1"></i>
-                        {ninho.eggs.every((egg, eggIdx) =>
-                          ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))
+                        {ninho.eggs.filter(ovoPassaNoFiltro).every((egg) =>
+                          ovosSelecionados.has(getChaveOvo(ninho.id, egg, ninho.eggs.findIndex((item) => item.id === egg.id)))
                         )
                           ? 'DESMARCAR'
                           : 'SELECIONAR'}
@@ -1114,7 +1223,7 @@ export function NinhosSection({
 
               {/* Resumo / expansão dos ovos do casal */}
               <div className="p-2">
-                {ninho.eggs.length === 0 ? (
+                {quantidadeOvosVisiveis(ninho) === 0 ? (
                   <div className="text-center py-6 text-slate-400">
                     <i className="fas fa-egg text-2xl mb-2"></i>
                     <p className="text-sm">Nenhum ovo registrado</p>
@@ -1134,7 +1243,7 @@ export function NinhosSection({
                             Ovos deste casal
                           </h4>
                           <p className="text-[10px] font-bold text-slate-500 mt-0.5">
-                            {ninho.eggs.length} {ninho.eggs.length === 1 ? 'ovo registrado' : 'ovos registrados'}
+                            {quantidadeOvosVisiveis(ninho)} {quantidadeOvosVisiveis(ninho) === 1 ? 'ovo registrado' : 'ovos registrados'}
                           </p>
                         </div>
                       </div>
@@ -1158,7 +1267,7 @@ export function NinhosSection({
                       <div className="flex items-center gap-2">
                         <i className="fas fa-egg text-emerald-600 text-xs"></i>
                         <span className="text-[10px] font-bold text-emerald-700 uppercase">
-                          Ovos deste casal ({ninho.eggs.length})
+                          Ovos deste casal ({quantidadeOvosVisiveis(ninho)})
                         </span>
                       </div>
 
@@ -1195,6 +1304,8 @@ export function NinhosSection({
 
                       <tbody>
                         {ninho.eggs.map((egg, eggIdx) => {
+                          if (!ovoPassaNoFiltro(egg)) return null;
+
                           const dataFertilidade = calcularDataFertilidade(egg);
                           const dataEclosao = calcularDataEclosao(egg);
                           const dataAnilhamento = calcularDataAnilhamento(egg);
@@ -1901,7 +2012,7 @@ export function NinhosSection({
                 Ovos por Local
               </h2>
               <span className="text-[10px] font-bold text-slate-400 uppercase">
-                {ninhos.reduce((total, ninho) => total + ninho.eggs.length, 0)} ovos
+                {ninhosVisiveis.reduce((total, ninho) => total + quantidadeOvosVisiveis(ninho), 0)} ovos
               </span>
             </div>
 
