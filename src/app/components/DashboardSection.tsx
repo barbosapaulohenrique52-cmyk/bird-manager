@@ -381,59 +381,98 @@ export function DashboardSection({
   });
 
   const atencoes = ovos
-    .map(egg => {
-      if (egg.status === 'Chocando' && egg.inicioChoca) {
-        const inicio = new Date(`${egg.inicioChoca}T00:00:00`);
-        const diasChoca = config.parametrosPadrao?.duracaoChoca || 14;
-        const dataPrevista = new Date(inicio);
-        dataPrevista.setDate(dataPrevista.getDate() + diasChoca);
+    .flatMap((egg, index) => {
+      const acoes: Array<{
+        tipo: string;
+        titulo: string;
+        detalhe: string;
+        data: string;
+        icon: string;
+        className: string;
+      }> = [];
 
-        const data = dataPrevista.toISOString().split('T')[0];
-        const dias = diferencaDias(data);
+      const params = config.parametrosEspecies[egg.species || ''] || config.parametrosPadrao;
 
-        return {
+      // 1. Verificação de fertilidade: disponível quando a incubação foi iniciada
+      // e o ovo ainda está em estado no qual a verificação faz sentido.
+      if (egg.inicioChoca && (egg.status === 'Chocando' || egg.status === 'Em Espera')) {
+        const dataFertilidadeObj = new Date(`${egg.inicioChoca}T12:00:00`);
+        dataFertilidadeObj.setDate(dataFertilidadeObj.getDate() + params.diasFertilidade);
+        const dataFertilidade = dataFertilidadeObj.toISOString().split('T')[0];
+        const dias = diferencaDias(dataFertilidade);
+
+        acoes.push({
+          tipo: 'Fertilidade',
+          titulo: 'Verificar fertilidade',
+          detalhe: `${egg.species || 'Espécie não informada'} • Ovo ${index + 1}${dias < 0 ? ` • atrasada ${Math.abs(dias)} dia(s)` : dias === 0 ? ' • hoje' : ` • em ${dias} dia(s)`}`,
+          data: dataFertilidade,
+          icon: 'fa-search',
+          className: dias <= 0
+            ? 'bg-amber-50 text-amber-700 border-amber-100'
+            : 'bg-blue-50 text-blue-700 border-blue-100'
+        });
+      }
+
+      // 2. Previsão de eclosão: calculada a partir do início da choca,
+      // enquanto o ovo ainda não eclodiu nem foi perdido.
+      if (egg.inicioChoca && ['Chocando', 'Fértil'].includes(egg.status)) {
+        const dataEclosaoObj = new Date(`${egg.inicioChoca}T12:00:00`);
+        dataEclosaoObj.setDate(dataEclosaoObj.getDate() + params.duracaoChoca);
+        const dataEclosao = egg.dataEclosao || dataEclosaoObj.toISOString().split('T')[0];
+        const dias = diferencaDias(dataEclosao);
+
+        acoes.push({
           tipo: 'Eclosão',
-          titulo: 'Eclosão prevista',
-          detalhe: `${dias < 0 ? `Atrasada ${Math.abs(dias)} dia(s)` : dias === 0 ? 'Prevista para hoje' : `Em ${dias} dia(s)`}`,
-          data,
+          titulo: 'Previsão de eclosão',
+          detalhe: `${egg.species || 'Espécie não informada'} • Ovo ${index + 1}${dias < 0 ? ` • atrasada ${Math.abs(dias)} dia(s)` : dias === 0 ? ' • hoje' : ` • em ${dias} dia(s)`}`,
+          data: dataEclosao,
           icon: 'fa-egg',
           className: dias <= 0
             ? 'bg-amber-50 text-amber-700 border-amber-100'
             : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-        };
+        });
       }
 
+      // 3. Anilhamento: quando há data de eclosão e o filhote ainda não foi anilhado.
+      if (egg.dataEclosao && egg.status === 'Eclodido' && !egg.filhoteAnilhado) {
+        const dataAnilhamentoObj = new Date(`${egg.dataEclosao}T12:00:00`);
+        dataAnilhamentoObj.setDate(dataAnilhamentoObj.getDate() + params.diasAnilhamento);
+        const dataAnilhamento = dataAnilhamentoObj.toISOString().split('T')[0];
+        const dias = diferencaDias(dataAnilhamento);
+
+        acoes.push({
+          tipo: 'Anilhamento',
+          titulo: 'Data de anilhamento',
+          detalhe: `${egg.species || 'Espécie não informada'} • Ovo ${index + 1}${dias < 0 ? ` • atrasada ${Math.abs(dias)} dia(s)` : dias === 0 ? ' • hoje' : ` • em ${dias} dia(s)`}`,
+          data: dataAnilhamento,
+          icon: 'fa-ring',
+          className: dias <= 0
+            ? 'bg-amber-50 text-amber-700 border-amber-100'
+            : 'bg-violet-50 text-violet-700 border-violet-100'
+        });
+      }
+
+      // 4. Mantém o alerta existente para ovos em espera há muito tempo.
       if (egg.status === 'Em Espera' && egg.postura) {
         const diasDesdePostura = -diferencaDias(egg.postura);
         const prazo = config.prazoAlertaPostura || 15;
 
         if (diasDesdePostura >= prazo) {
-          return {
+          acoes.push({
             tipo: 'Postura',
             titulo: 'Ovo aguardando ação',
-            detalhe: `${diasDesdePostura} dia(s) desde a postura`,
+            detalhe: `${egg.species || 'Espécie não informada'} • ${diasDesdePostura} dia(s) desde a postura`,
             data: egg.postura,
             icon: 'fa-clock',
             className: 'bg-orange-50 text-orange-700 border-orange-100'
-          };
+          });
         }
       }
 
-      return null;
+      return acoes;
     })
-    .filter(Boolean)
-    .sort((a, b) => {
-      if (!a || !b) return 0;
-      return a.data.localeCompare(b.data);
-    })
-    .slice(0, 5) as Array<{
-      tipo: string;
-      titulo: string;
-      detalhe: string;
-      data: string;
-      icon: string;
-      className: string;
-    }>;
+    .sort((a, b) => a.data.localeCompare(b.data))
+    .slice(0, 8);
 
   return (
     <section className="space-y-5">
