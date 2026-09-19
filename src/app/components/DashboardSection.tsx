@@ -164,37 +164,32 @@ export function DashboardSection({
     });
 
     /*
-     * Cada ovo pode gerar no máximo uma ação de cada tipo.
-     * Primeiro eliminamos possíveis duplicidades do mesmo ovo e,
-     * depois, agrupamos somente quando a ação e a DATA CALCULADA
-     * forem exatamente iguais.
+     * Agrupa ações equivalentes pelo mesmo tipo + nome de ninho + data.
+     * Ex.: 4 ovos do mesmo ninho com fertilidade prevista para 25/09
+     * passam a aparecer como uma única ação "4 ovos".
      */
-    const acoesUnicas = new Map<string, AcaoBase>();
-
-    acoesIndividuais.forEach((acao) => {
-      const chaveOvo = `${acao.tipo}::${acao.ninhoId}::${acao.eggId}`;
-      if (!acoesUnicas.has(chaveOvo)) {
-        acoesUnicas.set(chaveOvo, acao);
-      }
-    });
-
     const grupos = new Map<string, AcaoBase[]>();
 
-    Array.from(acoesUnicas.values()).forEach((acao) => {
-      const ninhoExibicao = (
-        ninhos.find((ninho) => ninho.id === acao.ninhoId)?.name ||
-        'Ninho sem nome'
-      ).trim().toLowerCase();
-
-      // A DATA calculada é parte obrigatória da chave.
-      // Portanto, 25/09 e 26/09 nunca podem cair no mesmo grupo.
+    acoesIndividuais.forEach((acao) => {
+      /*
+       * O agrupamento usa a identidade REAL do ninho (ninhoId),
+       * e não apenas o nome exibido. Isso é importante porque podem
+       * existir dois ninhos com o mesmo nome, por exemplo "N1" ou
+       * "Ninho sem nome". Nesse caso eles não devem ser misturados.
+       *
+       * A data calculada da ação também é obrigatória na chave.
+       * Portanto, ovos do mesmo ninho só são agrupados quando
+       * pertencem à mesma ação e possuem a mesma data.
+       */
       const chave = [
         acao.tipo,
-        ninhoExibicao,
+        acao.titulo.trim().toLowerCase(),
+        acao.ninhoId,
         acao.data
       ].join('::');
 
       const grupo = grupos.get(chave);
+
       if (grupo) {
         grupo.push(acao);
       } else {
