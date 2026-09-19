@@ -14,6 +14,7 @@ import { AveDetalhesModal } from "./components/AveDetalhesModal";
 import { useDatabase } from "./hooks/useDatabase";
 
 export type TabType =
+  | "dashboard"
   | "ninhos"
   | "aves"
   | "casais"
@@ -49,6 +50,7 @@ export interface Ave {
   corPeito?: string;
   corDorso?: string;
   nota?: string;
+  local?: string;
   porta?: string;
 }
 
@@ -129,11 +131,6 @@ export interface Config {
   coresPeito?: CorAve[];
   coresDorso?: CorAve[];
   coresAves?: CorAve[];
-
-  /**
-   * Locais físicos cadastrados nas configurações
-   * para ovos, filhotes e aves.
-   */
   locaisOvos?: string[];
 }
 
@@ -150,17 +147,25 @@ export interface Lancamento {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
-  const [ovoDashboardAlvo, setOvoDashboardAlvo] = useState<{ ninhoId: string; eggId: string } | null>(null);
   const [modalType, setModalType] = useState<ModalType>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
   const [aveDetalheId, setAveDetalheId] = useState<string | null>(null);
+
+  // Alvo reservado para a próxima etapa:
+  // quando o Dashboard informar um ovo específico, o App guardará
+  // sua identificação e abrirá a aba Ninhos.
+  const [ovoDashboardAlvo, setOvoDashboardAlvo] = useState<{
+    ninhoId: string;
+    eggId: string;
+  } | null>(null);
 
   const {
     db,
     colorLists,
     saveAve,
     importAves,
+    updateAvesBatch,
     saveCasal,
     saveNinho,
     updateNinhoCasal,
@@ -209,16 +214,25 @@ export default function App() {
   };
 
   useEffect(() => {
-    const handleDashboardNavigate = (event: Event) => {
-      const customEvent = event as CustomEvent<TabType>;
-      if (customEvent.detail) {
-        setActiveTab(customEvent.detail);
-      }
+    const handleDashboardOvo = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        ninhoId?: string;
+        eggId?: string;
+      }>;
+
+      const ninhoId = customEvent.detail?.ninhoId;
+      const eggId = customEvent.detail?.eggId;
+
+      if (!ninhoId || !eggId) return;
+
+      setOvoDashboardAlvo({ ninhoId, eggId });
+      setActiveTab("ninhos");
     };
 
-    window.addEventListener("gouldpro-navigate", handleDashboardNavigate);
+    window.addEventListener("gouldpro-open-ovo", handleDashboardOvo);
+
     return () => {
-      window.removeEventListener("gouldpro-navigate", handleDashboardNavigate);
+      window.removeEventListener("gouldpro-open-ovo", handleDashboardOvo);
     };
   }, []);
 
@@ -246,21 +260,18 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <Header onConfigClick={() => setActiveTab("config")} />
+      <Header />
 
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main className="flex-1 w-full px-2 sm:px-4 lg:px-5 pb-32">
+      <main className="flex-1 w-full px-2 sm:px-4 lg:ml-32 lg:px-6 pb-32 lg:pb-8">
         {activeTab === "dashboard" && (
           <DashboardSection
             aves={db.aves}
             casais={db.casais}
             ninhos={db.ninhos}
             config={db.config}
-            onOpenOvo={(ninhoId, eggId) => {
-              setOvoDashboardAlvo({ ninhoId, eggId });
-              setActiveTab("ninhos");
-            }}
+            onNavigate={(tab) => setActiveTab(tab)}
           />
         )}
 
@@ -296,6 +307,7 @@ export default function App() {
             onOpenModal={openModal}
             onDeleteAve={deleteAve}
             onImportAves={importAves}
+            onUpdateAvesBatch={updateAvesBatch}
             onPhotoClick={setZoomPhoto}
             onViewDetails={setAveDetalheId}
           />
