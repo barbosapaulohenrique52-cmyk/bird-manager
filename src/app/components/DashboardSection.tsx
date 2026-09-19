@@ -79,79 +79,120 @@ export function DashboardSection({
     );
   };
 
-  const proximasAcoes = ovos.flatMap(({ egg, ninho }) => {
-    const especie = egg.species || '';
-    const parametros =
-      config.parametrosEspecies?.[especie] ||
-      config.parametrosPadrao;
-
-    const acoes: Array<{
+  const proximasAcoes = (() => {
+    type AcaoBase = {
       titulo: string;
       data: string;
       detalhe: string;
       tipo: 'fertilidade' | 'eclosao' | 'anilhamento';
-    }> = [];
+      eggId: string;
+      ninhoId: string;
+      especie: string;
+    };
 
-    if (
-      egg.inicioChoca &&
-      (egg.status === 'Chocando' || egg.status === 'Em Espera')
-    ) {
-      const data = new Date(`${egg.inicioChoca}T12:00:00`);
-      data.setDate(data.getDate() + parametros.diasFertilidade);
+    const acoesIndividuais: AcaoBase[] = [];
 
-      acoes.push({
-        titulo: 'Verificar fertilidade',
-        data: data.toISOString().split('T')[0],
-        detalhe: `Ninho ${ninho.name || 'Ninho sem nome'}`,
-        tipo: 'fertilidade'
-      });
-    }
+    ovos.forEach(({ egg, ninho }) => {
+      const especie = egg.species || '';
+      const parametros =
+        config.parametrosEspecies?.[especie] ||
+        config.parametrosPadrao;
 
-    if (
-      egg.inicioChoca &&
-      (egg.status === 'Chocando' || egg.status === 'Fértil')
-    ) {
-      const data = egg.dataEclosao
-        ? new Date(`${egg.dataEclosao}T12:00:00`)
-        : new Date(`${egg.inicioChoca}T12:00:00`);
+      if (
+        egg.inicioChoca &&
+        (egg.status === 'Chocando' || egg.status === 'Em Espera')
+      ) {
+        const data = new Date(`${egg.inicioChoca}T12:00:00`);
+        data.setDate(data.getDate() + parametros.diasFertilidade);
 
-      if (!egg.dataEclosao) {
-        data.setDate(data.getDate() + parametros.duracaoChoca);
+        acoesIndividuais.push({
+          titulo: 'Verificar fertilidade',
+          data: data.toISOString().split('T')[0],
+          detalhe: `Ninho ${ninho.name || 'Ninho sem nome'}`,
+          tipo: 'fertilidade',
+          eggId: egg.id,
+          ninhoId: ninho.id,
+          especie: egg.species || 'Espécie não informada'
+        });
       }
 
-      acoes.push({
-        titulo: 'Previsão de eclosão',
-        data: data.toISOString().split('T')[0],
-        detalhe: `Ninho ${ninho.name || 'Ninho sem nome'}`,
-        tipo: 'eclosao'
-      });
-    }
+      if (
+        egg.inicioChoca &&
+        (egg.status === 'Chocando' || egg.status === 'Fértil')
+      ) {
+        const data = egg.dataEclosao
+          ? new Date(`${egg.dataEclosao}T12:00:00`)
+          : new Date(`${egg.inicioChoca}T12:00:00`);
 
-    if (
-      egg.dataEclosao &&
-      egg.status === 'Eclodido' &&
-      !egg.filhoteAnilhado
-    ) {
-      const data = new Date(`${egg.dataEclosao}T12:00:00`);
-      data.setDate(data.getDate() + parametros.diasAnilhamento);
+        if (!egg.dataEclosao) {
+          data.setDate(data.getDate() + parametros.duracaoChoca);
+        }
 
-      acoes.push({
-        titulo: 'Data de anilhamento',
-        data: data.toISOString().split('T')[0],
-        detalhe: `Ninho ${ninho.name || 'Ninho sem nome'}`,
-        tipo: 'anilhamento'
-      });
-    }
+        acoesIndividuais.push({
+          titulo: 'Previsão de eclosão',
+          data: data.toISOString().split('T')[0],
+          detalhe: `Ninho ${ninho.name || 'Ninho sem nome'}`,
+          tipo: 'eclosao',
+          eggId: egg.id,
+          ninhoId: ninho.id,
+          especie: egg.species || 'Espécie não informada'
+        });
+      }
 
-    return acoes.map(acao => ({
-      ...acao,
-      eggId: egg.id,
-      ninhoId: ninho.id,
-      especie: egg.species || 'Espécie não informada'
-    }));
-  })
-    .sort((a, b) => a.data.localeCompare(b.data))
-    .slice(0, 6);
+      if (
+        egg.dataEclosao &&
+        egg.status === 'Eclodido' &&
+        !egg.filhoteAnilhado
+      ) {
+        const data = new Date(`${egg.dataEclosao}T12:00:00`);
+        data.setDate(data.getDate() + parametros.diasAnilhamento);
+
+        acoesIndividuais.push({
+          titulo: 'Data de anilhamento',
+          data: data.toISOString().split('T')[0],
+          detalhe: `Ninho ${ninho.name || 'Ninho sem nome'}`,
+          tipo: 'anilhamento',
+          eggId: egg.id,
+          ninhoId: ninho.id,
+          especie: egg.species || 'Espécie não informada'
+        });
+      }
+    });
+
+    /*
+     * Agrupa ações equivalentes pelo mesmo tipo + ninho + data.
+     * Ex.: 4 ovos do N1 com fertilidade prevista para 25/09
+     * passam a aparecer como uma única ação "4 ovos".
+     */
+    const grupos = new Map<string, AcaoBase[]>();
+
+    acoesIndividuais.forEach((acao) => {
+      const chave = `${acao.tipo}::${acao.ninhoId}::${acao.data}`;
+      const grupo = grupos.get(chave);
+
+      if (grupo) {
+        grupo.push(acao);
+      } else {
+        grupos.set(chave, [acao]);
+      }
+    });
+
+    return Array.from(grupos.values())
+      .map((grupo) => {
+        const primeira = grupo[0];
+        const quantidade = grupo.length;
+
+        return {
+          ...primeira,
+          quantidade,
+          detalhe: `${primeira.detalhe} • ${quantidade} ${
+            quantidade === 1 ? 'ovo' : 'ovos'
+          }`
+        };
+      })
+      .sort((a, b) => a.data.localeCompare(b.data))
+      .slice(0, 6);
+  })();
 
   return (
     <section className="w-full space-y-5 pb-6">
@@ -284,7 +325,7 @@ export function DashboardSection({
             <div className="space-y-2">
               {proximasAcoes.map((acao, index) => (
                 <button
-                  key={`${acao.ninhoId}-${acao.eggId}-${acao.tipo}-${index}`}
+                  key={`${acao.ninhoId}-${acao.data}-${acao.tipo}-${index}`}
                   type="button"
                   onClick={() => onOpenOvo(acao.ninhoId, acao.eggId)}
                   className="w-full text-left rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:shadow-sm p-3 transition-all"
