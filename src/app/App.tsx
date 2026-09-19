@@ -295,12 +295,9 @@ export default function App() {
             ninhos={db.ninhos}
             config={db.config}
             onNavigate={(tab) => {
-              if (tab === "ninhos") {
-                const expandir = (window as any).__gouldproExpandirNinhos;
-                const filtro = expandir ? "ovos" : "todos";
-                setNinhosFiltro(filtro);
-                (window as any).__gouldproNinhosFiltro = filtro;
-              }
+              // O Dashboard dispara o filtro específico imediatamente antes/depois da navegação.
+              // Não sobrescrever esse filtro aqui com "todos", pois isso fazia o KPI
+              // (especialmente Eclodidos) voltar para a visualização sem filtro.
               setActiveTab(tab);
             }}
             onOpenOvo={(ninhoId, eggId) => {
