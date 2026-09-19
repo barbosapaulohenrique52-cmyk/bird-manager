@@ -1,336 +1,321 @@
-import React from "react";
-import type { Ave, Casal, Ninho, Config, TabType, Egg } from "../App";
+import type { Ave, Casal, Config, Ninho } from '../App';
 
 interface DashboardSectionProps {
   aves: Ave[];
   casais: Casal[];
   ninhos: Ninho[];
   config: Config;
-  onNavigate: (tab: TabType) => void;
+  onOpenOvo: (ninhoId: string, eggId: string) => void;
+  onNavigate: (tab: 'dashboard' | 'ninhos' | 'aves' | 'casais' | 'calendario' | 'financeiro' | 'config') => void;
 }
 
-interface KpiCardProps {
-  titulo: string;
-  valor: number;
-  icone: string;
-  onClick: () => void;
+function formatarData(data?: string) {
+  if (!data) return '—';
+  const match = data.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (match) return `${match[3].padStart(2, '0')}/${match[2].padStart(2, '0')}/${match[1].slice(-2)}`;
+  return data;
 }
 
-function KpiCard({ titulo, valor, icone, onClick }: KpiCardProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={`Abrir ${titulo}`}
-      style={{
-        width: "100%",
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        borderRadius: 14,
-        padding: "20px 22px",
-        minHeight: 125,
-        boxSizing: "border-box",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        textAlign: "left",
-        cursor: "pointer",
-        transition: "transform 0.15s ease, box-shadow 0.15s ease",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-2px)";
-        e.currentTarget.style.boxShadow = "0 5px 14px rgba(0,0,0,0.08)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)";
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
-      >
-        <span style={{ fontSize: 14, fontWeight: 600, color: "#64748b" }}>
-          {titulo}
-        </span>
-
-        <i
-          className={`fas ${icone}`}
-          style={{ fontSize: 18, color: "#64748b" }}
-        />
-      </div>
-
-      <div
-        style={{
-          fontSize: 32,
-          lineHeight: 1,
-          fontWeight: 700,
-          color: "#1e293b",
-          marginTop: 18,
-        }}
-      >
-        {valor}
-      </div>
-    </button>
-  );
+function diasAte(data: string) {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const alvo = new Date(`${data}T00:00:00`);
+  alvo.setHours(0, 0, 0, 0);
+  return Math.round((alvo.getTime() - hoje.getTime()) / 86400000);
 }
 
-function abrirOvo(ninhoId: string, eggId: string) {
-  window.dispatchEvent(
-    new CustomEvent("gouldpro-open-ovo", {
-      detail: { ninhoId, eggId },
-    }),
-  );
-}
-
-function EggCard({
-  ninhoId,
-  egg,
-  numero,
-}: {
-  ninhoId: string;
-  egg: Egg;
-  numero: number;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => abrirOvo(ninhoId, egg.id)}
-      style={{
-        width: "100%",
-        background: "#ffffff",
-        border: "1px solid #e5e7eb",
-        borderRadius: 12,
-        padding: "14px 16px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 16,
-        textAlign: "left",
-        cursor: "pointer",
-        boxSizing: "border-box",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "#94a3b8";
-        e.currentTarget.style.background = "#f8fafc";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "#e5e7eb";
-        e.currentTarget.style.background = "#ffffff";
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div
-          style={{
-            width: 38,
-            height: 38,
-            borderRadius: "50%",
-            background: "#f1f5f9",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <i className="fas fa-egg" style={{ color: "#64748b" }} />
-        </div>
-
-        <div>
-          <div
-            style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color: "#1e293b",
-            }}
-          >
-            Ninho {ninhoId} · Ovo {numero}
-          </div>
-
-          <div
-            style={{
-              marginTop: 3,
-              fontSize: 12,
-              color: "#64748b",
-            }}
-          >
-            {egg.status}
-            {egg.postura ? ` · Postura ${egg.postura}` : ""}
-          </div>
-        </div>
-      </div>
-
-      <i
-        className="fas fa-chevron-right"
-        style={{ color: "#94a3b8", fontSize: 12 }}
-      />
-    </button>
-  );
+function textoPrazo(data: string) {
+  const dias = diasAte(data);
+  if (dias < 0) return `Atrasada ${Math.abs(dias)} dia(s)`;
+  if (dias === 0) return 'Hoje';
+  if (dias === 1) return 'Amanhã';
+  return `Em ${dias} dias`;
 }
 
 export function DashboardSection({
   aves,
   casais,
   ninhos,
-  config: _config,
-  onNavigate,
+  config,
+  onOpenOvo,
+  onNavigate
 }: DashboardSectionProps) {
-  const avesAtivas = aves.filter(
-    (ave) => ave.status === "Ativo" || ave.status === "No Ninho",
-  ).length;
+  const avesAtivas = aves.filter(ave => ave.status === 'Ativo');
+  const casaisAtivos = casais.filter(casal => {
+    const macho = aves.find(ave => ave.id === casal.mId);
+    const femea = aves.find(ave => ave.id === casal.fId);
+    return macho?.status === 'Ativo' && femea?.status === 'Ativo';
+  });
 
-  const casaisAtivos = casais.length;
-
-  const ninhosAtivos = ninhos.filter((ninho) => ninho.active).length;
-
-  const ovos = ninhos.reduce(
-    (total, ninho) =>
-      total + (Array.isArray(ninho.eggs) ? ninho.eggs.length : 0),
-    0,
+  const ninhosAtivos = ninhos.filter(ninho => ninho.active);
+  const ovos = ninhos.flatMap(ninho =>
+    (ninho.eggs || []).map(egg => ({ egg, ninho }))
   );
+
+  const status = {
+    espera: ovos.filter(item => item.egg.status === 'Em Espera').length,
+    chocando: ovos.filter(item => item.egg.status === 'Chocando').length,
+    ferteis: ovos.filter(item => item.egg.status === 'Fértil').length,
+    inferteis: ovos.filter(item => item.egg.status === 'Infértil').length,
+    eclodidos: ovos.filter(item => item.egg.status === 'Eclodido').length,
+    perdidos: ovos.filter(item => item.egg.status === 'Perdido').length
+  };
 
   const filhotes = casais.reduce(
-    (total, casal) =>
-      total + (Array.isArray(casal.historico) ? casal.historico.length : 0),
-    0,
+    (total, casal) => total + (casal.historico?.length || 0),
+    0
   );
 
-  const ovosParaExibir = ninhos
-    .flatMap((ninho) =>
-      Array.isArray(ninho.eggs)
-        ? ninho.eggs.map((egg, index) => ({
-            ninhoId: ninho.id,
-            egg,
-            numero: index + 1,
-          }))
-        : [],
-    )
-    .slice(0, 8);
+  const proximasAcoes = ovos.flatMap(({ egg, ninho }) => {
+    const especie = egg.species || '';
+    const parametros =
+      config.parametrosEspecies?.[especie] ||
+      config.parametrosPadrao;
+
+    const acoes: Array<{
+      titulo: string;
+      data: string;
+      detalhe: string;
+      tipo: 'fertilidade' | 'eclosao' | 'anilhamento';
+    }> = [];
+
+    if (
+      egg.inicioChoca &&
+      (egg.status === 'Chocando' || egg.status === 'Em Espera')
+    ) {
+      const data = new Date(`${egg.inicioChoca}T12:00:00`);
+      data.setDate(data.getDate() + parametros.diasFertilidade);
+
+      acoes.push({
+        titulo: 'Verificar fertilidade',
+        data: data.toISOString().split('T')[0],
+        detalhe: `Ninho ${ninho.name || 'Ninho sem nome'}`,
+        tipo: 'fertilidade'
+      });
+    }
+
+    if (
+      egg.inicioChoca &&
+      (egg.status === 'Chocando' || egg.status === 'Fértil')
+    ) {
+      const data = egg.dataEclosao
+        ? new Date(`${egg.dataEclosao}T12:00:00`)
+        : new Date(`${egg.inicioChoca}T12:00:00`);
+
+      if (!egg.dataEclosao) {
+        data.setDate(data.getDate() + parametros.duracaoChoca);
+      }
+
+      acoes.push({
+        titulo: 'Previsão de eclosão',
+        data: data.toISOString().split('T')[0],
+        detalhe: `Ninho ${ninho.name || 'Ninho sem nome'}`,
+        tipo: 'eclosao'
+      });
+    }
+
+    if (
+      egg.dataEclosao &&
+      egg.status === 'Eclodido' &&
+      !egg.filhoteAnilhado
+    ) {
+      const data = new Date(`${egg.dataEclosao}T12:00:00`);
+      data.setDate(data.getDate() + parametros.diasAnilhamento);
+
+      acoes.push({
+        titulo: 'Data de anilhamento',
+        data: data.toISOString().split('T')[0],
+        detalhe: `Ninho ${ninho.name || 'Ninho sem nome'}`,
+        tipo: 'anilhamento'
+      });
+    }
+
+    return acoes.map(acao => ({
+      ...acao,
+      eggId: egg.id,
+      ninhoId: ninho.id,
+      especie: egg.species || 'Espécie não informada'
+    }));
+  })
+    .sort((a, b) => a.data.localeCompare(b.data))
+    .slice(0, 6);
 
   return (
-    <div
-      style={{
-        width: "100%",
-        boxSizing: "border-box",
-        padding: "24px",
-      }}
-    >
-      <div style={{ marginBottom: 24 }}>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 28,
-            lineHeight: 1.2,
-            fontWeight: 700,
-            color: "#1e293b",
-          }}
-        >
+    <section className="w-full space-y-5 pb-6">
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.18em]">
+          GouldPRO
+        </p>
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">
           Visão geral
-        </h1>
-
-        <p
-          style={{
-            margin: "7px 0 0",
-            fontSize: 14,
-            color: "#64748b",
-          }}
-        >
-          Resumo do seu plantel e reprodução
+        </h2>
+        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+          Resumo do plantel e da reprodução
         </p>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
-          gap: 16,
-        }}
-      >
-        <KpiCard
-          titulo="Aves ativas"
-          valor={avesAtivas}
-          icone="fa-dove"
-          onClick={() => onNavigate("aves")}
-        />
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <button
+          type="button"
+          onClick={() => onNavigate('aves')}
+          className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-left hover:shadow-md transition-all"
+        >
+          <i className="fas fa-dove text-slate-600"></i>
+          <p className="text-[10px] text-slate-400 font-bold uppercase mt-3">Aves ativas</p>
+          <p className="text-2xl font-bold text-slate-800 mt-1">{avesAtivas.length}</p>
+        </button>
 
-        <KpiCard
-          titulo="Casais ativos"
-          valor={casaisAtivos}
-          icone="fa-heart"
-          onClick={() => onNavigate("casais")}
-        />
+        <button
+          type="button"
+          onClick={() => onNavigate('casais')}
+          className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-left hover:shadow-md transition-all"
+        >
+          <i className="fas fa-heart text-rose-500"></i>
+          <p className="text-[10px] text-slate-400 font-bold uppercase mt-3">Casais</p>
+          <p className="text-2xl font-bold text-slate-800 mt-1">{casais.length}</p>
+          <p className="text-[10px] text-slate-400">{casaisAtivos.length} ativos</p>
+        </button>
 
-        <KpiCard
-          titulo="Ninhos ativos"
-          valor={ninhosAtivos}
-          icone="fa-egg"
-          onClick={() => onNavigate("ninhos")}
-        />
+        <button
+          type="button"
+          onClick={() => onNavigate('ninhos')}
+          className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-left hover:shadow-md transition-all"
+        >
+          <i className="fas fa-home text-amber-500"></i>
+          <p className="text-[10px] text-slate-400 font-bold uppercase mt-3">Ninhos</p>
+          <p className="text-2xl font-bold text-slate-800 mt-1">{ninhos.length}</p>
+          <p className="text-[10px] text-slate-400">{ninhosAtivos.length} ativos</p>
+        </button>
 
-        <KpiCard
-          titulo="Ovos"
-          valor={ovos}
-          icone="fa-circle"
-          onClick={() => onNavigate("ninhos")}
-        />
+        <button
+          type="button"
+          onClick={() => {
+            (window as any).__gouldproExpandirNinhos = true;
+            onNavigate('ninhos');
+          }}
+          className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-left hover:shadow-md transition-all"
+        >
+          <i className="fas fa-egg text-emerald-600"></i>
+          <p className="text-[10px] text-slate-400 font-bold uppercase mt-3">Ovos</p>
+          <p className="text-2xl font-bold text-slate-800 mt-1">{ovos.length}</p>
+          <p className="text-[10px] text-slate-400">{status.chocando} chocando</p>
+        </button>
 
-        <KpiCard
-          titulo="Filhotes"
-          valor={filhotes}
-          icone="fa-feather-alt"
-          onClick={() => onNavigate("casais")}
-        />
+        <button
+          type="button"
+          onClick={() => onNavigate('casais')}
+          className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-left hover:shadow-md transition-all"
+        >
+          <i className="fas fa-feather text-violet-500"></i>
+          <p className="text-[10px] text-slate-400 font-bold uppercase mt-3">Filhotes</p>
+          <p className="text-2xl font-bold text-slate-800 mt-1">{filhotes}</p>
+          <p className="text-[10px] text-slate-400">histórico</p>
+        </button>
       </div>
 
-      {ovosParaExibir.length > 0 && (
-        <section style={{ marginTop: 28 }}>
-          <div style={{ marginBottom: 12 }}>
-            <h2
-              style={{
-                margin: 0,
-                fontSize: 18,
-                fontWeight: 700,
-                color: "#1e293b",
-              }}
-            >
-              Ovos
-            </h2>
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <div className="xl:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <h3 className="text-sm font-bold text-slate-800">Reprodução</h3>
+          <p className="text-[11px] text-slate-400 mt-1 mb-5">
+            Distribuição dos ovos cadastrados
+          </p>
 
-            <p
-              style={{
-                margin: "4px 0 0",
-                fontSize: 13,
-                color: "#64748b",
-              }}
-            >
-              Clique em um ovo para abrir o registro correspondente.
-            </p>
-          </div>
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-              gap: 10,
-            }}
-          >
-            {ovosParaExibir.map((item) => (
-              <EggCard
-                key={`${item.ninhoId}-${item.egg.id}`}
-                ninhoId={item.ninhoId}
-                egg={item.egg}
-                numero={item.numero}
-              />
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            {[
+              ['Chocando', status.chocando, 'text-orange-500'],
+              ['Férteis', status.ferteis, 'text-emerald-500'],
+              ['Eclodidos', status.eclodidos, 'text-violet-500'],
+              ['Em espera', status.espera, 'text-slate-400'],
+              ['Inférteis', status.inferteis, 'text-blue-500'],
+              ['Perdidos', status.perdidos, 'text-red-500']
+            ].map(([label, valor, classe]) => (
+              <button
+                key={String(label)}
+                type="button"
+                onClick={() => {
+            (window as any).__gouldproExpandirNinhos = true;
+            onNavigate('ninhos');
+          }}
+                className="text-left rounded-xl p-2 hover:bg-slate-50 transition-all"
+              >
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-medium ${classe}`}>{label}</span>
+                  <span className="text-sm font-bold text-slate-700">{valor}</span>
+                </div>
+                <div className="h-1.5 bg-slate-100 rounded-full mt-2 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full bg-current ${classe}`}
+                    style={{ width: `${ovos.length ? (Number(valor) / ovos.length) * 100 : 0}%` }}
+                  />
+                </div>
+              </button>
             ))}
           </div>
-        </section>
-      )}
-    </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Próximas ações</h3>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Clique para abrir o ovo correspondente
+              </p>
+            </div>
+            <i className="fas fa-bell text-amber-500"></i>
+          </div>
+
+          {proximasAcoes.length === 0 ? (
+            <div className="py-10 text-center">
+              <i className="fas fa-check-circle text-slate-300 text-2xl"></i>
+              <p className="text-xs font-semibold text-slate-500 mt-2">
+                Nenhuma ação pendente
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {proximasAcoes.map((acao, index) => (
+                <button
+                  key={`${acao.ninhoId}-${acao.eggId}-${acao.tipo}-${index}`}
+                  type="button"
+                  onClick={() => onOpenOvo(acao.ninhoId, acao.eggId)}
+                  className="w-full text-left rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:shadow-sm p-3 transition-all"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shrink-0">
+                      <i className={`fas ${
+                        acao.tipo === 'fertilidade'
+                          ? 'fa-search text-blue-500'
+                          : acao.tipo === 'eclosao'
+                            ? 'fa-egg text-emerald-500'
+                            : 'fa-ring text-violet-500'
+                      } text-xs`}></i>
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] font-bold text-slate-700">
+                        {acao.titulo}
+                      </p>
+                      <p className="text-[10px] text-slate-500 mt-0.5 truncate">
+                        {acao.especie} • {acao.detalhe}
+                      </p>
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <span className="text-[10px] font-semibold text-slate-600">
+                          {formatarData(acao.data)}
+                        </span>
+                        <span className="text-[9px] text-emerald-600 font-bold">
+                          {textoPrazo(acao.data)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <i className="fas fa-chevron-right text-[9px] text-slate-300 mt-2"></i>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
-
-export default DashboardSection;
