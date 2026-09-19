@@ -282,6 +282,7 @@ export function NinhosSection({
   const [ninhosExpandidos, setNinhosExpandidos] = useState<Set<string>>(new Set());
   const [ovoDashboardAlvo, setOvoDashboardAlvo] = useState<{ ninhoId: string; eggId: string } | null>(null);
   const [ovoDashboardDestacado, setOvoDashboardDestacado] = useState<string | null>(null);
+  const [ovoDashboardPiscando, setOvoDashboardPiscando] = useState(false);
   // Alterna entre a visualização dos ovos por casal/ninho e por local atual.
   const [visualizacaoOvos, setVisualizacaoOvos] = useState<'casal' | 'local'>('casal');
   // Guarda o ninho/casal de origem escolhido para adicionar ovos em cada local.
@@ -316,6 +317,12 @@ export function NinhosSection({
       delete (window as any).__gouldproOvoAlvo;
     }
 
+    if ((window as any).__gouldproExpandirNinhos) {
+      setVisualizacaoOvos('casal');
+      setNinhosExpandidos(new Set(ninhos.filter((ninho) => ninho.eggs.length > 0).map((ninho) => ninho.id)));
+      delete (window as any).__gouldproExpandirNinhos;
+    }
+
     return () => window.removeEventListener('gouldpro-open-ovo', handleAbrirOvo);
   }, []);
 
@@ -330,11 +337,13 @@ export function NinhosSection({
       return;
     }
 
-    setOvoDashboardDestacado(`${ninho.id}::${egg.id}`);
+    const chaveOvo = `${ninho.id}::${egg.id}`;
+    setOvoDashboardDestacado(chaveOvo);
+    setOvoDashboardPiscando(true);
 
     const timer = window.setTimeout(() => {
       const elemento = document.querySelector(
-        `[data-dashboard-egg-id=\"${CSS.escape(ovoDashboardAlvo.eggId)}\"]`
+        `[data-dashboard-egg-id="${CSS.escape(ovoDashboardAlvo.eggId)}"]`
       );
 
       if (elemento instanceof HTMLElement) {
@@ -342,14 +351,29 @@ export function NinhosSection({
       }
     }, 150);
 
+    // Pisca a linha algumas vezes para facilitar a localização visual do ovo.
+    let piscadas = 0;
+    const intervaloPiscada = window.setInterval(() => {
+      piscadas += 1;
+      setOvoDashboardPiscando((atual) => !atual);
+
+      if (piscadas >= 8) {
+        window.clearInterval(intervaloPiscada);
+        setOvoDashboardPiscando(false);
+      }
+    }, 300);
+
     const limpar = window.setTimeout(() => {
+      setOvoDashboardPiscando(false);
       setOvoDashboardDestacado(null);
       setOvoDashboardAlvo(null);
     }, 3500);
 
     return () => {
       window.clearTimeout(timer);
+      window.clearInterval(intervaloPiscada);
       window.clearTimeout(limpar);
+      setOvoDashboardPiscando(false);
     };
   }, [ovoDashboardAlvo, ninhos]);
 
@@ -1191,10 +1215,12 @@ export function NinhosSection({
                             <tr
                               key={`${ninho.id}-${egg.id || eggIdx}`}
                               data-dashboard-egg-id={egg.id}
-                              className={`border-b border-emerald-100/70 transition-colors ${
-                                ovoDashboardDestacado === `${ninho.id}::${egg.id}`
-                                  ? 'bg-amber-100 ring-4 ring-amber-300 ring-inset shadow-lg'
-                                  : ''
+                              className={`border-b border-emerald-100/70 transition-all duration-150 ${
+                                ovoDashboardDestacado === `${ninho.id}::${egg.id}` && ovoDashboardPiscando
+                                  ? 'bg-amber-200 ring-4 ring-amber-400 ring-inset shadow-xl'
+                                  : ovoDashboardDestacado === `${ninho.id}::${egg.id}`
+                                    ? 'bg-amber-100 ring-4 ring-amber-300 ring-inset shadow-lg'
+                                    : ''
                               } ${
                                 ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))
                                   ? 'bg-amber-50/60 hover:bg-amber-100/60'
