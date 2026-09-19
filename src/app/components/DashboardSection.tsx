@@ -164,36 +164,37 @@ export function DashboardSection({
     });
 
     /*
-     * Agrupa ações equivalentes pelo mesmo tipo + nome de ninho + data.
-     * Ex.: 4 ovos do mesmo ninho com fertilidade prevista para 25/09
-     * passam a aparecer como uma única ação "4 ovos".
+     * Cada ovo pode gerar no máximo uma ação de cada tipo.
+     * Primeiro eliminamos possíveis duplicidades do mesmo ovo e,
+     * depois, agrupamos somente quando a ação e a DATA CALCULADA
+     * forem exatamente iguais.
      */
-    const grupos = new Map<string, AcaoBase[]>();
+    const acoesUnicas = new Map<string, AcaoBase>();
 
     acoesIndividuais.forEach((acao) => {
-      /*
-       * O agrupamento usa o que é efetivamente exibido no Dashboard:
-       * mesma ação + mesmo nome de ninho + mesma data.
-       *
-       * Isso evita que ações visualmente idênticas sejam divididas
-       * por diferenças internas de ID do ninho.
-       */
-      const ninhoExibicao = (ninhos.find((ninho) => ninho.id === acao.ninhoId)?.name || 'Ninho sem nome')
-        .trim()
-        .toLowerCase();
+      const chaveOvo = `${acao.tipo}::${acao.ninhoId}::${acao.eggId}`;
+      if (!acoesUnicas.has(chaveOvo)) {
+        acoesUnicas.set(chaveOvo, acao);
+      }
+    });
 
-      // A data da ação é parte obrigatória do agrupamento.
-      // Assim, ovos do mesmo ninho só são agrupados quando a ação
-      // realmente ocorre na mesma data.
+    const grupos = new Map<string, AcaoBase[]>();
+
+    Array.from(acoesUnicas.values()).forEach((acao) => {
+      const ninhoExibicao = (
+        ninhos.find((ninho) => ninho.id === acao.ninhoId)?.name ||
+        'Ninho sem nome'
+      ).trim().toLowerCase();
+
+      // A DATA calculada é parte obrigatória da chave.
+      // Portanto, 25/09 e 26/09 nunca podem cair no mesmo grupo.
       const chave = [
         acao.tipo,
-        acao.titulo.trim().toLowerCase(),
         ninhoExibicao,
         acao.data
       ].join('::');
 
       const grupo = grupos.get(chave);
-
       if (grupo) {
         grupo.push(acao);
       } else {
