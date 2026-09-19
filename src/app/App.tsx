@@ -25,7 +25,13 @@ export type DashboardFiltro =
   | { tipo: "aves"; status?: string }
   | {
       tipo: "ninhos";
-      statusOvo?: Egg["status"];
+      statusOvo?:
+        | "Em Espera"
+        | "Chocando"
+        | "Fértil"
+        | "Infértil"
+        | "Eclodido"
+        | "Perdido";
       eggId?: string;
       ninhoId?: string;
       filhoteId?: string;
