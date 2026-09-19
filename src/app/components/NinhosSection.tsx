@@ -288,7 +288,9 @@ export function NinhosSection({
   const [ninhoSelecionadoPorLocal, setNinhoSelecionadoPorLocal] = useState<Record<string, string>>({});
 
   const [filtroStatusOvo, setFiltroStatusOvo] = useState<Egg['status'] | ''>('');
-  const [ovoDashboardDestacado, setOvoDashboardDestacado] = useState<string | null>(null);
+
+  // Controle do foco vindo do Dashboard. O destaque é apenas visual e temporário.
+  const [ovoDashboardDestacado, setOvoDashboardDestacado] = useState<{ ninhoId: string; eggId: string } | null>(null);
 
   useEffect(() => {
     if (dashboardFiltro?.tipo !== 'ninhos') return;
@@ -296,28 +298,32 @@ export function NinhosSection({
     setFiltroStatusOvo(dashboardFiltro.statusOvo || '');
     setVisualizacaoOvos('local');
 
-    if (!dashboardFiltro.eggId) {
-      setOvoDashboardDestacado(null);
-      return;
-    }
+    if (!dashboardFiltro.eggId || !dashboardFiltro.ninhoId) return;
 
-    const chaveDestaque = `${dashboardFiltro.ninhoId || ''}::${dashboardFiltro.eggId}`;
-    setOvoDashboardDestacado(chaveDestaque);
+    setOvoDashboardDestacado({
+      ninhoId: dashboardFiltro.ninhoId,
+      eggId: dashboardFiltro.eggId,
+    });
 
     const timer = window.setTimeout(() => {
-      const elemento = document.getElementById(`ovo-dashboard-${dashboardFiltro.eggId}`);
-      if (elemento) {
-        elemento.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
-      }
-    }, 120);
+      const elementos = Array.from(
+        document.querySelectorAll<HTMLElement>('[data-dashboard-egg-id]')
+      );
+      const alvo = elementos.find(
+        (elemento) =>
+          elemento.dataset.dashboardEggId === dashboardFiltro.eggId &&
+          elemento.dataset.dashboardNinhoId === dashboardFiltro.ninhoId
+      );
+      alvo?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
 
-    const removerDestaque = window.setTimeout(() => {
+    const limparDestaque = window.setTimeout(() => {
       setOvoDashboardDestacado(null);
     }, 5000);
 
     return () => {
       window.clearTimeout(timer);
-      window.clearTimeout(removerDestaque);
+      window.clearTimeout(limparDestaque);
     };
   }, [dashboardFiltro]);
 
@@ -852,16 +858,8 @@ export function NinhosSection({
 
   const statusOvoDashboard: Egg['status'] | undefined = filtroStatusOvo || undefined;
 
-  const deveExibirOvoDashboard = (egg: Egg, ninhoId?: string) => {
-    if (statusOvoDashboard && egg.status !== statusOvoDashboard) return false;
-
-    if (dashboardFiltro?.tipo === 'ninhos') {
-      if (dashboardFiltro.ninhoId && ninhoId !== dashboardFiltro.ninhoId) return false;
-      if (dashboardFiltro.eggId && egg.id !== dashboardFiltro.eggId) return false;
-    }
-
-    return true;
-  };
+  const deveExibirOvoDashboard = (egg: Egg) =>
+    !statusOvoDashboard || egg.status === statusOvoDashboard;
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -896,11 +894,11 @@ export function NinhosSection({
     });
   });
 
-  // Exibe somente locais que possuem pelo menos um ovo.
-  // Locais cadastrados, mas vazios, não ocupam espaço na visualização.
-  const locaisParaExibir = new Map(
-    Array.from(ovosPorLocal.entries()).filter(([, ovos]) => ovos.length > 0)
-  );
+  // Inclui também os locais cadastrados que ainda não possuem ovos.
+  const locaisParaExibir = new Map(ovosPorLocal);
+  (config.locaisOvos || []).forEach((local) => {
+    if (!locaisParaExibir.has(local)) locaisParaExibir.set(local, []);
+  });
 
   const locaisOrdenados = Array.from(locaisParaExibir.entries()).sort((a, b) =>
     a[0].localeCompare(b[0], 'pt-BR')
@@ -1007,7 +1005,7 @@ export function NinhosSection({
           </div>
         ) : (
           ninhos.filter((ninho) =>
-            !statusOvoDashboard || ninho.eggs.some((egg) => deveExibirOvoDashboard(egg, ninho.id))
+            !statusOvoDashboard || ninho.eggs.some((egg) => deveExibirOvoDashboard(egg))
           ).map((ninho) => (
             <div
               key={ninho.id}
@@ -1107,7 +1105,7 @@ export function NinhosSection({
 
               {/* Resumo / expansão dos ovos do casal */}
               <div className="p-2">
-                {ninho.eggs.filter((egg) => deveExibirOvoDashboard(egg, ninho.id)).length === 0 ? (
+                {ninho.eggs.filter(deveExibirOvoDashboard).length === 0 ? (
                   <div className="text-center py-6 text-slate-400">
                     <i className="fas fa-egg text-2xl mb-2"></i>
                     <p className="text-sm">Nenhum ovo registrado</p>
@@ -1127,7 +1125,7 @@ export function NinhosSection({
                             Ovos deste casal
                           </h4>
                           <p className="text-[10px] font-bold text-slate-500 mt-0.5">
-                            {ninho.eggs.filter((egg) => deveExibirOvoDashboard(egg, ninho.id)).length} {ninho.eggs.filter((egg) => deveExibirOvoDashboard(egg, ninho.id)).length === 1 ? 'ovo registrado' : 'ovos registrados'}
+                            {ninho.eggs.filter(deveExibirOvoDashboard).length} {ninho.eggs.filter(deveExibirOvoDashboard).length === 1 ? 'ovo registrado' : 'ovos registrados'}
                           </p>
                         </div>
                       </div>
@@ -1151,7 +1149,7 @@ export function NinhosSection({
                       <div className="flex items-center gap-2">
                         <i className="fas fa-egg text-emerald-600 text-xs"></i>
                         <span className="text-[10px] font-bold text-emerald-700 uppercase">
-                          Ovos deste casal ({ninho.eggs.filter((egg) => deveExibirOvoDashboard(egg, ninho.id)).length})
+                          Ovos deste casal ({ninho.eggs.filter(deveExibirOvoDashboard).length})
                         </span>
                       </div>
 
@@ -1188,7 +1186,7 @@ export function NinhosSection({
 
                       <tbody>
                         {ninho.eggs.map((egg, eggIdx) => {
-                          if (!deveExibirOvoDashboard(egg, ninho.id)) return null;
+                          if (!deveExibirOvoDashboard(egg)) return null;
                           const dataFertilidade = calcularDataFertilidade(egg);
                           const dataEclosao = calcularDataEclosao(egg);
                           const dataAnilhamento = calcularDataAnilhamento(egg);
@@ -1208,10 +1206,12 @@ export function NinhosSection({
                           return (
                             <tr
                               key={`${ninho.id}-${egg.id || eggIdx}`}
-                              id={`ovo-dashboard-${egg.id}`}
-                              className={`border-b border-emerald-100/70 transition-all duration-500 ${
-                                ovoDashboardDestacado === getChaveOvo(ninho.id, egg, eggIdx)
-                                  ? 'bg-amber-100 ring-4 ring-amber-300 ring-inset animate-pulse'
+                              data-dashboard-egg-id={egg.id || undefined}
+                              data-dashboard-ninho-id={ninho.id}
+                              className={`border-b border-emerald-100/70 transition-colors ${
+                                ovoDashboardDestacado?.ninhoId === ninho.id &&
+                                ovoDashboardDestacado?.eggId === egg.id
+                                  ? 'bg-amber-100 ring-2 ring-amber-400 ring-inset animate-pulse'
                                   : ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))
                                     ? 'bg-amber-50/60 hover:bg-amber-100/60'
                                     : eggIdx % 2 === 0
@@ -1968,7 +1968,7 @@ export function NinhosSection({
                       >
                         {ninhos.length === 0 && <option value="">Nenhum ninho</option>}
                         {ninhos.filter((ninho) =>
-            !statusOvoDashboard || ninho.eggs.some((egg) => deveExibirOvoDashboard(egg, ninho.id))
+            !statusOvoDashboard || ninho.eggs.some((egg) => deveExibirOvoDashboard(egg))
           ).map((ninho) => (
                           <option key={ninho.id} value={ninho.id}>
                             {ninho.name || 'Ninho s/ nome'}
@@ -2012,7 +2012,7 @@ export function NinhosSection({
                       </thead>
 
                       <tbody>
-                        {ovos.filter(({ egg }) => deveExibirOvoDashboard(egg, ninho.id)).map(({ egg, ninho, eggIdx }) => {
+                        {ovos.filter(({ egg }) => deveExibirOvoDashboard(egg)).map(({ egg, ninho, eggIdx }) => {
                           const dataFertilidade = calcularDataFertilidade(egg);
                           const dataEclosao = calcularDataEclosao(egg);
                           const dataAnilhamento = calcularDataAnilhamento(egg);
@@ -2032,15 +2032,12 @@ export function NinhosSection({
                           return (
                             <tr
                               key={`${ninho.id}-${egg.id || eggIdx}`}
-                              id={`ovo-dashboard-${egg.id}`}
-                              className={`border-b border-emerald-100/70 transition-all duration-500 ${
-                                ovoDashboardDestacado === getChaveOvo(ninho.id, egg, eggIdx)
-                                  ? 'bg-amber-100 ring-4 ring-amber-300 ring-inset animate-pulse'
-                                  : ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))
-                                    ? 'bg-amber-50/60 hover:bg-amber-100/60'
-                                    : eggIdx % 2 === 0
-                                      ? 'bg-white hover:bg-emerald-50'
-                                      : 'bg-emerald-50/50 hover:bg-emerald-100/60'
+                              className={`border-b border-emerald-100/70 transition-colors ${
+                                ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))
+                                  ? 'bg-amber-50/60 hover:bg-amber-100/60'
+                                  : eggIdx % 2 === 0
+                                    ? 'bg-white hover:bg-emerald-50'
+                                    : 'bg-emerald-50/50 hover:bg-emerald-100/60'
                               }`}
                             >
                               {/* Seleção para edição em lote */}
