@@ -169,7 +169,6 @@ export default function App() {
     setActiveTab(tab);
   };
 
-  void dashboardFiltro;
   const [modalType, setModalType] = useState<ModalType>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
@@ -262,7 +261,7 @@ export default function App() {
             casais={db.casais}
             ninhos={db.ninhos}
             config={db.config}
-            onNavigate={(tab) => navegar(tab)}
+            onNavigate={(tab, filtro) => navegar(tab, filtro)}
           />
         )}
 
@@ -287,6 +286,7 @@ export default function App() {
             onUpdateNinho={updateNinho}
             onSaveConfig={saveConfig}
             onViewDetails={setAveDetalheId}
+            dashboardFiltro={dashboardFiltro}
           />
         )}
 
@@ -301,6 +301,7 @@ export default function App() {
             onUpdateAvesBatch={updateAvesBatch}
             onPhotoClick={setZoomPhoto}
             onViewDetails={setAveDetalheId}
+            dashboardFiltro={dashboardFiltro}
           />
         )}
 
