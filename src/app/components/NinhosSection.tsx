@@ -202,7 +202,7 @@ interface NinhosSectionProps {
   config: Config;
   aves: Ave[];
   onOpenModal: (type: ModalType, id?: string | null) => void;
-  onAddEgg: (ninhoId: string) => void;
+  onAddEgg: (ninhoId: string, local?: string) => void;
   onRemoveEgg: (ninhoId: string, eggIdx: number) => void;
   onUpdateEgg: (ninhoId: string, eggIdx: number, field: keyof Egg, value: any) => void;
   onEclodirOvo: (ninhoId: string, eggIdx: number, dataEclosao: string) => void;
@@ -974,6 +974,13 @@ export function NinhosSection({
     }
   };
 
+  const compararOvosPorData = (a: { egg: Egg; eggIdx: number }, b: { egg: Egg; eggIdx: number }) => {
+    const dataA = a.egg.postura || a.egg.inicioChoca || '9999-12-31';
+    const dataB = b.egg.postura || b.egg.inicioChoca || '9999-12-31';
+    const comparacao = dataA.localeCompare(dataB);
+    return comparacao !== 0 ? comparacao : a.eggIdx - b.eggIdx;
+  };
+
   // Agrupar todos os ovos pelo local onde estão atualmente.
   // Mantemos ninhoId + eggIdx para que todas as ações continuem
   // operando sobre o ovo original, sem duplicar ou mover dados.
@@ -997,13 +1004,13 @@ export function NinhosSection({
     });
   });
 
-  // Inclui também os locais cadastrados que ainda não possuem ovos.
-  const locaisParaExibir = new Map(ovosPorLocal);
-  if (filtroAtual === 'todos') {
-    (config.locaisOvos || []).forEach((local) => {
-      if (!locaisParaExibir.has(local)) locaisParaExibir.set(local, []);
-    });
-  }
+  ovosPorLocal.forEach((lista) => lista.sort(compararOvosPorData));
+
+  // Exibe somente locais que possuem pelo menos um ovo visível.
+  // Locais cadastrados na configuração, mas vazios, não geram cards.
+  const locaisParaExibir = new Map(
+    Array.from(ovosPorLocal.entries()).filter(([, ovos]) => ovos.length > 0)
+  );
 
   const locaisOrdenados = Array.from(locaisParaExibir.entries()).sort((a, b) =>
     a[0].localeCompare(b[0], 'pt-BR')
@@ -1017,18 +1024,14 @@ export function NinhosSection({
       return;
     }
 
-    const ninho = ninhos.find((item) => item.id === ninhoId);
-    const novoEggIdx = ninho?.eggs.length ?? 0;
-
-    // Primeiro cria o ovo no ninho de origem e, em seguida, atribui o local.
-    onAddEgg(ninhoId);
-    window.setTimeout(() => {
-      onUpdateEgg(ninhoId, novoEggIdx, 'local', local === 'Sem local definido' ? '' : local);
-    }, 0);
+    // O local é informado no mesmo comando de criação para evitar uma segunda
+    // atualização assíncrona que poderia perder a alteração.
+    onAddEgg(ninhoId, local === 'Sem local definido' ? '' : local);
   };
 
   return (
     <section className="space-y-6">
+      <div className="sticky top-0 z-40 -mx-2 sm:-mx-4 lg:-mx-6 px-2 sm:px-4 lg:px-6 py-2 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200/70">
       <div className="flex flex-wrap justify-between items-center gap-3">
         <h2 className="text-xl font-bold text-slate-800 tracking-tight uppercase italic">
           Ninhos Ativos
@@ -1072,7 +1075,7 @@ export function NinhosSection({
         </div>
       </div>
 
-      <div className="bg-white border-2 border-slate-200 rounded-2xl p-2.5 shadow-sm">
+      <div className="bg-white border-2 border-slate-200 rounded-2xl p-2.5 shadow-sm mt-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-[9px] font-black text-slate-500 uppercase mr-1">Filtrar:</span>
           {[
@@ -1105,6 +1108,7 @@ export function NinhosSection({
             </span>
           )}
         </div>
+      </div>
       </div>
 
       {visualizacaoOvos === 'casal' && (
@@ -1303,8 +1307,11 @@ export function NinhosSection({
                       </thead>
 
                       <tbody>
-                        {ninho.eggs.map((egg, eggIdx) => {
-                          if (!ovoPassaNoFiltro(egg)) return null;
+                        {ninho.eggs
+                          .map((egg, eggIdx) => ({ egg, eggIdx }))
+                          .filter(({ egg }) => ovoPassaNoFiltro(egg))
+                          .sort(compararOvosPorData)
+                          .map(({ egg, eggIdx }) => {
 
                           const dataFertilidade = calcularDataFertilidade(egg);
                           const dataEclosao = calcularDataEclosao(egg);
