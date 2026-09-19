@@ -824,6 +824,11 @@ export function NinhosSection({
   const deveExibirOvo = (egg: Egg) =>
     filtroStatusOvo === 'Todos' || egg.status === filtroStatusOvo;
 
+  // Mantém compatibilidade com os trechos de renderização existentes.
+  const statusOvoDashboard: Egg['status'] | undefined =
+    filtroStatusOvo === 'Todos' ? undefined : filtroStatusOvo;
+  const deveExibirOvoDashboard = (egg: Egg) => deveExibirOvo(egg);
+
   const getStatusColor = (status: string) => {
     switch(status) {
       case 'Em Espera': return 'bg-blue-50 text-blue-700 border-blue-200';
