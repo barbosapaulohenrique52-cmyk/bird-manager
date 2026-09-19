@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Ave, Casal, Config, Egg, Ninho, TabType } from '../App';
 
 interface DashboardSectionProps {
@@ -43,6 +44,103 @@ function nomeCasal(casal: Casal | undefined, aves: Ave[]) {
 
 function contarOvos(ninhos: Ninho[]) {
   return ninhos.flatMap(ninho => ninho.eggs || []);
+}
+
+
+interface CheckboxFilterProps {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (values: string[]) => void;
+  allLabel?: string;
+  specialOption?: { value: string; label: string };
+}
+
+function CheckboxFilter({
+  label,
+  options,
+  selected,
+  onChange,
+  allLabel = 'Todos',
+  specialOption
+}: CheckboxFilterProps) {
+  const [aberto, setAberto] = useState(false);
+  const isAll = selected.length === 0;
+
+  function alternarOpcao(value: string) {
+    if (specialOption && value === specialOption.value) {
+      onChange([specialOption.value]);
+      return;
+    }
+
+    const semEspecial = specialOption
+      ? selected.filter(item => item !== specialOption.value)
+      : selected;
+
+    const novosValores = semEspecial.includes(value)
+      ? semEspecial.filter(item => item !== value)
+      : [...semEspecial, value];
+
+    onChange(novosValores);
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setAberto(value => !value)}
+        className="w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all flex items-center justify-between gap-2 shadow-sm"
+      >
+        <span className="truncate">
+          <strong className="text-slate-900 font-semibold">{label}:</strong>{' '}
+          {specialOption && selected.includes(specialOption.value)
+            ? specialOption.label
+            : isAll
+              ? allLabel
+              : `${selected.length} sel.`}
+        </span>
+        <i className={`fas fa-chevron-${aberto ? 'up' : 'down'} text-[10px] text-slate-400 shrink-0`}></i>
+      </button>
+
+      {aberto && (
+        <div className="absolute z-40 top-full left-0 right-0 mt-1.5 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 max-h-64 overflow-y-auto min-w-[210px]">
+          <label className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-50 cursor-pointer border-b border-slate-100 mb-1">
+            <input
+              type="checkbox"
+              checked={isAll}
+              onChange={() => onChange([])}
+              className="w-4 h-4 rounded text-emerald-600 accent-emerald-600 cursor-pointer"
+            />
+            <span className="text-xs font-bold text-slate-800">{allLabel}</span>
+          </label>
+
+          {specialOption && (
+            <label className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selected.includes(specialOption.value)}
+                onChange={() => alternarOpcao(specialOption.value)}
+                className="w-4 h-4 rounded text-emerald-600 accent-emerald-600 cursor-pointer"
+              />
+              <span className="text-xs font-medium text-slate-700">{specialOption.label}</span>
+            </label>
+          )}
+
+          {options.map(option => (
+            <label key={option} className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={selected.includes(option)}
+                onChange={() => alternarOpcao(option)}
+                className="w-4 h-4 rounded text-emerald-600 accent-emerald-600 cursor-pointer"
+              />
+              <span className="text-xs font-medium text-slate-700">{option}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function CardKpi({
@@ -125,16 +223,91 @@ export function DashboardSection({
   config,
   onNavigate
 }: DashboardSectionProps) {
-  const avesAtivas = aves.filter(ave => {
-    const status = String(ave.status || 'Ativo').trim().toLowerCase();
-    return status === 'ativo';
+  const [busca, setBusca] = useState('');
+  const [filtroEspecie, setFiltroEspecie] = useState<string[]>([]);
+  const [filtroSexo, setFiltroSexo] = useState<string[]>([]);
+  const [filtroStatus, setFiltroStatus] = useState<string[]>(['__NAO_FALECIDAS__']);
+  const [filtroCorCabeca, setFiltroCorCabeca] = useState<string[]>([]);
+  const [filtroCorPeito, setFiltroCorPeito] = useState<string[]>([]);
+  const [filtroCorDorso, setFiltroCorDorso] = useState<string[]>([]);
+  const [filtroPorta, setFiltroPorta] = useState<string[]>([]);
+  const [filtroLocal, setFiltroLocal] = useState<string[]>([]);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
+
+  const obterLocalAve = (ave: Ave) => {
+    const aveAny = ave as Ave & {
+      localAtual?: string;
+      location?: string;
+      localSaidaNinho?: string;
+    };
+
+    const direto = [ave.local, aveAny.localAtual, aveAny.location, aveAny.localSaidaNinho]
+      .find(valor => valor && String(valor).trim());
+
+    return direto ? String(direto).trim() : 'Não informado';
+  };
+
+  const especies = Array.from(new Set(aves.map(ave => ave.species).filter(Boolean))).sort();
+  const sexos = Array.from(new Set(aves.map(ave => ave.sex).filter(Boolean))).sort();
+  const status = Array.from(new Set(aves.map(ave => ave.status).filter(Boolean))).sort();
+  const coresCabeca = Array.from(new Set(aves.map(ave => ave.corCabeca).filter(Boolean))).sort();
+  const coresPeito = Array.from(new Set(aves.map(ave => ave.corPeito).filter(Boolean))).sort();
+  const coresDorso = Array.from(new Set(aves.map(ave => ave.corDorso).filter(Boolean))).sort();
+  const portas = Array.from(new Set(aves.map(ave => ave.porta).filter(Boolean))).sort();
+  const locais = Array.from(new Set([
+    ...(config.locaisOvos || []),
+    ...aves.map(obterLocalAve)
+  ])).filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  const avesFiltradas = aves.filter(ave => {
+    const termo = busca.trim().toLowerCase();
+    const correspondeBusca = !termo || [
+      ave.species, ave.ring, ave.name, ave.sex, ave.status, ave.creator,
+      ave.ringYear, ave.acqYear, ave.corCabeca, ave.corPeito, ave.corDorso,
+      ave.nota, ave.porta, obterLocalAve(ave)
+    ].filter(value => value !== undefined && value !== null)
+      .some(value => String(value).toLowerCase().includes(termo));
+
+    const statusNormalizado = String(ave.status || '').trim().toLowerCase();
+    const eFalecida = ['óbito', 'obito', 'falecido', 'falecida', 'morto', 'morta'].includes(statusNormalizado);
+
+    return (
+      correspondeBusca &&
+      (filtroEspecie.length === 0 || filtroEspecie.includes(ave.species || '')) &&
+      (filtroSexo.length === 0 || filtroSexo.includes(ave.sex || '')) &&
+      (filtroStatus.length === 0 ||
+        (filtroStatus.includes('__NAO_FALECIDAS__') ? !eFalecida :
+          filtroStatus.some(valor => statusNormalizado === valor.trim().toLowerCase()))) &&
+      (filtroCorCabeca.length === 0 || filtroCorCabeca.includes(ave.corCabeca || '')) &&
+      (filtroCorPeito.length === 0 || filtroCorPeito.includes(ave.corPeito || '')) &&
+      (filtroCorDorso.length === 0 || filtroCorDorso.includes(ave.corDorso || '')) &&
+      (filtroPorta.length === 0 || filtroPorta.includes(ave.porta || '')) &&
+      (filtroLocal.length === 0 || filtroLocal.includes(obterLocalAve(ave)))
+    );
+  });
+
+  const idsAvesFiltradas = new Set(avesFiltradas.map(ave => ave.id));
+
+  // Um casal entra no recorte quando pelo menos um dos seus integrantes
+  // pertence ao conjunto filtrado. Assim, por exemplo, o filtro "Macho"
+  // continua mostrando os casais dos machos selecionados.
+  const casaisFiltrados = casais.filter(casal =>
+    idsAvesFiltradas.has(casal.mId) || idsAvesFiltradas.has(casal.fId)
+  );
+
+  const idsCasaisFiltrados = new Set(casaisFiltrados.map(casal => casal.id));
+  const ninhosFiltrados = ninhos.filter(ninho => idsCasaisFiltrados.has(ninho.casalId));
+
+  const avesAtivas = avesFiltradas.filter(ave => {
+    const statusAve = String(ave.status || 'Ativo').trim().toLowerCase();
+    return statusAve === 'ativo';
   });
 
   const machos = avesAtivas.filter(ave => ave.sex === 'Macho').length;
   const femeas = avesAtivas.filter(ave => ave.sex === 'Fêmea').length;
 
-  const ninhosAtivos = ninhos.filter(ninho => ninho.active).length;
-  const ovos = contarOvos(ninhos);
+  const ninhosAtivos = ninhosFiltrados.filter(ninho => ninho.active).length;
+  const ovos = contarOvos(ninhosFiltrados);
 
   const ovosChocando = ovos.filter(egg => egg.status === 'Chocando').length;
   const ovosFerteis = ovos.filter(egg => egg.status === 'Fértil').length;
@@ -143,20 +316,39 @@ export function DashboardSection({
   const ovosEmEspera = ovos.filter(egg => egg.status === 'Em Espera').length;
   const ovosInferteis = ovos.filter(egg => egg.status === 'Infértil').length;
 
-  const casaisAtivos = casais.filter(casal => {
+  const casaisAtivos = casaisFiltrados.filter(casal => {
     const macho = aves.find(ave => ave.id === casal.mId);
     const femea = aves.find(ave => ave.id === casal.fId);
-
-    return (
-      macho?.status === 'Ativo' &&
-      femea?.status === 'Ativo'
-    );
+    return macho?.status === 'Ativo' && femea?.status === 'Ativo';
   }).length;
 
-  const filhotes = casais.reduce(
+  const filhotes = casaisFiltrados.reduce(
     (total, casal) => total + (casal.historico?.length || 0),
     0
   );
+
+  const quantidadeFiltrosAtivos = [
+    filtroEspecie,
+    filtroSexo,
+    filtroStatus.length === 1 && filtroStatus[0] === '__NAO_FALECIDAS__' ? [] : filtroStatus,
+    filtroCorCabeca,
+    filtroCorPeito,
+    filtroCorDorso,
+    filtroPorta,
+    filtroLocal
+  ].filter(values => values.length > 0).length;
+
+  function limparFiltros() {
+    setBusca('');
+    setFiltroEspecie([]);
+    setFiltroSexo([]);
+    setFiltroStatus(['__NAO_FALECIDAS__']);
+    setFiltroCorCabeca([]);
+    setFiltroCorPeito([]);
+    setFiltroCorDorso([]);
+    setFiltroPorta([]);
+    setFiltroLocal([]);
+  }
 
   const hoje = new Date();
   const mesAtual = hoje.toLocaleDateString('pt-BR', {
@@ -243,6 +435,67 @@ export function DashboardSection({
           <i className="fas fa-calendar-alt text-emerald-600"></i>
           VER CALENDÁRIO
         </button>
+      </div>
+
+      {/* Busca e filtros — mesmos critérios do Plantel */}
+      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2">
+          <div className="relative flex-1">
+            <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+            <input
+              type="text"
+              value={busca}
+              onChange={event => setBusca(event.target.value)}
+              placeholder="Buscar por espécie, anilha, nome, sexo, status, local..."
+              className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm text-slate-800 placeholder-slate-400 transition-all"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setMostrarFiltros(value => !value)}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-2 border ${
+              mostrarFiltros || quantidadeFiltrosAtivos > 0
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <i className="fas fa-sliders-h text-sm"></i>
+            Filtros
+            {quantidadeFiltrosAtivos > 0 && (
+              <span className="bg-emerald-500 text-white text-[10px] rounded-full w-5 h-5 flex items-center justify-center">
+                {quantidadeFiltrosAtivos}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {mostrarFiltros && (
+          <div className="pt-3 border-t border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-2.5">
+              <CheckboxFilter label="Espécie" options={especies} selected={filtroEspecie} onChange={setFiltroEspecie} allLabel="Todas" />
+              <CheckboxFilter label="Sexo" options={sexos} selected={filtroSexo} onChange={setFiltroSexo} allLabel="Todos" />
+              <CheckboxFilter label="Status" options={status} selected={filtroStatus} onChange={setFiltroStatus} allLabel="Todos" specialOption={{ value: '__NAO_FALECIDAS__', label: 'Não falecidas' }} />
+              <CheckboxFilter label="Cabeça" options={coresCabeca} selected={filtroCorCabeca} onChange={setFiltroCorCabeca} allLabel="Todas" />
+              <CheckboxFilter label="Peito" options={coresPeito} selected={filtroCorPeito} onChange={setFiltroCorPeito} allLabel="Todas" />
+              <CheckboxFilter label="Dorso" options={coresDorso} selected={filtroCorDorso} onChange={setFiltroCorDorso} allLabel="Todas" />
+              <CheckboxFilter label="Porta" options={portas} selected={filtroPorta} onChange={setFiltroPorta} allLabel="Todas" />
+              <CheckboxFilter label="Local" options={locais} selected={filtroLocal} onChange={setFiltroLocal} allLabel="Todos" />
+            </div>
+
+            {(quantidadeFiltrosAtivos > 0 || busca) && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[10px] text-slate-400">
+                  Exibindo <strong className="text-slate-700">{avesFiltradas.length}</strong> de {aves.length} aves • {casaisFiltrados.length} casal(is) relacionado(s) • {ninhosFiltrados.length} ninho(s)
+                </p>
+                <button type="button" onClick={limparFiltros} className="text-xs font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-rose-50">
+                  <i className="fas fa-times text-[10px]"></i>
+                  Limpar filtros
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* KPIs principais */}
