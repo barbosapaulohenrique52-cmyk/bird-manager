@@ -380,8 +380,8 @@ export function DashboardSection({
     year: 'numeric'
   });
 
-  const atencoes = ovos
-    .flatMap((egg, index) => {
+  const atencoes = ninhosFiltrados
+    .flatMap(ninho => (ninho.eggs || []).map((egg, index) => {
       const acoes: Array<{
         tipo: string;
         titulo: string;
@@ -389,6 +389,9 @@ export function DashboardSection({
         data: string;
         icon: string;
         className: string;
+        eggId: string;
+        ninhoId: string;
+        filhoteId?: string;
       }> = [];
 
       const params = config.parametrosEspecies[egg.species || ''] || config.parametrosPadrao;
@@ -409,7 +412,10 @@ export function DashboardSection({
           icon: 'fa-search',
           className: dias <= 0
             ? 'bg-amber-50 text-amber-700 border-amber-100'
-            : 'bg-blue-50 text-blue-700 border-blue-100'
+            : 'bg-blue-50 text-blue-700 border-blue-100',
+          eggId: egg.id,
+          ninhoId: ninho.id,
+          filhoteId: egg.filhoteId
         });
       }
 
@@ -429,7 +435,10 @@ export function DashboardSection({
           icon: 'fa-egg',
           className: dias <= 0
             ? 'bg-amber-50 text-amber-700 border-amber-100'
-            : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+            : 'bg-emerald-50 text-emerald-700 border-emerald-100',
+          eggId: egg.id,
+          ninhoId: ninho.id,
+          filhoteId: egg.filhoteId
         });
       }
 
@@ -448,7 +457,10 @@ export function DashboardSection({
           icon: 'fa-ring',
           className: dias <= 0
             ? 'bg-amber-50 text-amber-700 border-amber-100'
-            : 'bg-violet-50 text-violet-700 border-violet-100'
+            : 'bg-violet-50 text-violet-700 border-violet-100',
+          eggId: egg.id,
+          ninhoId: ninho.id,
+          filhoteId: egg.filhoteId
         });
       }
 
@@ -464,13 +476,16 @@ export function DashboardSection({
             detalhe: `${egg.species || 'Espécie não informada'} • ${diasDesdePostura} dia(s) desde a postura`,
             data: egg.postura,
             icon: 'fa-clock',
-            className: 'bg-orange-50 text-orange-700 border-orange-100'
+            className: 'bg-orange-50 text-orange-700 border-orange-100',
+            eggId: egg.id,
+            ninhoId: ninho.id,
+            filhoteId: egg.filhoteId
           });
         }
       }
 
       return acoes;
-    })
+    }))
     .sort((a, b) => a.data.localeCompare(b.data))
     .slice(0, 8);
 
@@ -712,9 +727,18 @@ export function DashboardSection({
           {atencoes.length > 0 ? (
             <div className="space-y-2.5">
               {atencoes.map((item, index) => (
-                <div
+                <button
                   key={`${item.tipo}-${item.data}-${index}`}
-                  className={`rounded-xl border p-3 ${item.className}`}
+                  type="button"
+                  onClick={() => onNavigate('ninhos', {
+                    tipo: 'ninhos',
+                    statusOvo: undefined,
+                    eggId: item.eggId,
+                    ninhoId: item.ninhoId,
+                    filhoteId: item.filhoteId
+                  } as DashboardFiltro)}
+                  className={`w-full text-left rounded-xl border p-3 ${item.className} hover:shadow-md hover:-translate-y-[1px] transition-all cursor-pointer`}
+                  title="Abrir este ovo na aba Ninhos"
                 >
                   <div className="flex items-start gap-2.5">
                     <div className="w-7 h-7 rounded-lg bg-white/70 flex items-center justify-center shrink-0">
@@ -729,7 +753,7 @@ export function DashboardSection({
                       </p>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           ) : (
