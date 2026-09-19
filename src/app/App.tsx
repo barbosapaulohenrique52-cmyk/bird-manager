@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
+import { Header } from "./components/Header";
 import { Navigation } from "./components/Navigation";
+import { DashboardSection } from "./components/DashboardSection";
 import { NinhosSection } from "./components/NinhosSection";
 import { AvesSection } from "./components/AvesSection";
 import { CasaisSection } from "./components/CasaisSection";
@@ -47,7 +49,6 @@ export interface Ave {
   corPeito?: string;
   corDorso?: string;
   nota?: string;
-  local?: string;
   porta?: string;
 }
 
@@ -148,7 +149,8 @@ export interface Lancamento {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>("ninhos");
+  const [activeTab, setActiveTab] = useState<TabType>("dashboard");
+  const [ovoDashboardAlvo, setOvoDashboardAlvo] = useState<{ ninhoId: string; eggId: string } | null>(null);
   const [modalType, setModalType] = useState<ModalType>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
@@ -159,7 +161,6 @@ export default function App() {
     colorLists,
     saveAve,
     importAves,
-    updateAvesBatch,
     saveCasal,
     saveNinho,
     updateNinhoCasal,
@@ -208,6 +209,20 @@ export default function App() {
   };
 
   useEffect(() => {
+    const handleDashboardNavigate = (event: Event) => {
+      const customEvent = event as CustomEvent<TabType>;
+      if (customEvent.detail) {
+        setActiveTab(customEvent.detail);
+      }
+    };
+
+    window.addEventListener("gouldpro-navigate", handleDashboardNavigate);
+    return () => {
+      window.removeEventListener("gouldpro-navigate", handleDashboardNavigate);
+    };
+  }, []);
+
+  useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (
         db.aves.length > 0 ||
@@ -231,9 +246,24 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
+      <Header onConfigClick={() => setActiveTab("config")} />
+
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
       <main className="flex-1 w-full px-2 sm:px-4 lg:px-5 pb-32">
+        {activeTab === "dashboard" && (
+          <DashboardSection
+            aves={db.aves}
+            casais={db.casais}
+            ninhos={db.ninhos}
+            config={db.config}
+            onOpenOvo={(ninhoId, eggId) => {
+              setOvoDashboardAlvo({ ninhoId, eggId });
+              setActiveTab("ninhos");
+            }}
+          />
+        )}
+
         {activeTab === "ninhos" && (
           <NinhosSection
             ninhos={db.ninhos}
@@ -266,7 +296,6 @@ export default function App() {
             onOpenModal={openModal}
             onDeleteAve={deleteAve}
             onImportAves={importAves}
-            onUpdateAvesBatch={updateAvesBatch}
             onPhotoClick={setZoomPhoto}
             onViewDetails={setAveDetalheId}
           />
