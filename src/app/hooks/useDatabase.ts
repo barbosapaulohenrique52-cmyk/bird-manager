@@ -276,9 +276,6 @@ const defaultConfig: Config = {
   ],
   parametrosEspecies: {},
   parametrosPadrao: defaultParametros,
-  coresCabeca: [],
-  coresPeito: [],
-  coresDorso: [],
   coresAves: []
 };
 
@@ -305,74 +302,29 @@ function normalizarConfig(config: Partial<Config> | null | undefined): Config {
       : defaultConfig.especies,
     parametrosEspecies: config?.parametrosEspecies || {},
     parametrosPadrao: config?.parametrosPadrao || defaultParametros,
-    coresCabeca: Array.isArray(config?.coresCabeca) ? config.coresCabeca : [],
-    coresPeito: Array.isArray(config?.coresPeito) ? config.coresPeito : [],
-    coresDorso: Array.isArray(config?.coresDorso) ? config.coresDorso : [],
     coresAves: Array.isArray(config?.coresAves) ? config.coresAves : []
   };
 }
 
 function completarCoresAves(config: Config, aves: Ave[]): Config {
-  const coresCabeca = [...(config.coresCabeca || [])];
-  const coresPeito = [...(config.coresPeito || [])];
-  const coresDorso = [...(config.coresDorso || [])];
+  const cores = [...(config.coresAves || [])];
+  const nomes = new Set(cores.map(c => c.nome.trim().toLowerCase()));
+  const valores = aves.flatMap(ave => [ave.corCabeca, ave.corPeito, ave.corDorso]);
 
-  // Compatibilidade: cores cadastradas na versão anterior ficam
-  // disponíveis inicialmente nas três regiões, sem apagar dados antigos.
-  const coresAntigas = config.coresAves || [];
-
-  const adicionarCor = (lista: CorAve[], cor: CorAve) => {
-    const existe = lista.some(
-      item => item.nome.trim().toLowerCase() === cor.nome.trim().toLowerCase()
-    );
-
-    if (!existe) {
-      lista.push({
-        ...cor,
-        hex: cor.hex || hexParaCorNome(cor.nome)
-      });
-    }
-  };
-
-  coresAntigas.forEach(cor => {
-    adicionarCor(coresCabeca, cor);
-    adicionarCor(coresPeito, cor);
-    adicionarCor(coresDorso, cor);
-  });
-
-  const adicionarNomeDaAve = (
-    lista: CorAve[],
-    nome: string | undefined,
-    regiao: string
-  ) => {
+  valores.forEach(nome => {
     if (!nome || !nome.trim()) return;
-
     const chave = nome.trim().toLowerCase();
-    const existe = lista.some(
-      cor => cor.nome.trim().toLowerCase() === chave
-    );
-
-    if (!existe) {
-      lista.push({
-        id: `cor-${regiao}-${Date.now()}-${lista.length}`,
+    if (!nomes.has(chave)) {
+      cores.push({
+        id: `cor-${Date.now()}-${cores.length}`,
         nome: nome.trim(),
         hex: hexParaCorNome(nome)
       });
+      nomes.add(chave);
     }
-  };
-
-  aves.forEach(ave => {
-    adicionarNomeDaAve(coresCabeca, ave.corCabeca, 'cabeca');
-    adicionarNomeDaAve(coresPeito, ave.corPeito, 'peito');
-    adicionarNomeDaAve(coresDorso, ave.corDorso, 'dorso');
   });
 
-  return {
-    ...config,
-    coresCabeca,
-    coresPeito,
-    coresDorso
-  };
+  return { ...config, coresAves: cores };
 }
 
 export function useDatabase() {
@@ -586,17 +538,7 @@ export function useDatabase() {
       lancamentos
     });
 
-    setColorLists({
-      coresCabeca: Array.isArray(savedColors?.coresCabeca)
-        ? savedColors.coresCabeca
-        : [],
-      coresPeito: Array.isArray(savedColors?.coresPeito)
-        ? savedColors.coresPeito
-        : [],
-      coresDorso: Array.isArray(savedColors?.coresDorso)
-        ? savedColors.coresDorso
-        : []
-    });
+    setColorLists(savedColors);
   }, []);
 
   // Save to localStorage
@@ -637,9 +579,51 @@ export function useDatabase() {
       editCount.toString()
     );
 
-    // Backup automático desativado.
-    // O contador de edições é mantido apenas para controle interno.
-    // O backup manual continua disponível pelos componentes de backup.
+    // A cada 10 edições, alertar para fazer backup
+    if (editCount % 10 === 0) {
+      const lastBackup = localStorage.getItem(
+        'gpro_v19_lastBackup'
+      );
+
+      const message = lastBackup
+        ? `Você fez ${editCount} edições desde o início. Último backup: ${new Date(
+            lastBackup
+          ).toLocaleDateString(
+            'pt-BR'
+          )}. Recomendamos fazer um novo backup!`
+        : `Você fez ${editCount} edições. Recomendamos fazer um backup dos seus dados!`;
+
+      // Usar setTimeout para não bloquear o salvamento
+      setTimeout(() => {
+        if (confirm(message + '\n\nDeseja fazer backup agora?')) {
+          const blob = new Blob(
+            [JSON.stringify(newDb)],
+            {
+              type: 'application/json'
+            }
+          );
+
+          const a = document.createElement('a');
+
+          a.href =
+            URL.createObjectURL(blob);
+
+          a.download =
+            `backup_gpro_${
+              new Date()
+                .toISOString()
+                .split('T')[0]
+            }.json`;
+
+          a.click();
+
+          localStorage.setItem(
+            'gpro_v19_lastBackup',
+            new Date().toISOString()
+          );
+        }
+      }, 100);
+    }
 
     setDb(newDb);
   }, []);
@@ -743,24 +727,6 @@ export function useDatabase() {
       save(newDb);
     },
     [db, save, colorLists]
-  );
-
-  const updateAvesBatch = useCallback(
-    (ids: string[], updates: Partial<Ave>) => {
-      if (ids.length === 0) return;
-
-      const idsSelecionados = new Set(ids);
-      const newDb = { ...db };
-
-      newDb.aves = newDb.aves.map(ave =>
-        idsSelecionados.has(ave.id)
-          ? ({ ...ave, ...updates } as Ave)
-          : ave
-      );
-
-      save(newDb);
-    },
-    [db, save]
   );
 
   const saveCasal = useCallback(
@@ -949,7 +915,7 @@ export function useDatabase() {
   );
 
   const addEgg = useCallback(
-    (ninhoId: string) => {
+    (ninhoId: string, local: string = "ninho") => {
       const newDb = { ...db };
 
       const ninho =
@@ -1024,7 +990,10 @@ export function useDatabase() {
           postura: hoje,
           status:
             "Em Espera",
-          local: "ninho",
+          // Quando o ovo é criado pelo botão "+ Ovo" de um local,
+          // ele já nasce vinculado àquele local.
+          // Mantém "ninho" como padrão para os demais pontos do sistema.
+          local: local.trim() || "ninho",
           species: species
         });
 
@@ -1415,8 +1384,7 @@ export function useDatabase() {
     (
       ninhoId: string,
       eggIdx: number,
-      dataSaidaNinho: string,
-      novoLocal?: string
+      dataSaidaNinho: string
     ) => {
       const newDb = { ...db };
 
@@ -1577,13 +1545,6 @@ export function useDatabase() {
       egg.dataSaidaNinho =
         dataSaidaNinho;
 
-      // Preserva o local escolhido no momento da saída.
-      if (novoLocal && novoLocal.trim()) {
-        (egg as any).localSaidaNinho = novoLocal.trim();
-      } else {
-        delete (egg as any).localSaidaNinho;
-      }
-
       /*
        * Garantir que o histórico esteja vinculado à mesma ave.
        */
@@ -1725,7 +1686,6 @@ export function useDatabase() {
        * Apenas a saída é desfeita.
        */
       delete egg.dataSaidaNinho;
-      delete (egg as any).localSaidaNinho;
 
       /*
        * O histórico permanece.
@@ -2346,7 +2306,6 @@ export function useDatabase() {
     colorLists,
 
     saveAve,
-    updateAvesBatch,
     saveCasal,
     saveNinho,
 
