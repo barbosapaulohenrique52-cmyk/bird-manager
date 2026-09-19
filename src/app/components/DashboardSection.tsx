@@ -89,6 +89,7 @@ export function DashboardSection({
       detalhe: string;
       tipo: 'fertilidade' | 'eclosao' | 'anilhamento';
       eggId: string;
+      eggIds?: string[];
       ninhoId: string;
       especie: string;
     };
@@ -163,14 +164,31 @@ export function DashboardSection({
     });
 
     /*
-     * Agrupa ações equivalentes pelo mesmo tipo + ninho + data.
-     * Ex.: 4 ovos do N1 com fertilidade prevista para 25/09
+     * Agrupa ações equivalentes pelo mesmo tipo + nome de ninho + data.
+     * Ex.: 4 ovos do mesmo ninho com fertilidade prevista para 25/09
      * passam a aparecer como uma única ação "4 ovos".
      */
     const grupos = new Map<string, AcaoBase[]>();
 
     acoesIndividuais.forEach((acao) => {
-      const chave = `${acao.tipo}::${acao.ninhoId}::${acao.data}`;
+      /*
+       * O agrupamento usa o que é efetivamente exibido no Dashboard:
+       * mesma ação + mesmo nome de ninho + mesma data.
+       *
+       * Isso evita que ações visualmente idênticas sejam divididas
+       * por diferenças internas de ID do ninho.
+       */
+      const ninhoExibicao = (ninhos.find((ninho) => ninho.id === acao.ninhoId)?.name || 'Ninho sem nome')
+        .trim()
+        .toLowerCase();
+
+      const chave = [
+        acao.tipo,
+        acao.titulo.trim().toLowerCase(),
+        ninhoExibicao,
+        acao.data
+      ].join('::');
+
       const grupo = grupos.get(chave);
 
       if (grupo) {
@@ -188,6 +206,7 @@ export function DashboardSection({
         return {
           ...primeira,
           quantidade,
+          eggIds: grupo.map((acao) => acao.eggId),
           detalhe: `${primeira.detalhe} • ${quantidade} ${
             quantidade === 1 ? 'ovo' : 'ovos'
           }`
@@ -340,7 +359,15 @@ export function DashboardSection({
                 <button
                   key={`${acao.ninhoId}-${acao.data}-${acao.tipo}-${index}`}
                   type="button"
-                  onClick={() => onOpenOvo(acao.ninhoId, acao.eggId)}
+                  onClick={() => {
+                    // Quando a ação foi agrupada, guarda todos os ovos do grupo
+                    // para que a tela de Ninhos possa destacar/piscar todos.
+                    (window as any).__gouldproOvosAlvos = acao.eggIds?.length
+                      ? acao.eggIds.map((eggId) => ({ ninhoId: acao.ninhoId, eggId }))
+                      : [{ ninhoId: acao.ninhoId, eggId: acao.eggId }];
+
+                    onOpenOvo(acao.ninhoId, acao.eggId);
+                  }}
                   className="w-full text-left rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:shadow-sm p-3 transition-all"
                 >
                   <div className="flex items-start gap-3">
