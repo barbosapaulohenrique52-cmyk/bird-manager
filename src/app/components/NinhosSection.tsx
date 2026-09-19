@@ -303,6 +303,14 @@ export function NinhosSection({
     return filtroSalvo || filtro;
   });
   const filtroAtual = filtroInterno;
+
+  // Mantém o filtro interno sincronizado com o filtro enviado pelo Dashboard/App.
+  // Isso é importante quando o componente permanece montado enquanto o filtro muda.
+  useEffect(() => {
+    setFiltroInterno(filtro);
+    (window as any).__gouldproNinhosFiltro = filtro;
+  }, [filtro]);
+
   // Guarda o ninho/casal de origem escolhido para adicionar ovos em cada local.
   const [ninhoSelecionadoPorLocal, setNinhoSelecionadoPorLocal] = useState<Record<string, string>>({});
 
@@ -939,8 +947,10 @@ export function NinhosSection({
       case "Fértil":
       case "Infértil":
       case "Eclodido":
-      case "Perdido":
-        return egg.status === filtroAtual;
+      case "Perdido": {
+        const status = String(egg.status ?? "").trim();
+        return status === filtroAtual;
+      }
       case "todos":
       default:
         return true;
