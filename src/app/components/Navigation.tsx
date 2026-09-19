@@ -7,8 +7,7 @@ interface NavigationProps {
 
 export function Navigation({ activeTab, setActiveTab }: NavigationProps) {
   const tabs: { id: TabType; label: string; icon: string }[] = [
-    { id: 'dashboard', label: 'Início', icon: 'fa-home' },
-    { id: 'ninhos', label: 'Ninhos', icon: 'fa-egg' },
+      { id: 'ninhos', label: 'Ninhos', icon: 'fa-egg' },
     { id: 'aves', label: 'Plantel', icon: 'fa-dove' },
     { id: 'casais', label: 'Casais', icon: 'fa-heart' },
     { id: 'calendario', label: 'Calendário', icon: 'fa-calendar-alt' },
