@@ -294,7 +294,7 @@ export function NinhosSection({
   // Estado para controlar quais ninhos estão expandidos
   const [ninhosExpandidos, setNinhosExpandidos] = useState<Set<string>>(new Set());
   const [ovoDashboardAlvo, setOvoDashboardAlvo] = useState<{ ninhoId: string; eggId: string } | null>(null);
-  const [ovoDashboardDestacado, setOvoDashboardDestacado] = useState<string | null>(null);
+  const [ovoDashboardDestacado, setOvoDashboardDestacado] = useState<Set<string>>(new Set());
   const [ovoDashboardPiscando, setOvoDashboardPiscando] = useState(false);
   // Alterna entre a visualização dos ovos por casal/ninho e por local atual.
   const [visualizacaoOvos, setVisualizacaoOvos] = useState<'casal' | 'local'>('local');
@@ -333,13 +333,32 @@ export function NinhosSection({
       const eggId = customEvent.detail?.eggId;
       if (!ninhoId || !eggId) return;
 
-      setOvoDashboardAlvo({ ninhoId, eggId });
+      // Uma ação agrupada pode conter vários ovos do mesmo ninho.
+      // Mantemos todos os alvos para destacar e piscar o grupo inteiro.
+      const alvosAgrupados = (window as any).__gouldproOvosAlvos as
+        | Array<{ ninhoId?: string; eggId?: string }>
+        | undefined;
+
+      const alvosValidos = alvosAgrupados?.filter(
+        (alvo) => alvo.ninhoId && alvo.eggId
+      ) as Array<{ ninhoId: string; eggId: string }> | undefined;
+
+      const alvos = alvosValidos?.length
+        ? alvosValidos
+        : [{ ninhoId, eggId }];
+
+      setOvoDashboardAlvo(alvos[0]);
+      setOvoDashboardDestacado(
+        new Set(alvos.map((alvo) => `${alvo.ninhoId}::${alvo.eggId}`))
+      );
       setVisualizacaoOvos('casal');
       setNinhosExpandidos((atual) => {
         const novo = new Set(atual);
-        novo.add(ninhoId);
+        alvos.forEach((alvo) => novo.add(alvo.ninhoId));
         return novo;
       });
+
+      delete (window as any).__gouldproOvosAlvos;
     };
 
     window.addEventListener('gouldpro-open-ovo', handleAbrirOvo);
@@ -375,8 +394,9 @@ export function NinhosSection({
       return;
     }
 
-    const chaveOvo = `${ninho.id}::${egg.id}`;
-    setOvoDashboardDestacado(chaveOvo);
+    setOvoDashboardDestacado((atual) =>
+      atual.size > 0 ? atual : new Set([`${ninho.id}::${egg.id}`])
+    );
     setOvoDashboardPiscando(true);
 
     const timer = window.setTimeout(() => {
@@ -403,7 +423,7 @@ export function NinhosSection({
 
     const limpar = window.setTimeout(() => {
       setOvoDashboardPiscando(false);
-      setOvoDashboardDestacado(null);
+      setOvoDashboardDestacado(new Set());
       setOvoDashboardAlvo(null);
     }, 3500);
 
@@ -1344,9 +1364,9 @@ export function NinhosSection({
                               key={`${ninho.id}-${egg.id || eggIdx}`}
                               data-dashboard-egg-id={egg.id}
                               className={`border-b border-emerald-100/70 transition-all duration-150 ${
-                                ovoDashboardDestacado === `${ninho.id}::${egg.id}` && ovoDashboardPiscando
+                                ovoDashboardDestacado.has(`${ninho.id}::${egg.id}`) && ovoDashboardPiscando
                                   ? 'bg-amber-200 ring-4 ring-amber-400 ring-inset shadow-xl'
-                                  : ovoDashboardDestacado === `${ninho.id}::${egg.id}`
+                                  : ovoDashboardDestacado.has(`${ninho.id}::${egg.id}`)
                                     ? 'bg-amber-100 ring-4 ring-amber-300 ring-inset shadow-lg'
                                     : ''
                               } ${
