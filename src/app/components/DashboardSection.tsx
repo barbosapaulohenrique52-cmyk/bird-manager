@@ -66,6 +66,19 @@ export function DashboardSection({
     0
   );
 
+  const navegarParaNinhosComFiltro = (
+    filtro: 'todos' | 'ovos' | 'filhotes' | 'Em Espera' | 'Chocando' | 'Fértil' | 'Infértil' | 'Eclodido' | 'Perdido',
+    expandir = false
+  ) => {
+    (window as any).__gouldproExpandirNinhos = expandir;
+    onNavigate('ninhos');
+    window.dispatchEvent(
+      new CustomEvent('gouldpro-ninhos-filtro', {
+        detail: { filtro }
+      })
+    );
+  };
+
   const proximasAcoes = ovos.flatMap(({ egg, ninho }) => {
     const especie = egg.species || '';
     const parametros =
@@ -178,7 +191,7 @@ export function DashboardSection({
 
         <button
           type="button"
-          onClick={() => onNavigate('ninhos')}
+          onClick={() => navegarParaNinhosComFiltro('todos')}
           className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-left hover:shadow-md transition-all"
         >
           <i className="fas fa-home text-amber-500"></i>
@@ -189,10 +202,7 @@ export function DashboardSection({
 
         <button
           type="button"
-          onClick={() => {
-            (window as any).__gouldproExpandirNinhos = true;
-            onNavigate('ninhos');
-          }}
+          onClick={() => navegarParaNinhosComFiltro('ovos', true)}
           className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-left hover:shadow-md transition-all"
         >
           <i className="fas fa-egg text-emerald-600"></i>
@@ -203,7 +213,7 @@ export function DashboardSection({
 
         <button
           type="button"
-          onClick={() => onNavigate('casais')}
+          onClick={() => navegarParaNinhosComFiltro('filhotes')}
           className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 text-left hover:shadow-md transition-all"
         >
           <i className="fas fa-feather text-violet-500"></i>
@@ -232,10 +242,9 @@ export function DashboardSection({
               <button
                 key={String(label)}
                 type="button"
-                onClick={() => {
-            (window as any).__gouldproExpandirNinhos = true;
-            onNavigate('ninhos');
-          }}
+                onClick={() => navegarParaNinhosComFiltro(
+                  label === 'Em espera' ? 'Em Espera' : String(label) as 'Chocando' | 'Fértil' | 'Eclodido' | 'Infértil' | 'Perdido'
+                )}
                 className="text-left rounded-xl p-2 hover:bg-slate-50 transition-all"
               >
                 <div className="flex items-center justify-between">
