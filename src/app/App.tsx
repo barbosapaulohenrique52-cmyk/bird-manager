@@ -23,7 +23,13 @@ export type TabType =
 
 export type DashboardFiltro =
   | { tipo: "aves"; status?: string }
-  | { tipo: "ninhos"; statusOvo?: Egg["status"] }
+  | {
+      tipo: "ninhos";
+      statusOvo?: Egg["status"];
+      eggId?: string;
+      ninhoId?: string;
+      filhoteId?: string;
+    }
   | { tipo: "casais" }
   | { tipo: "calendario" }
   | undefined;
