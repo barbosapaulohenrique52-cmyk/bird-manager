@@ -1048,77 +1048,6 @@ export function useDatabase() {
         ninho.eggs[eggIdx][field] =
           value as any;
 
-        /*
-         * Quando um filhote eclodido é marcado como "não anilhar",
-         * ele já passa a existir no Plantel como "No Ninho".
-         * A anilha continua opcional e poderá ser cadastrada
-         * posteriormente pelo fluxo "Anilhar agora".
-         */
-        if (
-          field === 'naoAnilhar' &&
-          (value as any) === true &&
-          ninho.eggs[eggIdx].status === 'Eclodido'
-        ) {
-          const egg = ninho.eggs[eggIdx];
-          const casalOriginal = newDb.casais.find(
-            c => c.id === ninho.casalId
-          );
-          const criadoPorAmas = !!(
-            egg.casalChocandoId &&
-            egg.casalChocandoId !== ninho.casalId
-          );
-
-          let ave = egg.filhoteId
-            ? newDb.aves.find(a => a.id === egg.filhoteId)
-            : undefined;
-
-          if (!ave) {
-            const anoAtual = new Date().getFullYear();
-            const novaAve: Ave = {
-              id: Date.now().toString(),
-              species: egg.species || 'Não especificado',
-              ring: '',
-              ringYear: anoAtual,
-              name: `Filhote sem anilha - ${egg.dataEclosao || anoAtual}`,
-              sex: 'Indefinido',
-              status: 'No Ninho',
-              creator: 'Criação Própria',
-              acqYear: anoAtual,
-              parentMaleId: casalOriginal?.mId,
-              parentFemaleId: casalOriginal?.fId,
-              birthDate: egg.dataEclosao,
-              birthNestId: ninho.id,
-              criadoPorAmas,
-              casalAmasId: criadoPorAmas ? egg.casalChocandoId : undefined,
-              nota: egg.nota,
-              porta: egg.porta
-            };
-
-            newDb.aves.push(novaAve);
-            egg.filhoteId = novaAve.id;
-            ave = novaAve;
-
-            if (casalOriginal) {
-              if (!casalOriginal.historico) casalOriginal.historico = [];
-
-              casalOriginal.historico.push({
-                id: Date.now().toString() + '_hist',
-                anilha: 'Sem anilha',
-                anoAnilha: anoAtual,
-                aveId: novaAve.id,
-                status: 'Ativo'
-              });
-            }
-          } else {
-            ave.status = 'No Ninho';
-            ave.species = egg.species || ave.species;
-            ave.birthDate = egg.dataEclosao || ave.birthDate;
-            ave.birthNestId = ninho.id;
-            ave.nota = egg.nota;
-            ave.porta = egg.porta;
-          }
-        }
-
         // ✨ Se está atualizando a espécie, adicionar à lista central se não existir
         if (
           field === 'species' &&
@@ -1454,6 +1383,102 @@ export function useDatabase() {
    *
    * O registro continua no ninho e no histórico do casal.
    */
+  const registrarObitoDoNinho = useCallback(
+    (
+      ninhoId: string,
+      eggIdx: number,
+      dataObito: string,
+      motivoObito?: string
+    ) => {
+      const newDb = { ...db };
+      const ninho = newDb.ninhos.find(n => n.id === ninhoId);
+
+      if (!ninho || !ninho.eggs[eggIdx]) {
+        alert('Não foi possível localizar o filhote.');
+        return;
+      }
+
+      const egg = ninho.eggs[eggIdx];
+
+      if (egg.dataSaidaNinho) {
+        alert('Este filhote já saiu do ninho. O óbito deve ser registrado pela aba Plantel.');
+        return;
+      }
+
+      const casalOriginal = newDb.casais.find(c => c.id === ninho.casalId);
+      const criadoPorAmas = !!(egg.casalChocandoId && egg.casalChocandoId !== ninho.casalId);
+
+      let ave = egg.filhoteId
+        ? newDb.aves.find(a => a.id === egg.filhoteId)
+        : undefined;
+
+      if (!ave) {
+        const id = Date.now().toString();
+        const anoNascimento = egg.dataEclosao
+          ? Number(egg.dataEclosao.slice(0, 4)) || new Date().getFullYear()
+          : new Date().getFullYear();
+
+        const novaAve: Ave = {
+          id,
+          species: egg.species || 'Não especificado',
+          ring: egg.anilha || '',
+          ringYear: egg.anoAnilha || anoNascimento,
+          name: egg.anilha
+            ? `${egg.anilha}-${egg.anoAnilha || anoNascimento}`
+            : `Filhote sem anilha - ${id.slice(-4)}`,
+          sex: 'Indefinido',
+          status: 'Óbito',
+          creator: 'Criação Própria',
+          acqYear: anoNascimento,
+          parentMaleId: casalOriginal?.mId,
+          parentFemaleId: casalOriginal?.fId,
+          birthDate: egg.dataEclosao,
+          birthNestId: ninhoId,
+          criadoPorAmas,
+          casalAmasId: criadoPorAmas ? egg.casalChocandoId : undefined,
+          nota: egg.nota,
+          porta: egg.porta
+        };
+
+        newDb.aves.push(novaAve);
+        egg.filhoteId = id;
+        ave = novaAve;
+      } else {
+        ave.status = 'Óbito';
+        if (egg.species) ave.species = egg.species;
+        if (egg.nota !== undefined) ave.nota = egg.nota;
+        if (egg.porta !== undefined) ave.porta = egg.porta;
+      }
+
+      egg.dataObito = dataObito;
+      egg.motivoObito = motivoObito?.trim() || undefined;
+      egg.obito = true;
+      delete egg.dataSaidaNinho;
+
+      if (casalOriginal) {
+        if (!casalOriginal.historico) casalOriginal.historico = [];
+        const historico = casalOriginal.historico.find(f => f.aveId === ave!.id);
+        if (historico) {
+          historico.anilha = egg.anilha || '';
+          historico.anoAnilha = egg.anoAnilha || new Date(dataObito).getFullYear();
+          historico.status = 'Óbito';
+        } else {
+          casalOriginal.historico.push({
+            id: `${Date.now()}_hist`,
+            anilha: egg.anilha || '',
+            anoAnilha: egg.anoAnilha || new Date(dataObito).getFullYear(),
+            aveId: ave.id,
+            status: 'Óbito'
+          });
+        }
+      }
+
+      save(newDb);
+      alert(`Óbito registrado com sucesso.\n\nA ave foi registrada no Plantel como "Óbito"${egg.anilha ? ` com a anilha ${egg.anilha}` : ' e sem anilha'}.`);
+    },
+    [db, save]
+  );
+
   const registrarSaidaDoNinho = useCallback(
     (
       ninhoId: string,
@@ -1480,14 +1505,12 @@ export function useDatabase() {
       const egg =
         ninho.eggs[eggIdx];
 
-      const semAnilha = egg.naoAnilhar === true;
-
       if (
-        !semAnilha &&
-        (!egg.filhoteAnilhado || !egg.anilha)
+        !egg.filhoteAnilhado ||
+        !egg.anilha
       ) {
         alert(
-          'Este filhote ainda não foi anilhado.\n\nAnilhe o filhote ou marque-o como "Sem anilha" antes de registrar a saída do ninho.'
+          'Este filhote ainda não foi anilhado.\n\nAnilhe o filhote antes de registrar a saída do ninho.'
         );
         return;
       }
@@ -1613,17 +1636,10 @@ export function useDatabase() {
       /*
        * Agora a saída efetiva:
        * o filhote deixa de estar "No Ninho" e passa a "Ativo".
-       * Se for um filhote sem anilha, mantemos a identificação
-       * da ave sem inventar número de anilha.
        */
       ave.status = 'Ativo';
-
-      if (!semAnilha) {
-        ave.ring = egg.anilha!;
-        ave.ringYear = egg.anoAnilha!;
-      } else {
-        ave.ring = '';
-      }
+      ave.ring = egg.anilha;
+      ave.ringYear = egg.anoAnilha!;
 
       egg.dataSaidaNinho =
         dataSaidaNinho;
@@ -1645,10 +1661,10 @@ export function useDatabase() {
 
         if (historico) {
           historico.anilha =
-            semAnilha ? 'Sem anilha' : egg.anilha!;
+            egg.anilha;
 
           historico.anoAnilha =
-            semAnilha ? new Date().getFullYear() : egg.anoAnilha!;
+            egg.anoAnilha!;
 
           historico.status =
             'Ativo';
@@ -1659,10 +1675,10 @@ export function useDatabase() {
               '_hist',
 
             anilha:
-              semAnilha ? 'Sem anilha' : egg.anilha!,
+              egg.anilha,
 
             anoAnilha:
-              semAnilha ? new Date().getFullYear() : egg.anoAnilha!,
+              egg.anoAnilha!,
 
             aveId:
               ave.id,
@@ -1675,14 +1691,10 @@ export function useDatabase() {
 
       save(newDb);
 
-      const identificacaoFilhote = semAnilha
-        ? 'Sem anilha'
-        : egg.anilha;
-
       const mensagem =
         criadoPorAmas
-          ? `Saída do ninho registrada com sucesso!\n\nFilhote ${identificacaoFilhote} agora está como "Ativo" no Plantel.\nCriado por amas.`
-          : `Saída do ninho registrada com sucesso!\n\nFilhote ${identificacaoFilhote} agora está como "Ativo" no Plantel.`;
+          ? `Saída do ninho registrada com sucesso!\n\nFilhote ${egg.anilha} agora está como "Ativo" no Plantel.\nCriado por amas.`
+          : `Saída do ninho registrada com sucesso!\n\nFilhote ${egg.anilha} agora está como "Ativo" no Plantel.`;
 
       alert(
         mensagem
@@ -2410,6 +2422,7 @@ export function useDatabase() {
 
     eclodirOvo,
     anilharFilhote,
+    registrarObitoDoNinho,
     registrarSaidaDoNinho,
     desfazerSaidaDoNinho,
     reverterEclosao,
