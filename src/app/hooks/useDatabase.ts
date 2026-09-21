@@ -1355,6 +1355,9 @@ export function useDatabase() {
       }
 
       egg.filhoteAnilhado = true;
+      // Se o filhote havia sido marcado como "não anilhar",
+      // colocar uma anilha agora reativa automaticamente o fluxo de anilhamento.
+      egg.naoAnilhar = false;
       egg.anilha = anilhaLimpa;
       egg.anoAnilha = anoAnilha;
 
