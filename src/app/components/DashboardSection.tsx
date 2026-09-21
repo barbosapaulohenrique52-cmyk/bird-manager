@@ -66,93 +66,17 @@ export function DashboardSection({
     0
   );
 
-  const dadosGraficoStatus = [
-    { label: 'Chocando', valor: status.chocando, classe: 'bg-orange-400' },
-    { label: 'Férteis', valor: status.ferteis, classe: 'bg-emerald-500' },
-    { label: 'Eclodidos', valor: status.eclodidos, classe: 'bg-violet-500' },
-    { label: 'Em espera', valor: status.espera, classe: 'bg-slate-400' },
-    { label: 'Inférteis', valor: status.inferteis, classe: 'bg-blue-500' },
-    { label: 'Perdidos', valor: status.perdidos, classe: 'bg-red-500' }
-  ];
-
-  const dadosGraficoEspecies = Array.from(
-    ovos.reduce((mapa, item) => {
-      const especie = item.egg.species?.trim() || 'Não informada';
-      mapa.set(especie, (mapa.get(especie) || 0) + 1);
-      return mapa;
-    }, new Map<string, number>())
-  )
-    .map(([label, valor]) => ({ label, valor }))
-    .sort((a, b) => b.valor - a.valor)
-    .slice(0, 6);
-
-  const maiorValorEspecie = Math.max(1, ...dadosGraficoEspecies.map(item => item.valor));
-
-  const formatarMesGrafico = (data: Date) =>
-    data.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
-
-  const chaveMesGrafico = (data: string) => {
-    const match = data.match(/^(\d{4})-(\d{1,2})/);
-    if (!match) return null;
-    return `${match[1]}-${match[2].padStart(2, '0')}`;
-  };
-
-  const mesesEvolucao = Array.from({ length: 6 }, (_, index) => {
-    const data = new Date();
-    data.setDate(1);
-    data.setMonth(data.getMonth() - (5 - index));
-    return {
-      chave: `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`,
-      label: formatarMesGrafico(data)
-    };
-  });
-
-  const dadosGraficoEvolucao = mesesEvolucao.map((mes) => {
-    const ovosPostados = ovos.filter(({ egg }) =>
-      egg.postura && chaveMesGrafico(egg.postura) === mes.chave
-    ).length;
-
-    const eclodidos = ovos.filter(({ egg }) =>
-      egg.dataEclosao && chaveMesGrafico(egg.dataEclosao) === mes.chave
-    ).length;
-
-    const filhotesRegistrados = ovos.filter(({ egg }) =>
-      egg.dataEclosao &&
-      egg.filhoteId &&
-      chaveMesGrafico(egg.dataEclosao) === mes.chave
-    ).length;
-
-    return {
-      ...mes,
-      ovosPostados,
-      eclodidos,
-      filhotes: filhotesRegistrados
-    };
-  });
-
-  const maiorValorEvolucao = Math.max(
-    1,
-    ...dadosGraficoEvolucao.flatMap((item) => [
-      item.ovosPostados,
-      item.eclodidos,
-      item.filhotes
-    ])
-  );
-
   const navegarParaNinhosComFiltro = (
     filtro: 'todos' | 'ovos' | 'filhotes' | 'Em Espera' | 'Chocando' | 'Fértil' | 'Infértil' | 'Eclodido' | 'Perdido',
     expandir = false
   ) => {
     (window as any).__gouldproExpandirNinhos = expandir;
-    // O Dashboard pode estar montado enquanto Ninhos está desmontado.
-    // Portanto, o filtro precisa ficar disponível antes da navegação.
-    (window as any).__gouldproNinhosFiltro = filtro;
+    onNavigate('ninhos');
     window.dispatchEvent(
       new CustomEvent('gouldpro-ninhos-filtro', {
         detail: { filtro }
       })
     );
-    onNavigate('ninhos');
   };
 
   const proximasAcoes = (() => {
@@ -162,7 +86,6 @@ export function DashboardSection({
       detalhe: string;
       tipo: 'fertilidade' | 'eclosao' | 'anilhamento';
       eggId: string;
-      eggIds?: string[];
       ninhoId: string;
       especie: string;
     };
@@ -219,7 +142,8 @@ export function DashboardSection({
       if (
         egg.dataEclosao &&
         egg.status === 'Eclodido' &&
-        !egg.filhoteAnilhado
+        !egg.filhoteAnilhado &&
+        !egg.naoAnilhar
       ) {
         const data = new Date(`${egg.dataEclosao}T12:00:00`);
         data.setDate(data.getDate() + parametros.diasAnilhamento);
@@ -237,30 +161,14 @@ export function DashboardSection({
     });
 
     /*
-     * Agrupa ações equivalentes pelo mesmo tipo + nome de ninho + data.
-     * Ex.: 4 ovos do mesmo ninho com fertilidade prevista para 25/09
+     * Agrupa ações equivalentes pelo mesmo tipo + ninho + data.
+     * Ex.: 4 ovos do N1 com fertilidade prevista para 25/09
      * passam a aparecer como uma única ação "4 ovos".
      */
     const grupos = new Map<string, AcaoBase[]>();
 
     acoesIndividuais.forEach((acao) => {
-      /*
-       * O agrupamento usa a identidade REAL do ninho (ninhoId),
-       * e não apenas o nome exibido. Isso é importante porque podem
-       * existir dois ninhos com o mesmo nome, por exemplo "N1" ou
-       * "Ninho sem nome". Nesse caso eles não devem ser misturados.
-       *
-       * A data calculada da ação também é obrigatória na chave.
-       * Portanto, ovos do mesmo ninho só são agrupados quando
-       * pertencem à mesma ação e possuem a mesma data.
-       */
-      const chave = [
-        acao.tipo,
-        acao.titulo.trim().toLowerCase(),
-        acao.ninhoId,
-        acao.data
-      ].join('::');
-
+      const chave = `${acao.tipo}::${acao.ninhoId}::${acao.data}`;
       const grupo = grupos.get(chave);
 
       if (grupo) {
@@ -278,7 +186,6 @@ export function DashboardSection({
         return {
           ...primeira,
           quantidade,
-          eggIds: grupo.map((acao) => acao.eggId),
           detalhe: `${primeira.detalhe} • ${quantidade} ${
             quantidade === 1 ? 'ovo' : 'ovos'
           }`
@@ -377,19 +284,9 @@ export function DashboardSection({
               <button
                 key={String(label)}
                 type="button"
-                onClick={() => {
-                  const filtroPorLabel: Record<string, 'Em Espera' | 'Chocando' | 'Fértil' | 'Infértil' | 'Eclodido' | 'Perdido'> = {
-                    'Chocando': 'Chocando',
-                    'Férteis': 'Fértil',
-                    'Eclodidos': 'Eclodido',
-                    'Em espera': 'Em Espera',
-                    'Inférteis': 'Infértil',
-                    'Perdidos': 'Perdido',
-                  };
-
-                  const filtro = filtroPorLabel[String(label)];
-                  if (filtro) navegarParaNinhosComFiltro(filtro);
-                }}
+                onClick={() => navegarParaNinhosComFiltro(
+                  label === 'Em espera' ? 'Em Espera' : String(label) as 'Chocando' | 'Fértil' | 'Eclodido' | 'Infértil' | 'Perdido'
+                )}
                 className="text-left rounded-xl p-2 hover:bg-slate-50 transition-all"
               >
                 <div className="flex items-center justify-between">
@@ -431,15 +328,7 @@ export function DashboardSection({
                 <button
                   key={`${acao.ninhoId}-${acao.data}-${acao.tipo}-${index}`}
                   type="button"
-                  onClick={() => {
-                    // Quando a ação foi agrupada, guarda todos os ovos do grupo
-                    // para que a tela de Ninhos possa destacar/piscar todos.
-                    (window as any).__gouldproOvosAlvos = acao.eggIds?.length
-                      ? acao.eggIds.map((eggId) => ({ ninhoId: acao.ninhoId, eggId }))
-                      : [{ ninhoId: acao.ninhoId, eggId: acao.eggId }];
-
-                    onOpenOvo(acao.ninhoId, acao.eggId);
-                  }}
+                  onClick={() => onOpenOvo(acao.ninhoId, acao.eggId)}
                   className="w-full text-left rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:shadow-sm p-3 transition-all"
                 >
                   <div className="flex items-start gap-3">
@@ -473,134 +362,6 @@ export function DashboardSection({
                     <i className="fas fa-chevron-right text-[9px] text-slate-300 mt-2"></i>
                   </div>
                 </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-sm font-bold text-slate-800">Evolução da reprodução</h3>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Últimos 6 meses: postura, eclosão e filhotes registrados
-            </p>
-          </div>
-          <i className="fas fa-chart-line text-emerald-500"></i>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 mb-4">
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-            Ovos
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
-            <span className="w-2.5 h-2.5 rounded-full bg-violet-500"></span>
-            Eclodidos
-          </span>
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-            Filhotes
-          </span>
-        </div>
-
-        <div className="grid grid-cols-6 gap-2 items-end h-48">
-          {dadosGraficoEvolucao.map((item) => (
-            <div key={item.chave} className="h-full flex flex-col justify-end min-w-0">
-              <div className="flex-1 flex items-end justify-center gap-0.5 sm:gap-1">
-                <div
-                  title={`${item.ovosPostados} ovos`}
-                  className="w-1/3 max-w-5 rounded-t bg-emerald-500 transition-all"
-                  style={{ height: `${Math.max(item.ovosPostados ? 6 : 1, (item.ovosPostados / maiorValorEvolucao) * 100)}%` }}
-                />
-                <div
-                  title={`${item.eclodidos} eclodidos`}
-                  className="w-1/3 max-w-5 rounded-t bg-violet-500 transition-all"
-                  style={{ height: `${Math.max(item.eclodidos ? 6 : 1, (item.eclodidos / maiorValorEvolucao) * 100)}%` }}
-                />
-                <div
-                  title={`${item.filhotes} filhotes`}
-                  className="w-1/3 max-w-5 rounded-t bg-amber-500 transition-all"
-                  style={{ height: `${Math.max(item.filhotes ? 6 : 1, (item.filhotes / maiorValorEvolucao) * 100)}%` }}
-                />
-              </div>
-              <div className="text-center mt-2">
-                <span className="text-[9px] font-semibold text-slate-500 capitalize">{item.label}</span>
-              </div>
-              <div className="text-center mt-0.5 text-[8px] text-slate-400">
-                {item.ovosPostados}/{item.eclodidos}/{item.filhotes}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <p className="text-[9px] text-slate-400 mt-4">
-          Filhotes no gráfico = ovos eclodidos que possuem filhote registrado.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Gráfico de reprodução</h3>
-              <p className="text-[11px] text-slate-400 mt-1">Quantidade de ovos por estado</p>
-            </div>
-            <i className="fas fa-chart-bar text-emerald-500"></i>
-          </div>
-
-          <div className="space-y-3">
-            {dadosGraficoStatus.map((item) => {
-              const percentual = ovos.length ? (item.valor / ovos.length) * 100 : 0;
-              return (
-                <div key={item.label}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-semibold text-slate-600">{item.label}</span>
-                    <span className="text-[10px] font-bold text-slate-700">{item.valor}</span>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${item.classe} transition-all`}
-                      style={{ width: `${percentual}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-sm font-bold text-slate-800">Ovos por espécie</h3>
-              <p className="text-[11px] text-slate-400 mt-1">Distribuição dos ovos cadastrados</p>
-            </div>
-            <i className="fas fa-chart-column text-emerald-500"></i>
-          </div>
-
-          {dadosGraficoEspecies.length === 0 ? (
-            <div className="py-8 text-center">
-              <i className="fas fa-chart-column text-slate-200 text-2xl"></i>
-              <p className="text-xs text-slate-400 mt-2">Nenhum ovo cadastrado</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {dadosGraficoEspecies.map((item) => (
-                <div key={item.label}>
-                  <div className="flex items-center justify-between mb-1 gap-3">
-                    <span className="text-[10px] font-semibold text-slate-600 truncate">{item.label}</span>
-                    <span className="text-[10px] font-bold text-slate-700 shrink-0">{item.valor}</span>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-emerald-500 transition-all"
-                      style={{ width: `${(item.valor / maiorValorEspecie) * 100}%` }}
-                    />
-                  </div>
-                </div>
               ))}
             </div>
           )}
