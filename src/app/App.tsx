@@ -48,6 +48,8 @@ export interface Ave {
   name: string;
   sex: "Macho" | "Fêmea" | "Indefinido";
   status: "Ativo" | "Vendido" | "Óbito" | "No Ninho";
+  dataObito?: string;
+  motivoObito?: string;
   creator: string;
   acqYear: number;
   photo?: string;
@@ -73,7 +75,7 @@ export interface Filhote {
   dataVenda?: string;
   valorVenda?: number;
   comprador?: string;
-  status: "Ativo" | "Vendido" | "Óbito";
+  status: "Ativo" | "Vendido";
 }
 
 export interface Casal {
@@ -107,9 +109,9 @@ export interface Egg {
   anilha?: string;
   anoAnilha?: number;
   dataSaidaNinho?: string;
-  obito?: boolean;
   dataObito?: string;
   motivoObito?: string;
+  obito?: boolean;
   nota?: string;
   porta?: string;
 }
@@ -187,8 +189,8 @@ export default function App() {
     updateEgg,
     eclodirOvo,
     anilharFilhote,
-    registrarObitoDoNinho,
     registrarSaidaDoNinho,
+    registrarObitoDoNinho,
     desfazerSaidaDoNinho,
     reverterEclosao,
     saveConfig,
@@ -292,7 +294,7 @@ export default function App() {
 
       <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main className="flex-1 w-full px-2 sm:px-4 lg:px-6 pb-32 lg:pb-8">
+      <main className="flex-1 w-full px-2 sm:px-4 lg:ml-16 lg:px-6 pb-32 lg:pb-8">
         {activeTab === "dashboard" && (
           <DashboardSection
             aves={db.aves}
@@ -326,8 +328,8 @@ export default function App() {
             onUpdateEgg={updateEgg}
             onEclodirOvo={eclodirOvo}
             onAnilharFilhote={anilharFilhote}
-            onRegistrarObitoDoNinho={registrarObitoDoNinho}
             onRegistrarSaidaDoNinho={registrarSaidaDoNinho}
+            onRegistrarObitoDoNinho={registrarObitoDoNinho}
             onDesfazerSaidaDoNinho={desfazerSaidaDoNinho}
             onReverterEclosao={reverterEclosao}
             onUpdateNinhoCasal={updateNinhoCasal}
