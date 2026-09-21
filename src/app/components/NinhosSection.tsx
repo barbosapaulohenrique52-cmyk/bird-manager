@@ -1922,7 +1922,7 @@ export function NinhosSection({
                                     ) : (egg as any).naoAnilhar ? (
                                       <div className="flex flex-col gap-1">
                                         <span
-                                          className="flex items-center gap-1 text-[8px] font-bold rounded px-1.5 py-1 bg-slate-100 text-slate-600"
+                                          className="self-start inline-flex w-fit flex-none items-center gap-1 text-[7px] font-bold rounded px-1 py-0.5 bg-slate-100 text-slate-600 whitespace-nowrap"
                                           title="Este filhote foi marcado como sem anilha"
                                         >
                                           <i className="fas fa-ban text-[8px]"></i>
@@ -2794,7 +2794,7 @@ export function NinhosSection({
                                     ) : (egg as any).naoAnilhar ? (
                                       <div className="flex flex-col gap-1.5">
                                         <span
-                                          className="flex items-center gap-1 text-[8px] font-bold rounded px-1.5 py-1 bg-slate-100 text-slate-600"
+                                          className="self-start inline-flex w-fit flex-none items-center gap-1 text-[7px] font-bold rounded px-1 py-0.5 bg-slate-100 text-slate-600 whitespace-nowrap"
                                           title="Este filhote foi marcado como sem anilha"
                                         >
                                           <i className="fas fa-ban text-[8px]"></i>
