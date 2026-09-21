@@ -23,6 +23,48 @@ const formatarDataCurta = (value?: string | null): string => {
   return `${dia}/${mes}/${ano}`;
 };
 
+
+// Ícones compactos das ações dos filhotes.
+function AnilhaIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <text x="12" y="16" textAnchor="middle" fontSize="12" fontWeight="900" fill="currentColor" stroke="none">#</text>
+    </svg>
+  );
+}
+
+function SemAnilhaIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className} aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <text x="12" y="16" textAnchor="middle" fontSize="12" fontWeight="900" fill="currentColor" stroke="none">#</text>
+      <line x1="4" y1="4" x2="20" y2="20" strokeWidth="2.5" />
+    </svg>
+  );
+}
+
+function SaidaNinhoIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+      <path d="M3 16.5c2.8-1.8 5.2-2.2 8.1-.7 2.4 1.2 5.5 1.3 9.9-.8" />
+      <path d="M4 18c3.8 1.8 8.8 2 14.2-.2" />
+      <path d="M10.5 7.5c1.5-1.7 3.8-2.5 6-1.7-1 1.8-2.5 3-4.5 3.4" />
+      <path d="M12.1 9.1l-1.7 1.8m3.3-1.9l2.1-1.5" />
+      <path d="M16.5 5.8l2.2-2.2m-1.2 2.1l2.6.2" />
+    </svg>
+  );
+}
+
+function ObitoIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" className={className} aria-hidden="true">
+      <line x1="5" y1="5" x2="19" y2="19" />
+      <line x1="19" y1="5" x2="5" y2="19" />
+    </svg>
+  );
+}
+
 interface DataCompactaProps {
   value: string;
   onChange: (value: string) => void;
@@ -1926,7 +1968,7 @@ export function NinhosSection({
                                           title="Este filhote foi marcado como sem anilha"
                                         >
                                           <i className="fas fa-ban text-[8px]"></i>
-                                          <span>Sem anilha</span>
+                                          <span className="sr-only">Sem anilha</span>
                                         </span>
                                         <div className="flex flex-wrap items-center gap-1">
                                           <button
@@ -1942,11 +1984,11 @@ export function NinhosSection({
                                                 ano: new Date().getFullYear()
                                               });
                                             }}
-                                            className="self-start inline-flex w-fit flex-none items-center text-[7px] font-bold px-1 py-0.5 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all whitespace-nowrap"
+                                            className="inline-flex flex-none items-center justify-center w-6 h-6 p-0 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all"
                                             title="Colocar anilha agora, mesmo após marcar sem anilha"
                                           >
-                                            <i className="fas fa-ring mr-1"></i>
-                                            Anilhar agora
+                                            <AnilhaIcon className="w-4 h-4" />
+                                            <span className="sr-only">Anilhar agora</span>
                                           </button>
                                           {!((egg as any).dataSaidaNinho) && (
                                             <button
@@ -1960,15 +2002,15 @@ export function NinhosSection({
                                                   new Date().toISOString().split('T')[0]
                                                 );
                                               }}
-                                              className="self-start inline-flex w-fit flex-none items-center text-[7px] font-bold px-1 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap"
+                                              className="inline-flex flex-none items-center justify-center w-6 h-6 p-0 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all"
                                               title="Registrar a saída do ninho deste filhote"
                                             >
-                                              <i className="fas fa-sign-out-alt mr-1"></i>
-                                              Sair do ninho
+                                              <SaidaNinhoIcon className="w-4 h-4" />
+                                              <span className="sr-only">Sair do ninho</span>
                                             </button>
                                           )}
-                                          <button type="button" onClick={() => { setObitoModal({ ninhoId: ninho.id, eggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="self-start inline-flex w-fit flex-none items-center text-[7px] font-bold px-1 py-0.5 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all whitespace-nowrap disabled:opacity-50" title="Registrar óbito antes da saída do ninho">
-                                            <i className="fas fa-heartbeat mr-1"></i>Óbito
+                                          <button type="button" onClick={() => { setObitoModal({ ninhoId: ninho.id, eggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="inline-flex flex-none items-center justify-center w-6 h-6 p-0 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all disabled:opacity-50" title="Registrar óbito antes da saída do ninho">
+                                            <ObitoIcon className="w-4 h-4" /><span className="sr-only">Óbito</span>
                                           </button>
                                         </div>
                                       </div>
@@ -2030,16 +2072,16 @@ export function NinhosSection({
                                               );
                                             }}
                                             disabled={!onRegistrarSaidaDoNinho}
-                                            className="self-start inline-flex w-fit flex-none items-center text-[7px] font-bold px-1 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="inline-flex flex-none items-center justify-center w-6 h-6 p-0 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                             title="Registrar que o filhote saiu do ninho e incluí-lo no Plantel"
                                           >
-                                            <i className="fas fa-sign-out-alt mr-1"></i>
-                                            Sair do ninho
+                                            <SaidaNinhoIcon className="w-4 h-4" />
+                                            <span className="sr-only">Sair do ninho</span>
                                           </button>
                                         )}
                                         {!((egg as any).dataObito) && (
-                                          <button type="button" onClick={() => { setObitoModal({ ninhoId: origemNinho.id, eggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="self-start inline-flex w-fit flex-none items-center text-[7px] font-bold px-1 py-0.5 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all whitespace-nowrap disabled:opacity-50" title="Registrar óbito antes da saída do ninho">
-                                            <i className="fas fa-heartbeat mr-1"></i>Óbito
+                                          <button type="button" onClick={() => { setObitoModal({ ninhoId: origemNinho.id, eggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="inline-flex flex-none items-center justify-center w-6 h-6 p-0 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all disabled:opacity-50" title="Registrar óbito antes da saída do ninho">
+                                            <ObitoIcon className="w-4 h-4" /><span className="sr-only">Óbito</span>
                                           </button>
                                         )}
                                         </div>
@@ -2059,13 +2101,13 @@ export function NinhosSection({
                                             ano: new Date().getFullYear()
                                           });
                                         }}
-                                        className="text-[8px] font-bold px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all whitespace-nowrap"
+                                        className="inline-flex items-center justify-center w-6 h-6 p-0 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all"
                                       >
                                         <i className="fas fa-ring mr-1"></i>
                                         Anilhar
                                       </button>
-                                      <button type="button" onClick={() => { setObitoModal({ ninhoId: origemNinho.id, eggIdx: origemEggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="self-start inline-flex w-fit flex-none items-center text-[7px] font-bold px-1 py-0.5 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all whitespace-nowrap disabled:opacity-50" title="Registrar óbito antes do anilhamento">
-                                        <i className="fas fa-heartbeat mr-1"></i>Óbito
+                                      <button type="button" onClick={() => { setObitoModal({ ninhoId: origemNinho.id, eggIdx: origemEggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="inline-flex flex-none items-center justify-center w-6 h-6 p-0 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all disabled:opacity-50" title="Registrar óbito antes do anilhamento">
+                                        <ObitoIcon className="w-4 h-4" /><span className="sr-only">Óbito</span>
                                       </button>
                                       </>
                                     )}
@@ -2798,7 +2840,7 @@ export function NinhosSection({
                                           title="Este filhote foi marcado como sem anilha"
                                         >
                                           <i className="fas fa-ban text-[8px]"></i>
-                                          <span>Sem anilha</span>
+                                          <span className="sr-only">Sem anilha</span>
                                         </span>
                                         <div className="flex gap-1">
                                           <button
@@ -2814,11 +2856,11 @@ export function NinhosSection({
                                                 ano: new Date().getFullYear()
                                               });
                                             }}
-                                            className="self-start inline-flex w-fit flex-none items-center text-[7px] font-bold px-1 py-0.5 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all whitespace-nowrap"
+                                            className="inline-flex flex-none items-center justify-center w-6 h-6 p-0 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all"
                                             title="Colocar anilha agora, mesmo após marcar sem anilha"
                                           >
-                                            <i className="fas fa-ring mr-1"></i>
-                                            Anilhar agora
+                                            <AnilhaIcon className="w-4 h-4" />
+                                            <span className="sr-only">Anilhar agora</span>
                                           </button>
 
                                           {!(egg as any).dataSaidaNinho && (
@@ -2834,16 +2876,16 @@ export function NinhosSection({
                                                 );
                                               }}
                                               disabled={!onRegistrarSaidaDoNinho}
-                                              className="self-start inline-flex w-fit flex-none items-center text-[7px] font-bold px-1 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                              className="inline-flex flex-none items-center justify-center w-6 h-6 p-0 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                               title="Registrar a saída do ninho deste filhote"
                                             >
-                                              <i className="fas fa-sign-out-alt mr-1"></i>
-                                              Sair do ninho
+                                              <SaidaNinhoIcon className="w-4 h-4" />
+                                              <span className="sr-only">Sair do ninho</span>
                                             </button>
                                           )}
                                           {!((egg as any).dataObito) && (
-                                            <button type="button" onClick={() => { setObitoModal({ ninhoId: origemNinho.id, eggIdx: origemEggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="self-start inline-flex w-fit flex-none items-center text-[7px] font-bold px-1 py-0.5 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all whitespace-nowrap disabled:opacity-50" title="Registrar óbito antes da saída do ninho">
-                                              <i className="fas fa-heartbeat mr-1"></i>Óbito
+                                            <button type="button" onClick={() => { setObitoModal({ ninhoId: origemNinho.id, eggIdx: origemEggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="inline-flex flex-none items-center justify-center w-6 h-6 p-0 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all disabled:opacity-50" title="Registrar óbito antes da saída do ninho">
+                                              <ObitoIcon className="w-4 h-4" /><span className="sr-only">Óbito</span>
                                             </button>
                                           )}
                                         </div>
@@ -2905,16 +2947,16 @@ export function NinhosSection({
                                               );
                                             }}
                                             disabled={!onRegistrarSaidaDoNinho}
-                                            className="self-start inline-flex w-fit flex-none items-center text-[7px] font-bold px-1 py-0.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="inline-flex flex-none items-center justify-center w-6 h-6 p-0 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                             title="Registrar que o filhote saiu do ninho e incluí-lo no Plantel"
                                           >
-                                            <i className="fas fa-sign-out-alt mr-1"></i>
-                                            Sair do ninho
+                                            <SaidaNinhoIcon className="w-4 h-4" />
+                                            <span className="sr-only">Sair do ninho</span>
                                           </button>
                                         )}
                                         {!((egg as any).dataObito) && (
-                                          <button type="button" onClick={() => { setObitoModal({ ninhoId: ninho.id, eggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="self-start inline-flex w-fit flex-none items-center text-[7px] font-bold px-1 py-0.5 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all whitespace-nowrap disabled:opacity-50" title="Registrar óbito antes da saída do ninho">
-                                            <i className="fas fa-heartbeat mr-1"></i>Óbito
+                                          <button type="button" onClick={() => { setObitoModal({ ninhoId: ninho.id, eggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="inline-flex flex-none items-center justify-center w-6 h-6 p-0 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all disabled:opacity-50" title="Registrar óbito antes da saída do ninho">
+                                            <ObitoIcon className="w-4 h-4" /><span className="sr-only">Óbito</span>
                                           </button>
                                         )}
                                       </>
@@ -2933,10 +2975,10 @@ export function NinhosSection({
                                               ano: new Date().getFullYear()
                                             });
                                           }}
-                                          className="text-[8px] font-bold px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all whitespace-nowrap"
+                                          className="inline-flex items-center justify-center w-6 h-6 p-0 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all"
                                         >
-                                          <i className="fas fa-ring mr-1"></i>
-                                          Anilhar
+                                          <AnilhaIcon className="w-4 h-4" />
+                                          <span className="sr-only">Anilhar</span>
                                         </button>
 
                                         <button
@@ -2955,11 +2997,11 @@ export function NinhosSection({
                                               );
                                             }
                                           }}
-                                          className="text-[8px] font-bold px-2 py-1 rounded bg-slate-200 text-slate-700 hover:bg-slate-300 transition-all whitespace-nowrap"
+                                          className="inline-flex items-center justify-center w-6 h-6 p-0 rounded bg-slate-200 text-slate-700 hover:bg-slate-300 transition-all"
                                           title="Registrar que este filhote não terá anilha"
                                         >
-                                          <i className="fas fa-ban mr-1"></i>
-                                          Não anilhar
+                                          <SemAnilhaIcon className="w-4 h-4" />
+                                          <span className="sr-only">Não anilhar</span>
                                         </button>
                                       </div>
                                     )}
