@@ -1406,6 +1406,11 @@ export function useDatabase() {
       }
 
       const casalOriginal = newDb.casais.find(c => c.id === ninho.casalId);
+      if (!casalOriginal) {
+        alert('Não foi possível localizar o casal deste ninho.');
+        return;
+      }
+
       const criadoPorAmas = !!(egg.casalChocandoId && egg.casalChocandoId !== ninho.casalId);
 
       let ave = egg.filhoteId
@@ -1430,8 +1435,8 @@ export function useDatabase() {
           status: 'Óbito',
           creator: 'Criação Própria',
           acqYear: anoNascimento,
-          parentMaleId: casalOriginal?.mId,
-          parentFemaleId: casalOriginal?.fId,
+          parentMaleId: casalOriginal.mId,
+          parentFemaleId: casalOriginal.fId,
           birthDate: egg.dataEclosao,
           birthNestId: ninhoId,
           criadoPorAmas,
@@ -1450,31 +1455,110 @@ export function useDatabase() {
         if (egg.porta !== undefined) ave.porta = egg.porta;
       }
 
-      egg.dataObito = dataObito;
-      egg.motivoObito = motivoObito?.trim() || undefined;
-      egg.obito = true;
-      delete egg.dataSaidaNinho;
+      // Guarda uma cópia completa do ovo para permitir "Retornar ao ninho"
+      // posteriormente pelo Histórico do Casal.
+      const eggSnapshot = JSON.parse(JSON.stringify(egg));
+      eggSnapshot.obito = true;
+      eggSnapshot.dataObito = dataObito;
+      eggSnapshot.motivoObito = motivoObito?.trim() || undefined;
+      delete eggSnapshot.dataSaidaNinho;
 
-      if (casalOriginal) {
+      const historicoExistente = casalOriginal.historico?.find(
+        f => f.aveId === ave!.id
+      );
+
+      const dadosHistorico = {
+        ninhoId,
+        dataObito,
+        motivoObito: motivoObito?.trim() || undefined,
+        retornavelAoNinho: true,
+        eggSnapshot
+      };
+
+      if (historicoExistente) {
+        historicoExistente.anilha = egg.anilha || '';
+        historicoExistente.anoAnilha = egg.anoAnilha || new Date(dataObito).getFullYear();
+        historicoExistente.status = 'Óbito';
+        Object.assign(historicoExistente as any, dadosHistorico);
+      } else {
         if (!casalOriginal.historico) casalOriginal.historico = [];
-        const historico = casalOriginal.historico.find(f => f.aveId === ave!.id);
-        if (historico) {
-          historico.anilha = egg.anilha || '';
-          historico.anoAnilha = egg.anoAnilha || new Date(dataObito).getFullYear();
-          historico.status = 'Óbito';
-        } else {
-          casalOriginal.historico.push({
-            id: `${Date.now()}_hist`,
-            anilha: egg.anilha || '',
-            anoAnilha: egg.anoAnilha || new Date(dataObito).getFullYear(),
-            aveId: ave.id,
-            status: 'Óbito'
-          });
-        }
+        casalOriginal.historico.push({
+          id: `${Date.now()}_hist`,
+          anilha: egg.anilha || '',
+          anoAnilha: egg.anoAnilha || new Date(dataObito).getFullYear(),
+          aveId: ave.id,
+          status: 'Óbito',
+          ...(dadosHistorico as any)
+        });
       }
 
+      // O filhote deixa completamente a aba Ninhos após a confirmação.
+      ninho.eggs.splice(eggIdx, 1);
+
       save(newDb);
-      alert(`Óbito registrado com sucesso.\n\nA ave foi registrada no Plantel como "Óbito"${egg.anilha ? ` com a anilha ${egg.anilha}` : ' e sem anilha'}.`);
+      alert(
+        `Óbito registrado com sucesso.\n\n` +
+        `O filhote foi retirado da aba Ninhos e permanece no Histórico do Casal.\n` +
+        `No histórico será possível retorná-lo ao ninho.`
+      );
+    },
+    [db, save]
+  );
+
+  const retornarObitoAoNinho = useCallback(
+    (casalId: string, filhoteId: string) => {
+      const newDb = { ...db };
+      const casal = newDb.casais.find(c => c.id === casalId);
+
+      if (!casal?.historico) {
+        alert('Não foi possível localizar o histórico do casal.');
+        return;
+      }
+
+      const historico = casal.historico.find(f => f.aveId === filhoteId) as any;
+      if (!historico?.eggSnapshot || !historico.ninhoId) {
+        alert('Este registro não possui dados suficientes para retornar ao ninho.');
+        return;
+      }
+
+      const ninho = newDb.ninhos.find(n => n.id === historico.ninhoId);
+      if (!ninho) {
+        alert('O ninho original não foi encontrado.');
+        return;
+      }
+
+      const ave = newDb.aves.find(a => a.id === filhoteId);
+      if (!ave) {
+        alert('A ave vinculada ao histórico não foi encontrada no Plantel.');
+        return;
+      }
+
+      if (ninho.eggs.some(e => e.filhoteId === filhoteId)) {
+        alert('Este filhote já está registrado no ninho.');
+        return;
+      }
+
+      const eggRestaurado = JSON.parse(JSON.stringify(historico.eggSnapshot)) as Egg;
+      eggRestaurado.status = 'Eclodido';
+      eggRestaurado.obito = false;
+      delete eggRestaurado.dataObito;
+      delete eggRestaurado.motivoObito;
+      delete eggRestaurado.dataSaidaNinho;
+      eggRestaurado.filhoteId = filhoteId;
+
+      ninho.eggs.push(eggRestaurado);
+
+      ave.status = 'No Ninho';
+      ave.birthNestId = historico.ninhoId;
+
+      historico.status = 'Ativo';
+      historico.retornavelAoNinho = false;
+      delete historico.dataObito;
+      delete historico.motivoObito;
+      delete historico.eggSnapshot;
+
+      save(newDb);
+      alert('Filhote retornado ao ninho com sucesso.');
     },
     [db, save]
   );
@@ -2423,6 +2507,7 @@ export function useDatabase() {
     eclodirOvo,
     anilharFilhote,
     registrarObitoDoNinho,
+    retornarObitoAoNinho,
     registrarSaidaDoNinho,
     desfazerSaidaDoNinho,
     reverterEclosao,
