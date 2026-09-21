@@ -337,7 +337,7 @@ export function NinhosSection({
       setVisualizacaoOvos('casal');
       setNinhosExpandidos((atual) => {
         const novo = new Set(atual);
-        novo.add(ninhoId);
+        novo.add(getGrupoIdPorNinhoId(ninhoId));
         return novo;
       });
     };
@@ -357,7 +357,9 @@ export function NinhosSection({
 
     if ((window as any).__gouldproExpandirNinhos) {
       setVisualizacaoOvos('casal');
-      setNinhosExpandidos(new Set(ninhos.filter((ninho) => ninho.eggs.length > 0).map((ninho) => ninho.id)));
+      setNinhosExpandidos(new Set(
+        gruposPorCasal.filter((grupo) => grupo.ovos.length > 0).map((grupo) => grupo.id)
+      ));
       delete (window as any).__gouldproExpandirNinhos;
     }
 
@@ -984,6 +986,81 @@ export function NinhosSection({
     }
   };
 
+  // Na visualização Por Casal, todos os ovos do mesmo casal são reunidos
+  // em um único bloco, mesmo quando estiverem distribuídos em locais/ninhos diferentes.
+  const gruposPorCasal = (() => {
+    const mapa = new Map<string, {
+      id: string;
+      casalId: string | null;
+      ninhoRepresentante: Ninho;
+      ovos: Array<Egg & { __gouldproOrigemNinhoId: string; __gouldproOrigemEggIdx: number }>;
+    }>();
+
+    ninhos.forEach((ninho) => {
+      const ovosFiltrados = ninho.eggs.filter(ovoPassaNoFiltro);
+      if (ovosFiltrados.length === 0 && filtroAtual !== "todos") return;
+
+      const chave = ninho.casalId ? `casal:${ninho.casalId}` : `ninho:${ninho.id}`;
+      if (!mapa.has(chave)) {
+        mapa.set(chave, {
+          id: chave,
+          casalId: ninho.casalId || null,
+          ninhoRepresentante: ninho,
+          ovos: [],
+        });
+      }
+
+      const grupo = mapa.get(chave)!;
+      ninho.eggs.forEach((egg, eggIdx) => {
+        if (!ovoPassaNoFiltro(egg)) return;
+        grupo.ovos.push({
+          ...egg,
+          __gouldproOrigemNinhoId: ninho.id,
+          __gouldproOrigemEggIdx: eggIdx,
+        });
+      });
+    });
+
+    const grupos = Array.from(mapa.values());
+    grupos.forEach((grupo) => {
+      grupo.ovos.sort((a, b) => {
+        const dataA = a.postura || a.inicioChoca || '9999-12-31';
+        const dataB = b.postura || b.inicioChoca || '9999-12-31';
+        const comparacao = dataA.localeCompare(dataB);
+        return comparacao !== 0
+          ? comparacao
+          : (a.__gouldproOrigemNinhoId + ':' + a.__gouldproOrigemEggIdx).localeCompare(
+              b.__gouldproOrigemNinhoId + ':' + b.__gouldproOrigemEggIdx
+            );
+      });
+    });
+
+    return grupos;
+  })();
+
+  const getGrupoIdPorNinhoId = (ninhoId: string) => {
+    const ninho = ninhos.find((item) => item.id === ninhoId);
+    if (!ninho) return `ninho:${ninhoId}`;
+    return ninho.casalId ? `casal:${ninho.casalId}` : `ninho:${ninho.id}`;
+  };
+
+  const toggleTodosOvosDoGrupo = (grupo: { ovos: Array<Egg & { __gouldproOrigemNinhoId: string; __gouldproOrigemEggIdx: number }> }) => {
+    setOvosSelecionados((atual) => {
+      const novo = new Set(atual);
+      const chaves = grupo.ovos.map((egg) =>
+        getChaveOvo(egg.__gouldproOrigemNinhoId, egg, egg.__gouldproOrigemEggIdx)
+      );
+      const todosSelecionados = chaves.length > 0 && chaves.every((chave) => novo.has(chave));
+
+      chaves.forEach((chave) => {
+        if (todosSelecionados) novo.delete(chave);
+        else novo.add(chave);
+      });
+
+      return novo;
+    });
+  };
+
   // Resumo textual e compacto dos ovos da faixa verde.
   // Mostra apenas os estados que possuem quantidade, para caber bem no celular.
   const renderResumoOvosFaixa = (ovos: Egg[]) => {
@@ -1013,40 +1090,12 @@ export function NinhosSection({
     );
   };
 
-  // Ordenação cronológica: ovos pela data de postura e, quando não houver,
-  // pela data de início da choca. Para o filtro de filhotes, usamos primeiro
-  // a data real de eclosão, pois é ela que representa o nascimento do filhote.
-  // Em todos os casos mantemos o índice original como critério de desempate,
-  // para que as ações continuem apontando para o ovo correto.
-  const obterDataOrdenacaoOvo = (egg: Egg): string =>
-    egg.postura || egg.inicioChoca || '9999-12-31';
-
-  const obterDataOrdenacaoFilhote = (egg: Egg): string =>
-    egg.dataEclosao || egg.postura || egg.inicioChoca || '9999-12-31';
-
-  const compararOvosPorData = (
-    a: { egg: Egg; eggIdx: number },
-    b: { egg: Egg; eggIdx: number }
-  ) => {
-    const dataA = obterDataOrdenacaoOvo(a.egg);
-    const dataB = obterDataOrdenacaoOvo(b.egg);
+  const compararOvosPorData = (a: { egg: Egg; eggIdx: number }, b: { egg: Egg; eggIdx: number }) => {
+    const dataA = a.egg.postura || a.egg.inicioChoca || '9999-12-31';
+    const dataB = b.egg.postura || b.egg.inicioChoca || '9999-12-31';
     const comparacao = dataA.localeCompare(dataB);
     return comparacao !== 0 ? comparacao : a.eggIdx - b.eggIdx;
   };
-
-  const compararFilhotesPorData = (
-    a: { egg: Egg; eggIdx: number },
-    b: { egg: Egg; eggIdx: number }
-  ) => {
-    const dataA = obterDataOrdenacaoFilhote(a.egg);
-    const dataB = obterDataOrdenacaoFilhote(b.egg);
-    const comparacao = dataA.localeCompare(dataB);
-    return comparacao !== 0 ? comparacao : a.eggIdx - b.eggIdx;
-  };
-
-  const compararRegistrosVisiveis = filtroAtual === 'filhotes'
-    ? compararFilhotesPorData
-    : compararOvosPorData;
 
   // Agrupar todos os ovos pelo local onde estão atualmente.
   // Mantemos ninhoId + eggIdx para que todas as ações continuem
@@ -1071,7 +1120,7 @@ export function NinhosSection({
     });
   });
 
-  ovosPorLocal.forEach((lista) => lista.sort(compararRegistrosVisiveis));
+  ovosPorLocal.forEach((lista) => lista.sort(compararOvosPorData));
 
   // Exibe somente locais que possuem pelo menos um ovo visível.
   // Locais cadastrados na configuração, mas vazios, não geram cards.
@@ -1195,9 +1244,14 @@ export function NinhosSection({
             <p className="text-xs text-slate-400 mt-1">Não há ovos para o filtro selecionado.</p>
           </div>
         ) : (
-          ninhosVisiveis.map((ninho) => (
+          gruposPorCasal.map((grupo) => {
+            const ninho = grupo.ninhoRepresentante;
+            const ovosDoGrupo = grupo.ovos;
+            const grupoExpandido = ninhosExpandidos.has(grupo.id);
+
+            return (
             <div
-              key={ninho.id}
+              key={grupo.id}
               className="bg-white rounded-[24px] border-2 border-slate-200 overflow-hidden shadow-sm"
             >
               {/* Header do Ninho */}
@@ -1239,20 +1293,18 @@ export function NinhosSection({
                         <i className="fas fa-pencil-alt ml-2 text-xs opacity-70"></i>
                       </h3>
                     )}
-                    {renderResumoOvosFaixa(ninho.eggs)}
+                    {renderResumoOvosFaixa(ovosDoGrupo)}
                   </div>
 
                   <div className="flex gap-2">
-                    {quantidadeOvosVisiveis(ninho) > 0 && (
+                    {ovosDoGrupo.length > 0 && (
                       <button
-                        onClick={() => toggleTodosOvosDoNinho(ninho.id)}
+                        onClick={() => toggleTodosOvosDoGrupo(grupo)}
                         className="bg-amber-500 hover:bg-amber-600 text-white px-3 py-2 rounded-xl font-bold text-[10px] uppercase shadow-md transition-all"
                         title="Selecionar/desselecionar todos os ovos deste ninho para edição em lote"
                       >
                         <i className="fas fa-check-square mr-1"></i>
-                        {ninho.eggs.filter(ovoPassaNoFiltro).every((egg) =>
-                          ovosSelecionados.has(getChaveOvo(ninho.id, egg, ninho.eggs.findIndex((item) => item.id === egg.id)))
-                        )
+                        {ovosDoGrupo.length > 0 && ovosDoGrupo.every((egg) => ovosSelecionados.has(getChaveOvo(egg.__gouldproOrigemNinhoId, egg, egg.__gouldproOrigemEggIdx)))
                           ? 'DESMARCAR'
                           : 'SELECIONAR'}
                       </button>
@@ -1295,14 +1347,9 @@ export function NinhosSection({
 
               {/* Resumo / expansão dos ovos do casal */}
               <div className="p-2">
-                {quantidadeOvosVisiveis(ninho) === 0 ? (
-                  <div className="text-center py-6 text-slate-400">
-                    <i className="fas fa-egg text-2xl mb-2"></i>
-                    <p className="text-sm">Nenhum ovo registrado</p>
-                  </div>
-                ) : !ninhosExpandidos.has(ninho.id) ? (
+                {!grupoExpandido ? (
                   <div
-                    onClick={() => toggleNinhoExpandido(ninho.id)}
+                    onClick={() => toggleNinhoExpandido(grupo.id)}
                     className="bg-gradient-to-r from-emerald-50 to-blue-50 border-2 border-emerald-200 rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all"
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -1315,7 +1362,7 @@ export function NinhosSection({
                             Ovos deste casal
                           </h4>
                           <p className="text-[10px] font-bold text-slate-500 mt-0.5">
-                            {quantidadeOvosVisiveis(ninho)} {quantidadeOvosVisiveis(ninho) === 1 ? 'ovo registrado' : 'ovos registrados'}
+                            {ovosDoGrupo.length} {ovosDoGrupo.length === 1 ? 'ovo registrado' : 'ovos registrados'}
                           </p>
                         </div>
                       </div>
@@ -1324,7 +1371,7 @@ export function NinhosSection({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          toggleNinhoExpandido(ninho.id);
+                          toggleNinhoExpandido(grupo.id);
                         }}
                         className="bg-emerald-600 text-white px-3 py-2 rounded-lg font-bold text-[9px] uppercase flex items-center gap-1.5 shadow-sm"
                       >
@@ -1339,13 +1386,13 @@ export function NinhosSection({
                       <div className="flex items-center gap-2">
                         <i className="fas fa-egg text-emerald-600 text-xs"></i>
                         <span className="text-[10px] font-bold text-emerald-700 uppercase">
-                          Ovos deste casal ({quantidadeOvosVisiveis(ninho)})
+                          Ovos deste casal ({ovosDoGrupo.length})
                         </span>
                       </div>
 
                       <button
                         type="button"
-                        onClick={() => toggleNinhoExpandido(ninho.id)}
+                        onClick={() => toggleNinhoExpandido(grupo.id)}
                         className="text-emerald-700 hover:text-emerald-900 px-2 py-1 rounded-lg hover:bg-white transition-colors"
                         title="Recolher ovos"
                       >
@@ -1375,11 +1422,9 @@ export function NinhosSection({
                       </thead>
 
                       <tbody>
-                        {ninho.eggs
-                          .map((egg, eggIdx) => ({ egg, eggIdx }))
-                          .filter(({ egg }) => ovoPassaNoFiltro(egg))
-                          .sort(compararRegistrosVisiveis)
-                          .map(({ egg, eggIdx }) => {
+                        {ovosDoGrupo.map((egg, grupoEggIdx) => {
+                          const origemNinho = ninhos.find((item) => item.id === egg.__gouldproOrigemNinhoId) || ninho;
+                          const origemEggIdx = egg.__gouldproOrigemEggIdx;
 
                           const dataFertilidade = calcularDataFertilidade(egg);
                           const dataEclosao = calcularDataEclosao(egg);
@@ -1399,18 +1444,18 @@ export function NinhosSection({
 
                           return (
                             <tr
-                              key={`${ninho.id}-${egg.id || eggIdx}`}
+                              key={`${origemNinho.id}-${egg.id || origemEggIdx}`}
                               data-dashboard-egg-id={egg.id}
                               className={`border-b border-emerald-100/70 transition-all duration-150 ${
-                                ovoDashboardDestacado === `${ninho.id}::${egg.id}` && ovoDashboardPiscando
+                                ovoDashboardDestacado === `${origemNinho.id}::${egg.id}` && ovoDashboardPiscando
                                   ? 'bg-amber-200 ring-4 ring-amber-400 ring-inset shadow-xl'
-                                  : ovoDashboardDestacado === `${ninho.id}::${egg.id}`
+                                  : ovoDashboardDestacado === `${origemNinho.id}::${egg.id}`
                                     ? 'bg-amber-100 ring-4 ring-amber-300 ring-inset shadow-lg'
                                     : ''
                               } ${
-                                ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))
+                                ovosSelecionados.has(getChaveOvo(origemNinho.id, egg, origemEggIdx))
                                   ? 'bg-amber-50/60 hover:bg-amber-100/60'
-                                  : eggIdx % 2 === 0
+                                  : origemEggIdx % 2 === 0
                                     ? 'bg-white hover:bg-emerald-50'
                                     : 'bg-emerald-50/50 hover:bg-emerald-100/60'
                               }`}
@@ -1419,9 +1464,9 @@ export function NinhosSection({
                               <td className="py-1.5 px-1 text-center">
                                 <input
                                   type="checkbox"
-                                  checked={ovosSelecionados.has(getChaveOvo(ninho.id, egg, eggIdx))}
+                                  checked={ovosSelecionados.has(getChaveOvo(origemNinho.id, egg, origemEggIdx))}
                                   onChange={() =>
-                                    toggleOvoSelecionado(getChaveOvo(ninho.id, egg, eggIdx))
+                                    toggleOvoSelecionado(getChaveOvo(origemNinho.id, egg, origemEggIdx))
                                   }
                                   className="w-4 h-4 rounded border-2 border-amber-300 text-amber-500 focus:ring-2 focus:ring-amber-400 cursor-pointer"
                                   title="Selecionar este ovo para edição em lote"
@@ -1432,7 +1477,7 @@ export function NinhosSection({
                               <td className="py-1.5 px-1">
                                 <DataCompacta
                                   value={egg.postura || ''}
-                                  onChange={(value) => onUpdateEgg(ninho.id, eggIdx, 'postura', value)}
+                                  onChange={(value) => onUpdateEgg(origemNinho.id, origemEggIdx, 'postura', value)}
                                   className="text-[9px] font-bold text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-1 w-24 h-7"
                                   ariaLabel="Data da postura"
                                 />
@@ -1445,7 +1490,7 @@ export function NinhosSection({
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        setEspecieDropdownAberto({ ninhoId: ninho.id, eggIdx });
+                                        setEspecieDropdownAberto({ ninhoId: origemNinho.id, origemEggIdx });
                                         setEspecieBusca(egg.species || '');
                                       }}
                                       className="w-full text-left text-[9px] font-bold text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-0.5 hover:border-indigo-400 transition-colors flex items-center justify-between gap-1"
@@ -1456,7 +1501,7 @@ export function NinhosSection({
                                       <i className="fas fa-chevron-down text-[7px] text-slate-400"></i>
                                     </button>
 
-                                    {especieDropdownAberto?.ninhoId === ninho.id && especieDropdownAberto?.eggIdx === eggIdx && (
+                                    {especieDropdownAberto?.ninhoId === origemNinho.id && especieDropdownAberto?.origemEggIdx === origemEggIdx && (
                                       <div className="absolute top-full left-0 right-0 mt-1 bg-white border-2 border-indigo-500 rounded-xl shadow-xl z-50 max-h-64 overflow-hidden flex flex-col">
                                         <div className="p-2 border-b border-slate-200 bg-slate-50">
                                           <div className="flex items-center gap-1">
@@ -1469,7 +1514,7 @@ export function NinhosSection({
                                               autoFocus
                                               onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && especieBusca.trim()) {
-                                                  onUpdateEgg(ninho.id, eggIdx, 'species', especieBusca);
+                                                  onUpdateEgg(origemNinho.id, origemEggIdx, 'species', especieBusca);
                                                   setEspecieDropdownAberto(null);
                                                   setEspecieBusca('');
                                                 } else if (e.key === 'Escape') {
@@ -1481,7 +1526,7 @@ export function NinhosSection({
                                             <button
                                               type="button"
                                               onClick={() => {
-                                                setCriarEspecieModal({ ninhoId: ninho.id, eggIdx });
+                                                setCriarEspecieModal({ ninhoId: origemNinho.id, origemEggIdx });
                                                 setNovaEspecieData({
                                                   nome: especieBusca || '',
                                                   diasFertilidade: 7,
@@ -1510,7 +1555,7 @@ export function NinhosSection({
                                                 key={esp}
                                                 type="button"
                                                 onClick={() => {
-                                                  onUpdateEgg(ninho.id, eggIdx, 'species', esp);
+                                                  onUpdateEgg(origemNinho.id, origemEggIdx, 'species', esp);
                                                   setEspecieDropdownAberto(null);
                                                   setEspecieBusca('');
                                                 }}
@@ -1539,7 +1584,7 @@ export function NinhosSection({
                                               <button
                                                 type="button"
                                                 onClick={() => {
-                                                  onUpdateEgg(ninho.id, eggIdx, 'species', especieBusca);
+                                                  onUpdateEgg(origemNinho.id, origemEggIdx, 'species', especieBusca);
                                                   setEspecieDropdownAberto(null);
                                                   setEspecieBusca('');
                                                 }}
@@ -1643,7 +1688,7 @@ export function NinhosSection({
                               <td className="py-1.5 px-1">
                                 <select
                                   value={egg.local || ''}
-                                  onChange={(e) => onUpdateEgg(ninho.id, eggIdx, 'local', e.target.value)}
+                                  onChange={(e) => onUpdateEgg(origemNinho.id, origemEggIdx, 'local', e.target.value)}
                                   className="text-[9px] font-bold text-slate-700 bg-white border border-slate-200 rounded px-1.5 py-0.5 outline-none"
                                 >
                                   <option value="">Selecione...</option>
@@ -1663,12 +1708,12 @@ export function NinhosSection({
                                 <StatusSelector
                                   status={egg.status}
                                   onChange={(novoStatus) =>
-                                    onUpdateEgg(ninho.id, eggIdx, 'status', novoStatus)
+                                    onUpdateEgg(origemNinho.id, origemEggIdx, 'status', novoStatus)
                                   }
                                   onChocar={() => {
                                     setChocaModal({
-                                      ninhoId: ninho.id,
-                                      eggIdx
+                                      ninhoId: origemNinho.id,
+                                      origemEggIdx
                                     });
 
                                     setChocaData({
@@ -1686,7 +1731,7 @@ export function NinhosSection({
                                 {egg.status === 'Em Espera' ? (
                                   <button
                                     onClick={() => {
-                                      setChocaModal({ ninhoId: ninho.id, eggIdx });
+                                      setChocaModal({ ninhoId: origemNinho.id, origemEggIdx });
                                       setChocaData({
                                         tipo: 'pais',
                                         dataInicio: new Date().toISOString().split('T')[0],
@@ -1702,7 +1747,7 @@ export function NinhosSection({
                                   <div className="flex flex-col gap-1">
                                     <DataCompacta
                                       value={egg.inicioChoca || ''}
-                                      onChange={(value) => onUpdateEgg(ninho.id, eggIdx, 'inicioChoca', value)}
+                                      onChange={(value) => onUpdateEgg(origemNinho.id, origemEggIdx, 'inicioChoca', value)}
                                       className="text-[10px] font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2 py-1 w-24 h-7"
                                       ariaLabel="Data de início da choca"
                                     />
@@ -1750,7 +1795,7 @@ export function NinhosSection({
                                               type="checkbox"
                                               onChange={(e) => {
                                                 if (e.target.checked) {
-                                                  onUpdateEgg(ninho.id, eggIdx, 'status', 'Fértil');
+                                                  onUpdateEgg(origemNinho.id, origemEggIdx, 'status', 'Fértil');
                                                 }
                                               }}
                                               className="w-3.5 h-3.5 rounded border-2 border-emerald-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer"
@@ -1765,7 +1810,7 @@ export function NinhosSection({
                                               onChange={(e) => {
                                                 if (e.target.checked) {
                                                   if (confirm('Marcar este ovo como infértil?')) {
-                                                    onUpdateEgg(ninho.id, eggIdx, 'status', 'Infértil');
+                                                    onUpdateEgg(origemNinho.id, origemEggIdx, 'status', 'Infértil');
                                                   }
                                                 }
                                               }}
@@ -1781,7 +1826,7 @@ export function NinhosSection({
                                         <button
                                           onClick={() => {
                                             if (confirm('Deseja reverter para o estado "Chocando"?')) {
-                                              onUpdateEgg(ninho.id, eggIdx, 'status', 'Chocando');
+                                              onUpdateEgg(origemNinho.id, origemEggIdx, 'status', 'Chocando');
                                             }
                                           }}
                                           className="text-[8px] font-bold text-slate-500 hover:text-slate-700 underline"
@@ -1819,12 +1864,12 @@ export function NinhosSection({
                                             checked={egg.status === 'Eclodido'}
                                             onChange={(e) => {
                                               if (e.target.checked) {
-                                                setEclosaoModal({ ninhoId: ninho.id, eggIdx });
+                                                setEclosaoModal({ ninhoId: origemNinho.id, origemEggIdx });
                                                 setDataEclosao(new Date().toISOString().split('T')[0]);
                                               } else {
                                                 if (confirm('Deseja reverter este ovo para o estado anterior (não eclodido)?' +
                                                   (egg.filhoteAnilhado ? '\n\nAtenção: O filhote anilhado será removido do plantel!' : ''))) {
-                                                  onReverterEclosao(ninho.id, eggIdx);
+                                                  onReverterEclosao(origemNinho.id, origemEggIdx);
                                                 }
                                               }
                                             }}
@@ -1863,8 +1908,8 @@ export function NinhosSection({
                                           type="button"
                                           onClick={() => {
                                             setAnilhamentoModal({
-                                              ninhoId: ninho.id,
-                                              eggIdx
+                                              ninhoId: origemNinho.id,
+                                              origemEggIdx
                                             });
                                             setAnilhaEditando(true);
                                             setAnilhaData({
@@ -1889,8 +1934,8 @@ export function NinhosSection({
                                             type="button"
                                             onClick={() =>
                                               handleDesfazerSaidaNinho(
-                                                ninho.id,
-                                                eggIdx
+                                                origemNinho.id,
+                                                origemEggIdx
                                               )
                                             }
                                             disabled={!onDesfazerSaidaDoNinho}
@@ -1906,8 +1951,8 @@ export function NinhosSection({
                                             type="button"
                                             onClick={() => {
                                               setSaidaNinhoModal({
-                                                ninhoId: ninho.id,
-                                                eggIdx
+                                                ninhoId: origemNinho.id,
+                                                origemEggIdx
                                               });
                                               setDataSaidaNinho(
                                                 new Date().toISOString().split('T')[0]
@@ -1927,8 +1972,8 @@ export function NinhosSection({
                                         type="button"
                                         onClick={() => {
                                           setAnilhamentoModal({
-                                            ninhoId: ninho.id,
-                                            eggIdx
+                                            ninhoId: origemNinho.id,
+                                            origemEggIdx
                                           });
                                           setAnilhaEditando(false);
                                           setAnilhaData({
@@ -1955,13 +2000,13 @@ export function NinhosSection({
                                     type="button"
                                     onClick={() => {
                                       setOpcoesOvoAberto((atual) =>
-                                        atual?.ninhoId === ninho.id && atual?.eggIdx === eggIdx
+                                        atual?.ninhoId === origemNinho.id && atual?.origemEggIdx === origemEggIdx
                                           ? null
-                                          : { ninhoId: ninho.id, eggIdx }
+                                          : { ninhoId: origemNinho.id, origemEggIdx }
                                       );
                                     }}
                                     className={`px-2 py-1 rounded-lg text-[8px] font-bold uppercase whitespace-nowrap transition-all ${
-                                      opcoesOvoAberto?.ninhoId === ninho.id && opcoesOvoAberto?.eggIdx === eggIdx
+                                      opcoesOvoAberto?.ninhoId === origemNinho.id && opcoesOvoAberto?.origemEggIdx === origemEggIdx
                                         ? "bg-indigo-600 text-white"
                                         : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
                                     }`}
@@ -1973,7 +2018,7 @@ export function NinhosSection({
 
                                   <button
                                     type="button"
-                                    onClick={() => onRemoveEgg(ninho.id, eggIdx)}
+                                    onClick={() => onRemoveEgg(origemNinho.id, origemEggIdx)}
                                     className="w-6 h-6 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded transition-all"
                                     title="Excluir ovo"
                                   >
@@ -1981,8 +2026,8 @@ export function NinhosSection({
                                   </button>
                                 </div>
 
-                                {opcoesOvoAberto?.ninhoId === ninho.id &&
-                                  opcoesOvoAberto?.eggIdx === eggIdx && (
+                                {opcoesOvoAberto?.ninhoId === origemNinho.id &&
+                                  opcoesOvoAberto?.origemEggIdx === origemEggIdx && (
                                     <div
                                       className="absolute right-0 top-full mt-2 z-[100] w-64 max-w-[calc(100vw-1rem)] bg-white border-2 border-indigo-200 rounded-xl shadow-2xl p-3 text-left"
                                       onClick={(e) => e.stopPropagation()}
@@ -2016,8 +2061,8 @@ export function NinhosSection({
                                             value={egg.nota || ""}
                                             onChange={(e) =>
                                               onUpdateEgg(
-                                                ninho.id,
-                                                eggIdx,
+                                                origemNinho.id,
+                                                origemEggIdx,
                                                 "nota",
                                                 e.target.value
                                               )
@@ -2037,8 +2082,8 @@ export function NinhosSection({
                                             value={egg.porta || ""}
                                             onChange={(e) =>
                                               onUpdateEgg(
-                                                ninho.id,
-                                                eggIdx,
+                                                origemNinho.id,
+                                                origemEggIdx,
                                                 "porta",
                                                 e.target.value
                                               )
@@ -2070,8 +2115,8 @@ export function NinhosSection({
                 )}
               </div>
             </div>
-          ))
-        )}
+            );
+          }))}
           </div>
         </>
       )}
@@ -2186,7 +2231,7 @@ export function NinhosSection({
                       </thead>
 
                       <tbody>
-                        {[...ovos].sort(compararRegistrosVisiveis).map(({ egg, ninho, eggIdx }) => {
+                        {ovos.map(({ egg, ninho, eggIdx }) => {
                           const dataFertilidade = calcularDataFertilidade(egg);
                           const dataEclosao = calcularDataEclosao(egg);
                           const dataAnilhamento = calcularDataAnilhamento(egg);
