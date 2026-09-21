@@ -1931,28 +1931,6 @@ export function NinhosSection({
                                             <i className="fas fa-ring mr-1"></i>
                                             Anilhar agora
                                           </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              if (
-                                                confirm(
-                                                  'Reativar o anilhamento deste filhote? Ele voltará a aparecer como pendente de anilha no Dashboard.'
-                                                )
-                                              ) {
-                                                onUpdateEgg(
-                                                  ninho.id,
-                                                  eggIdx,
-                                                  'naoAnilhar' as keyof Egg,
-                                                  false
-                                                );
-                                              }
-                                            }}
-                                            className="text-[8px] font-bold px-1.5 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap"
-                                            title="Voltar a exigir anilha"
-                                          >
-                                            <i className="fas fa-undo mr-1"></i>
-                                            Reativar
-                                          </button>
                                         </div>
                                         {!((egg as any).dataSaidaNinho) && (
                                           <button
