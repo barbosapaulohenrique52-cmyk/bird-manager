@@ -1911,7 +1911,7 @@ export function NinhosSection({
                                           <i className="fas fa-ban text-[8px]"></i>
                                           <span>Sem anilha</span>
                                         </span>
-                                        <div className="flex gap-1">
+                                        <div className="flex gap-1 w-full">
                                           <button
                                             type="button"
                                             onClick={() => {
@@ -1931,27 +1931,26 @@ export function NinhosSection({
                                             <i className="fas fa-ring mr-1"></i>
                                             Anilhar agora
                                           </button>
+                                          {!((egg as any).dataSaidaNinho) && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setSaidaNinhoModal({
+                                                  ninhoId: ninho.id,
+                                                  eggIdx
+                                                });
+                                                setDataSaidaNinho(
+                                                  new Date().toISOString().split('T')[0]
+                                                );
+                                              }}
+                                              className="flex-1 text-[8px] font-bold px-1.5 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap"
+                                              title="Registrar a saída do ninho deste filhote"
+                                            >
+                                              <i className="fas fa-sign-out-alt mr-1"></i>
+                                              Sair do ninho
+                                            </button>
+                                          )}
                                         </div>
-                                        {!((egg as any).dataSaidaNinho) && (
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setSaidaNinhoModal({
-                                                ninhoId: ninho.id,
-                                                eggIdx
-                                              });
-                                              setDataSaidaNinho(
-                                                new Date().toISOString().split('T')[0]
-                                              );
-                                            }}
-                                            disabled={!onRegistrarSaidaDoNinho}
-                                            className="text-[8px] font-bold px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap disabled:opacity-50"
-                                            title="Registrar a saída do ninho deste filhote"
-                                          >
-                                            <i className="fas fa-sign-out-alt mr-1"></i>
-                                            Sair do ninho
-                                          </button>
-                                        )}
                                       </div>
                                     ) : egg.filhoteAnilhado ? (
                                       <>
