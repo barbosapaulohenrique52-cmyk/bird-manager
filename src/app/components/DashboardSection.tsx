@@ -143,7 +143,8 @@ export function DashboardSection({
         egg.dataEclosao &&
         egg.status === 'Eclodido' &&
         !egg.filhoteAnilhado &&
-        !egg.naoAnilhar
+        !egg.naoAnilhar &&
+        !egg.obito
       ) {
         const data = new Date(`${egg.dataEclosao}T12:00:00`);
         data.setDate(data.getDate() + parametros.diasAnilhamento);
