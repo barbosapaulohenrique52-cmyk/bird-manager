@@ -984,6 +984,35 @@ export function NinhosSection({
     }
   };
 
+  // Resumo textual e compacto dos ovos da faixa verde.
+  // Mostra apenas os estados que possuem quantidade, para caber bem no celular.
+  const renderResumoOvosFaixa = (ovos: Egg[]) => {
+    const estados = [
+      { label: 'ovos', valor: ovos.length },
+      { label: 'espera', valor: ovos.filter((egg) => egg.status === 'Em Espera').length },
+      { label: 'chocando', valor: ovos.filter((egg) => egg.status === 'Chocando').length },
+      { label: 'férteis', valor: ovos.filter((egg) => egg.status === 'Fértil').length },
+      { label: 'inférteis', valor: ovos.filter((egg) => egg.status === 'Infértil').length },
+      { label: 'eclodidos', valor: ovos.filter((egg) => egg.status === 'Eclodido').length },
+      { label: 'perdidos', valor: ovos.filter((egg) => egg.status === 'Perdido').length },
+      { label: 'filhotes', valor: ovos.filter((egg) => Boolean(egg.filhoteId)).length },
+    ];
+
+    return (
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-[9px] font-bold leading-tight">
+        {estados.map((item, index) => {
+          if (item.valor === 0) return null;
+          return (
+            <span key={item.label} className="text-emerald-50 whitespace-nowrap">
+              {index > 0 && <span className="text-emerald-200 mr-1.5">•</span>}
+              {item.valor} {item.label}
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
+
   const compararOvosPorData = (a: { egg: Egg; eggIdx: number }, b: { egg: Egg; eggIdx: number }) => {
     const dataA = a.egg.postura || a.egg.inicioChoca || '9999-12-31';
     const dataB = b.egg.postura || b.egg.inicioChoca || '9999-12-31';
@@ -1182,6 +1211,7 @@ export function NinhosSection({
                         <i className="fas fa-pencil-alt ml-2 text-xs opacity-70"></i>
                       </h3>
                     )}
+                    {renderResumoOvosFaixa(ninho.eggs)}
                   </div>
 
                   <div className="flex gap-2">
@@ -2087,9 +2117,7 @@ export function NinhosSection({
                         <i className="fas fa-map-marker-alt"></i>
                         {local}
                       </h3>
-                      <p className="text-[10px] font-bold text-emerald-100 mt-1 uppercase">
-                        {ovos.length} {ovos.length === 1 ? 'ovo' : 'ovos'}
-                      </p>
+                      {renderResumoOvosFaixa(ovos.map((item) => item.egg))}
                     </div>
 
                     <div className="flex items-center gap-2">
