@@ -59,9 +59,26 @@ function SaidaNinhoIcon({ className = "w-4 h-4" }: { className?: string }) {
 
 function ObitoIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="#000000" strokeWidth="2.8" strokeLinecap="round" className={className} aria-hidden="true">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="#000000"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      {/* Caveira preta: símbolo de óbito, sem se confundir com o botão + */}
+      <path
+        d="M12 3.5c-4.35 0-7.5 3.18-7.5 7.25 0 2.78 1.55 5.15 3.85 6.38v2.12c0 .69.56 1.25 1.25 1.25h4.8c.69 0 1.25-.56 1.25-1.25v-2.12c2.3-1.23 3.85-3.6 3.85-6.38C19.5 6.68 16.35 3.5 12 3.5Z"
+        fill="#000000"
+        stroke="#000000"
+      />
+      <circle cx="9" cy="10.5" r="1.45" fill="white" stroke="none" />
+      <circle cx="15" cy="10.5" r="1.45" fill="white" stroke="none" />
+      <path d="M9 15.2h6" stroke="white" strokeWidth="1.3" />
+      <path d="M10.2 15.2v2.2M12 15.2v2.2M13.8 15.2v2.2" stroke="white" strokeWidth="1.1" />
     </svg>
   );
 }
