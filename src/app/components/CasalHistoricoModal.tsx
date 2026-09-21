@@ -10,9 +10,9 @@ interface CasalHistoricoModalProps {
   onAddFilhote: (casalId: string, filhote: Omit<Filhote, 'id'>) => void;
   onUpdateFilhote: (casalId: string, filhoteId: string, updates: Partial<Filhote>) => void;
   onDeleteFilhote: (casalId: string, filhoteId: string) => void;
-  ninhos?: Ninho[];
+  ninhos: Ninho[];
   /** Retorna ao ninho uma ave que já saiu, sem apagar seu histórico. */
-  onRetornarAoNinho?: (ninhoId: string, eggIdx: number) => void;
+  onRetornarAoNinho?: (aveId: string, casalId: string) => void;
 }
 
 export function CasalHistoricoModal({
@@ -23,9 +23,20 @@ export function CasalHistoricoModal({
   onAddFilhote,
   onUpdateFilhote,
   onDeleteFilhote,
-  ninhos = [],
+  ninhos,
   onRetornarAoNinho
 }: CasalHistoricoModalProps) {
+  /*
+   * O histórico antigo pode não ter sido gravado no campo casal.historico,
+   * embora os filhotes estejam corretamente vinculados aos pais no Plantel
+   * por parentMaleId e parentFemaleId.
+   *
+   * Por isso, reunimos:
+   * 1. os registros já existentes no histórico do casal; e
+   * 2. as aves do Plantel que possuem os dois pais deste casal.
+   *
+   * A união evita duplicações usando aveId ou anilha + ano.
+   */
   const avesDoPlantel: Ave[] = (() => {
     try {
       const armazenadas = JSON.parse(
@@ -75,94 +86,46 @@ export function CasalHistoricoModal({
 
   const filhotesComSituacao = filhotes.map(filhote => {
     const ave = filhote.aveId ? avesPorId.get(filhote.aveId) : undefined;
-    const registroNinho = (ninhos ?? [])
-      .flatMap(ninho => (ninho.eggs ?? []).map((egg, eggIdx) => ({ ninho, egg, eggIdx })))
+    const registroNinho = ninhos
+      .flatMap(ninho => ninho.eggs.map((egg, eggIdx) => ({ ninho, egg, eggIdx })))
       .find(({ egg }) => {
         const eggAny = egg as any;
-        const identificadoresFilhote = [
-          filhote.aveId,
-          filhote.anilha,
-          String(filhote.anilha || '').replace(/^0+/, '')
-        ]
-          .filter(Boolean)
-          .map(valor => String(valor).trim().toLowerCase());
-
-        const identificadoresOvo = [
-          eggAny.filhoteId,
-          eggAny.aveId,
-          eggAny.anilha,
-          eggAny.ring,
-          eggAny.ringNumber,
-          eggAny.filhoteAnilha,
-          eggAny.anilhaFilhote,
-          eggAny.idFilhote
-        ]
-          .filter(Boolean)
-          .map(valor => String(valor).trim().toLowerCase());
-
-        return identificadoresOvo.some(identificador =>
-          identificadoresFilhote.includes(identificador) ||
-          identificadoresFilhote.some(valor =>
-            valor.replace(/^0+/, '') === identificador.replace(/^0+/, '')
-          )
+        return (
+          (filhote.aveId && (eggAny.filhoteId === filhote.aveId || eggAny.aveId === filhote.aveId)) ||
+          (filhote.anilha && eggAny.anilha === filhote.anilha)
         );
       });
 
     const eggAny = registroNinho?.egg as any;
-    const statusAve = String((ave as any)?.status || '').trim().toLowerCase();
-
-    // A saída é determinada pelo registro do ovo. O campo dataSaidaNinho
-    // continua existindo mesmo depois que o filhote passa para o Plantel.
     const saiuDoNinho = Boolean(
       (filhote as any).saiuDoNinho ||
-      (filhote as any).dataSaidaNinho ||
       (ave as any)?.saiuDoNinho ||
       (ave as any)?.dataSaidaNinho ||
       eggAny?.dataSaidaNinho
     );
-
     const emObito = Boolean(
       (filhote as any).emObito ||
-      statusAve === 'óbito' ||
-      statusAve === 'obito'
+      String((ave as any)?.status || '').toLowerCase() === 'óbito' ||
+      String((ave as any)?.status || '').toLowerCase() === 'obito'
     );
 
-    // O campo egg.local é o local real exibido na aba Ninhos
-    // (por exemplo: GAIOLA 2 ou GAIOLA 3). Não usar ninho.id como local.
-    const localDoOvo = String(
-      eggAny?.localSaidaNinho ||
-      eggAny?.localAtual ||
-      eggAny?.local ||
-      ''
-    ).trim();
-
-    const localDaAve = String(
-      (ave as any)?.localAtual ||
-      (ave as any)?.local ||
-      (ave as any)?.location ||
-      ''
-    ).trim();
-
-    let status: string;
-    let local: string;
+    let status = filhote.status || 'Ativo';
+    let local = (ave as any)?.localAtual || (ave as any)?.local || (ave as any)?.location || '';
 
     if (emObito) {
       status = 'Óbito';
-      local = localDaAve || localDoOvo || 'Não informado';
-    } else if (saiuDoNinho) {
-      // Esta condição precisa vir antes de "registroNinho", pois o ovo
-      // permanece no histórico do ninho após a saída.
-      status = 'Saiu do ninho';
-      local = localDoOvo || localDaAve || 'Não informado';
-    } else if (registroNinho) {
+    } else if (registroNinho && !saiuDoNinho) {
       status = 'No ninho';
-      local = localDoOvo || registroNinho.ninho.name || 'Não informado';
-    } else if (statusAve === 'vendido' || filhote.status === 'Vendido') {
+      local = registroNinho.ninho.name || registroNinho.ninho.id;
+    } else if (saiuDoNinho) {
+      status = 'Saiu do ninho';
+      local = eggAny?.localAtual || (ave as any)?.localAtual || local || 'Não informado';
+    } else if (String((ave as any)?.status || '').toLowerCase() === 'vendido' || filhote.status === 'Vendido') {
       status = 'Vendido';
-      local = localDaAve || 'Não informado';
+      local = local || 'Não informado';
     } else {
       status = 'Ativo';
-      local = localDaAve || 'Plantel';
+      local = local || 'Plantel';
     }
 
     return {
@@ -170,8 +133,7 @@ export function CasalHistoricoModal({
       status,
       local: local || 'Não informado',
       saiuDoNinho,
-      emObito,
-      registroNinho
+      emObito
     };
   });
 
@@ -449,22 +411,27 @@ export function CasalHistoricoModal({
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {filhote.saiuDoNinho && !filhote.emObito && filhote.registroNinho && onRetornarAoNinho && (
+                        {(filhote.saiuDoNinho || filhote.emObito) && filhote.aveId && onRetornarAoNinho && (
                           <button
                             type="button"
                             onClick={() => {
-                              if (
-                                filhote.registroNinho &&
-                                confirm('Deseja retornar esta ave ao ninho? Ela voltará a aparecer na aba Ninhos.')
-                              ) {
-                                onRetornarAoNinho(filhote.registroNinho.ninho.id, filhote.registroNinho.eggIdx);
+                              const mensagem = filhote.emObito
+                                ? 'Deseja desfazer o óbito e retornar esta ave ao ninho?\n\nO registro de óbito será desfeito e o filhote voltará a aparecer na aba Ninhos.'
+                                : 'Deseja retornar esta ave ao ninho? Ela voltará a aparecer na aba Ninhos.';
+
+                              if (confirm(mensagem)) {
+                                onRetornarAoNinho(filhote.aveId!, casal.id);
                               }
                             }}
-                            className="px-3 py-2 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-black uppercase hover:bg-amber-100 transition-all"
-                            title="Retornar ao ninho"
+                            className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${
+                              filhote.emObito
+                                ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                            }`}
+                            title={filhote.emObito ? 'Desfazer óbito e retornar ao ninho' : 'Retornar ao ninho'}
                           >
                             <i className="fas fa-rotate-left mr-1"></i>
-                            Retornar ao ninho
+                            {filhote.emObito ? 'Desfazer óbito' : 'Retornar ao ninho'}
                           </button>
                         )}
                         <button
