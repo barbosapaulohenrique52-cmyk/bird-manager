@@ -1906,7 +1906,7 @@ export function NinhosSection({
                               {/* Data Anilhamento / Saída do Ninho */}
                               <td className="py-1.5 px-1">
                                 {egg.status === 'Eclodido' ? (
-                                  <div className="flex flex-col gap-1.5 min-w-[90px]">
+                                  <div className="flex flex-col gap-1 min-w-0">
                                     {(egg as any).obito ? (
                                       <div className="flex flex-col gap-1">
                                         <span className="flex items-center gap-1 text-[8px] font-bold rounded px-1.5 py-1 bg-rose-50 text-rose-700">
@@ -1999,6 +1999,7 @@ export function NinhosSection({
                                           <i className="fas fa-pencil-alt text-[7px] ml-auto"></i>
                                         </button>
 
+                                        <div className="flex gap-1 w-full">
                                         {(egg as any).dataSaidaNinho ? (
                                           <button
                                             type="button"
@@ -2029,7 +2030,7 @@ export function NinhosSection({
                                               );
                                             }}
                                             disabled={!onRegistrarSaidaDoNinho}
-                                            className="text-[8px] font-bold px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="flex-1 text-[8px] font-bold px-1.5 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                                             title="Registrar que o filhote saiu do ninho e incluí-lo no Plantel"
                                           >
                                             <i className="fas fa-sign-out-alt mr-1"></i>
@@ -2037,15 +2038,11 @@ export function NinhosSection({
                                           </button>
                                         )}
                                         {!((egg as any).dataObito) && (
-                                          <button type="button" onClick={() => { setObitoModal({ ninhoId: origemNinho.id, eggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="text-[8px] font-bold px-2 py-1 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all whitespace-nowrap disabled:opacity-50" title="Registrar óbito antes da saída do ninho">
+                                          <button type="button" onClick={() => { setObitoModal({ ninhoId: origemNinho.id, eggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="flex-1 text-[8px] font-bold px-1.5 py-1 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all whitespace-nowrap disabled:opacity-50" title="Registrar óbito antes da saída do ninho">
                                             <i className="fas fa-heartbeat mr-1"></i>Óbito
                                           </button>
                                         )}
-                                        {!((egg as any).dataObito) && (
-                                          <button type="button" onClick={() => { setObitoModal({ ninhoId: origemNinho.id, eggIdx: origemEggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="text-[8px] font-bold px-2 py-1 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all whitespace-nowrap disabled:opacity-50" title="Registrar óbito antes da saída do ninho">
-                                            <i className="fas fa-heartbeat mr-1"></i>Óbito
-                                          </button>
-                                        )}
+                                        </div>
                                       </>
                                     ) : (
                                       <>
@@ -2067,7 +2064,7 @@ export function NinhosSection({
                                         <i className="fas fa-ring mr-1"></i>
                                         Anilhar
                                       </button>
-                                      <button type="button" onClick={() => { setObitoModal({ ninhoId: origemNinho.id, eggIdx: origemEggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="text-[8px] font-bold px-2 py-1 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all whitespace-nowrap disabled:opacity-50" title="Registrar óbito antes do anilhamento">
+                                      <button type="button" onClick={() => { setObitoModal({ ninhoId: origemNinho.id, eggIdx: origemEggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="flex-1 text-[8px] font-bold px-1.5 py-1 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all whitespace-nowrap disabled:opacity-50" title="Registrar óbito antes do anilhamento">
                                         <i className="fas fa-heartbeat mr-1"></i>Óbito
                                       </button>
                                       </>
@@ -2785,7 +2782,7 @@ export function NinhosSection({
                               {/* Data Anilhamento / Saída do Ninho */}
                               <td className="py-1.5 px-1">
                                 {egg.status === 'Eclodido' ? (
-                                  <div className="flex flex-col gap-1.5 min-w-[90px]">
+                                  <div className="flex flex-col gap-1 min-w-0">
                                     {(egg as any).obito ? (
                                       <div className="flex flex-col gap-1">
                                         <span className="flex items-center gap-1 text-[8px] font-bold rounded px-1.5 py-1 bg-rose-50 text-rose-700">
@@ -2908,7 +2905,7 @@ export function NinhosSection({
                                               );
                                             }}
                                             disabled={!onRegistrarSaidaDoNinho}
-                                            className="text-[8px] font-bold px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="flex-1 text-[8px] font-bold px-1.5 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                                             title="Registrar que o filhote saiu do ninho e incluí-lo no Plantel"
                                           >
                                             <i className="fas fa-sign-out-alt mr-1"></i>
@@ -2916,7 +2913,7 @@ export function NinhosSection({
                                           </button>
                                         )}
                                         {!((egg as any).dataObito) && (
-                                          <button type="button" onClick={() => { setObitoModal({ ninhoId: ninho.id, eggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="text-[8px] font-bold px-2 py-1 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all whitespace-nowrap disabled:opacity-50" title="Registrar óbito antes da saída do ninho">
+                                          <button type="button" onClick={() => { setObitoModal({ ninhoId: ninho.id, eggIdx }); setDataObito(new Date().toISOString().split('T')[0]); setMotivoObito(''); }} disabled={!onRegistrarObitoDoNinho} className="flex-1 text-[8px] font-bold px-1.5 py-1 rounded bg-rose-600 text-white hover:bg-rose-700 transition-all whitespace-nowrap disabled:opacity-50" title="Registrar óbito antes da saída do ninho">
                                             <i className="fas fa-heartbeat mr-1"></i>Óbito
                                           </button>
                                         )}
