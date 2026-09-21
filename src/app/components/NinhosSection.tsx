@@ -2751,7 +2751,59 @@ export function NinhosSection({
                               <td className="py-1.5 px-1">
                                 {egg.status === 'Eclodido' ? (
                                   <div className="flex flex-col gap-1.5 min-w-[90px]">
-                                    {egg.filhoteAnilhado ? (
+                                    (egg as any).naoAnilhar ? (
+                                      <div className="flex flex-col gap-1.5">
+                                        <span
+                                          className="flex items-center gap-1 text-[8px] font-bold rounded px-1.5 py-1 bg-slate-100 text-slate-600"
+                                          title="Este filhote foi marcado como sem anilha"
+                                        >
+                                          <i className="fas fa-ban text-[8px]"></i>
+                                          <span>Sem anilha</span>
+                                        </span>
+                                        <div className="flex gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setAnilhamentoModal({
+                                                ninhoId: origemNinho.id,
+                                                eggIdx: origemEggIdx
+                                              });
+                                              setAnilhaEditando(false);
+                                              setAnilhaData({
+                                                numero: '',
+                                                ano: new Date().getFullYear()
+                                              });
+                                            }}
+                                            className="flex-1 text-[8px] font-bold px-1.5 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all whitespace-nowrap"
+                                            title="Colocar anilha agora, mesmo após marcar sem anilha"
+                                          >
+                                            <i className="fas fa-ring mr-1"></i>
+                                            Anilhar agora
+                                          </button>
+
+                                          {!(egg as any).dataSaidaNinho && (
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setSaidaNinhoModal({
+                                                  ninhoId: origemNinho.id,
+                                                  eggIdx: origemEggIdx
+                                                });
+                                                setDataSaidaNinho(
+                                                  new Date().toISOString().split('T')[0]
+                                                );
+                                              }}
+                                              disabled={!onRegistrarSaidaDoNinho}
+                                              className="flex-1 text-[8px] font-bold px-1.5 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                                              title="Registrar a saída do ninho deste filhote"
+                                            >
+                                              <i className="fas fa-sign-out-alt mr-1"></i>
+                                              Sair do ninho
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ) : egg.filhoteAnilhado ? (
                                       <>
                                         <button
                                           type="button"
