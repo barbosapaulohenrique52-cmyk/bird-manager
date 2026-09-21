@@ -66,6 +66,28 @@ export function DashboardSection({
     0
   );
 
+  const dadosGraficoStatus = [
+    { label: 'Chocando', valor: status.chocando, classe: 'bg-orange-400' },
+    { label: 'Férteis', valor: status.ferteis, classe: 'bg-emerald-500' },
+    { label: 'Eclodidos', valor: status.eclodidos, classe: 'bg-violet-500' },
+    { label: 'Em espera', valor: status.espera, classe: 'bg-slate-400' },
+    { label: 'Inférteis', valor: status.inferteis, classe: 'bg-blue-500' },
+    { label: 'Perdidos', valor: status.perdidos, classe: 'bg-red-500' }
+  ];
+
+  const dadosGraficoEspecies = Array.from(
+    ovos.reduce((mapa, item) => {
+      const especie = item.egg.species?.trim() || 'Não informada';
+      mapa.set(especie, (mapa.get(especie) || 0) + 1);
+      return mapa;
+    }, new Map<string, number>())
+  )
+    .map(([label, valor]) => ({ label, valor }))
+    .sort((a, b) => b.valor - a.valor)
+    .slice(0, 6);
+
+  const maiorValorEspecie = Math.max(1, ...dadosGraficoEspecies.map(item => item.valor));
+
   const navegarParaNinhosComFiltro = (
     filtro: 'todos' | 'ovos' | 'filhotes' | 'Em Espera' | 'Chocando' | 'Fértil' | 'Infértil' | 'Eclodido' | 'Perdido',
     expandir = false
@@ -400,6 +422,72 @@ export function DashboardSection({
                     <i className="fas fa-chevron-right text-[9px] text-slate-300 mt-2"></i>
                   </div>
                 </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Gráfico de reprodução</h3>
+              <p className="text-[11px] text-slate-400 mt-1">Quantidade de ovos por estado</p>
+            </div>
+            <i className="fas fa-chart-bar text-emerald-500"></i>
+          </div>
+
+          <div className="space-y-3">
+            {dadosGraficoStatus.map((item) => {
+              const percentual = ovos.length ? (item.valor / ovos.length) * 100 : 0;
+              return (
+                <div key={item.label}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-semibold text-slate-600">{item.label}</span>
+                    <span className="text-[10px] font-bold text-slate-700">{item.valor}</span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${item.classe} transition-all`}
+                      style={{ width: `${percentual}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">Ovos por espécie</h3>
+              <p className="text-[11px] text-slate-400 mt-1">Distribuição dos ovos cadastrados</p>
+            </div>
+            <i className="fas fa-chart-column text-emerald-500"></i>
+          </div>
+
+          {dadosGraficoEspecies.length === 0 ? (
+            <div className="py-8 text-center">
+              <i className="fas fa-chart-column text-slate-200 text-2xl"></i>
+              <p className="text-xs text-slate-400 mt-2">Nenhum ovo cadastrado</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {dadosGraficoEspecies.map((item) => (
+                <div key={item.label}>
+                  <div className="flex items-center justify-between mb-1 gap-3">
+                    <span className="text-[10px] font-semibold text-slate-600 truncate">{item.label}</span>
+                    <span className="text-[10px] font-bold text-slate-700 shrink-0">{item.valor}</span>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-emerald-500 transition-all"
+                      style={{ width: `${(item.valor / maiorValorEspecie) * 100}%` }}
+                    />
+                  </div>
+                </div>
               ))}
             </div>
           )}
