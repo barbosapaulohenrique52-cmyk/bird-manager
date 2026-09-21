@@ -73,7 +73,7 @@ export interface Filhote {
   dataVenda?: string;
   valorVenda?: number;
   comprador?: string;
-  status: "Ativo" | "Vendido";
+  status: "Ativo" | "Vendido" | "Óbito";
 }
 
 export interface Casal {
@@ -107,6 +107,9 @@ export interface Egg {
   anilha?: string;
   anoAnilha?: number;
   dataSaidaNinho?: string;
+  obito?: boolean;
+  dataObito?: string;
+  motivoObito?: string;
   nota?: string;
   porta?: string;
 }
@@ -184,6 +187,7 @@ export default function App() {
     updateEgg,
     eclodirOvo,
     anilharFilhote,
+    registrarObitoDoNinho,
     registrarSaidaDoNinho,
     desfazerSaidaDoNinho,
     reverterEclosao,
@@ -322,6 +326,7 @@ export default function App() {
             onUpdateEgg={updateEgg}
             onEclodirOvo={eclodirOvo}
             onAnilharFilhote={anilharFilhote}
+            onRegistrarObitoDoNinho={registrarObitoDoNinho}
             onRegistrarSaidaDoNinho={registrarSaidaDoNinho}
             onDesfazerSaidaDoNinho={desfazerSaidaDoNinho}
             onReverterEclosao={reverterEclosao}
