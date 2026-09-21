@@ -88,6 +88,57 @@ export function DashboardSection({
 
   const maiorValorEspecie = Math.max(1, ...dadosGraficoEspecies.map(item => item.valor));
 
+  const formatarMesGrafico = (data: Date) =>
+    data.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+
+  const chaveMesGrafico = (data: string) => {
+    const match = data.match(/^(\d{4})-(\d{1,2})/);
+    if (!match) return null;
+    return `${match[1]}-${match[2].padStart(2, '0')}`;
+  };
+
+  const mesesEvolucao = Array.from({ length: 6 }, (_, index) => {
+    const data = new Date();
+    data.setDate(1);
+    data.setMonth(data.getMonth() - (5 - index));
+    return {
+      chave: `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`,
+      label: formatarMesGrafico(data)
+    };
+  });
+
+  const dadosGraficoEvolucao = mesesEvolucao.map((mes) => {
+    const ovosPostados = ovos.filter(({ egg }) =>
+      egg.postura && chaveMesGrafico(egg.postura) === mes.chave
+    ).length;
+
+    const eclodidos = ovos.filter(({ egg }) =>
+      egg.dataEclosao && chaveMesGrafico(egg.dataEclosao) === mes.chave
+    ).length;
+
+    const filhotesRegistrados = ovos.filter(({ egg }) =>
+      egg.dataEclosao &&
+      egg.filhoteId &&
+      chaveMesGrafico(egg.dataEclosao) === mes.chave
+    ).length;
+
+    return {
+      ...mes,
+      ovosPostados,
+      eclodidos,
+      filhotes: filhotesRegistrados
+    };
+  });
+
+  const maiorValorEvolucao = Math.max(
+    1,
+    ...dadosGraficoEvolucao.flatMap((item) => [
+      item.ovosPostados,
+      item.eclodidos,
+      item.filhotes
+    ])
+  );
+
   const navegarParaNinhosComFiltro = (
     filtro: 'todos' | 'ovos' | 'filhotes' | 'Em Espera' | 'Chocando' | 'Fértil' | 'Infértil' | 'Eclodido' | 'Perdido',
     expandir = false
@@ -426,6 +477,68 @@ export function DashboardSection({
             </div>
           )}
         </div>
+      </div>
+
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-800">Evolução da reprodução</h3>
+            <p className="text-[11px] text-slate-400 mt-1">
+              Últimos 6 meses: postura, eclosão e filhotes registrados
+            </p>
+          </div>
+          <i className="fas fa-chart-line text-emerald-500"></i>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+            Ovos
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
+            <span className="w-2.5 h-2.5 rounded-full bg-violet-500"></span>
+            Eclodidos
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold text-slate-600">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+            Filhotes
+          </span>
+        </div>
+
+        <div className="grid grid-cols-6 gap-2 items-end h-48">
+          {dadosGraficoEvolucao.map((item) => (
+            <div key={item.chave} className="h-full flex flex-col justify-end min-w-0">
+              <div className="flex-1 flex items-end justify-center gap-0.5 sm:gap-1">
+                <div
+                  title={`${item.ovosPostados} ovos`}
+                  className="w-1/3 max-w-5 rounded-t bg-emerald-500 transition-all"
+                  style={{ height: `${Math.max(item.ovosPostados ? 6 : 1, (item.ovosPostados / maiorValorEvolucao) * 100)}%` }}
+                />
+                <div
+                  title={`${item.eclodidos} eclodidos`}
+                  className="w-1/3 max-w-5 rounded-t bg-violet-500 transition-all"
+                  style={{ height: `${Math.max(item.eclodidos ? 6 : 1, (item.eclodidos / maiorValorEvolucao) * 100)}%` }}
+                />
+                <div
+                  title={`${item.filhotes} filhotes`}
+                  className="w-1/3 max-w-5 rounded-t bg-amber-500 transition-all"
+                  style={{ height: `${Math.max(item.filhotes ? 6 : 1, (item.filhotes / maiorValorEvolucao) * 100)}%` }}
+                />
+              </div>
+              <div className="text-center mt-2">
+                <span className="text-[9px] font-semibold text-slate-500 capitalize">{item.label}</span>
+              </div>
+              <div className="text-center mt-0.5 text-[8px] text-slate-400">
+                {item.ovosPostados}/{item.eclodidos}/{item.filhotes}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-[9px] text-slate-400 mt-4">
+          Filhotes no gráfico = ovos eclodidos que possuem filhote registrado.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
