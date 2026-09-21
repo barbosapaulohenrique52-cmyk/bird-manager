@@ -1902,7 +1902,39 @@ export function NinhosSection({
                               <td className="py-1.5 px-1">
                                 {egg.status === 'Eclodido' ? (
                                   <div className="flex flex-col gap-1.5 min-w-[90px]">
-                                    {egg.filhoteAnilhado ? (
+                                    {(egg as any).naoAnilhar ? (
+                                      <div className="flex flex-col gap-1">
+                                        <span
+                                          className="flex items-center gap-1 text-[8px] font-bold rounded px-1.5 py-1 bg-slate-100 text-slate-600"
+                                          title="Este filhote foi marcado como sem anilha"
+                                        >
+                                          <i className="fas fa-ban text-[8px]"></i>
+                                          <span>Sem anilha</span>
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (
+                                              confirm(
+                                                'Reativar o anilhamento deste filhote? Ele voltará a aparecer como pendente de anilha.'
+                                              )
+                                            ) {
+                                              onUpdateEgg(
+                                                ninho.id,
+                                                eggIdx,
+                                                'naoAnilhar' as keyof Egg,
+                                                false
+                                              );
+                                            }
+                                          }}
+                                          className="text-[8px] font-bold px-1.5 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap"
+                                          title="Voltar a exigir anilha"
+                                        >
+                                          <i className="fas fa-undo mr-1"></i>
+                                          Reativar anilha
+                                        </button>
+                                      </div>
+                                    ) : egg.filhoteAnilhado ? (
                                       <>
                                         <button
                                           type="button"
@@ -2767,24 +2799,49 @@ export function NinhosSection({
                                         )}
                                       </>
                                     ) : (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setAnilhamentoModal({
-                                            ninhoId: ninho.id,
-                                            eggIdx
-                                          });
-                                          setAnilhaEditando(false);
-                                          setAnilhaData({
-                                            numero: '',
-                                            ano: new Date().getFullYear()
-                                          });
-                                        }}
-                                        className="text-[8px] font-bold px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all whitespace-nowrap"
-                                      >
-                                        <i className="fas fa-ring mr-1"></i>
-                                        Anilhar
-                                      </button>
+                                      <div className="flex flex-col gap-1">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setAnilhamentoModal({
+                                              ninhoId: ninho.id,
+                                              eggIdx
+                                            });
+                                            setAnilhaEditando(false);
+                                            setAnilhaData({
+                                              numero: '',
+                                              ano: new Date().getFullYear()
+                                            });
+                                          }}
+                                          className="text-[8px] font-bold px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all whitespace-nowrap"
+                                        >
+                                          <i className="fas fa-ring mr-1"></i>
+                                          Anilhar
+                                        </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (
+                                              confirm(
+                                                'Marcar este filhote como "não terá anilha"?\n\nEle deixará de aparecer como anilha pendente no Dashboard.'
+                                              )
+                                            ) {
+                                              onUpdateEgg(
+                                                ninho.id,
+                                                eggIdx,
+                                                'naoAnilhar' as keyof Egg,
+                                                true
+                                              );
+                                            }
+                                          }}
+                                          className="text-[8px] font-bold px-2 py-1 rounded bg-slate-200 text-slate-700 hover:bg-slate-300 transition-all whitespace-nowrap"
+                                          title="Registrar que este filhote não terá anilha"
+                                        >
+                                          <i className="fas fa-ban mr-1"></i>
+                                          Não anilhar
+                                        </button>
+                                      </div>
                                     )}
                                   </div>
                                 ) : (
