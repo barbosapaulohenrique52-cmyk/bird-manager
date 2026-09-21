@@ -2751,7 +2751,7 @@ export function NinhosSection({
                               <td className="py-1.5 px-1">
                                 {egg.status === 'Eclodido' ? (
                                   <div className="flex flex-col gap-1.5 min-w-[90px]">
-                                    (egg as any).naoAnilhar ? (
+                                    {(egg as any).naoAnilhar ? (
                                       <div className="flex flex-col gap-1.5">
                                         <span
                                           className="flex items-center gap-1 text-[8px] font-bold rounded px-1.5 py-1 bg-slate-100 text-slate-600"
