@@ -1911,28 +1911,69 @@ export function NinhosSection({
                                           <i className="fas fa-ban text-[8px]"></i>
                                           <span>Sem anilha</span>
                                         </span>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            if (
-                                              confirm(
-                                                'Reativar o anilhamento deste filhote? Ele voltará a aparecer como pendente de anilha.'
-                                              )
-                                            ) {
-                                              onUpdateEgg(
-                                                ninho.id,
-                                                eggIdx,
-                                                'naoAnilhar' as keyof Egg,
-                                                false
+                                        <div className="flex gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setAnilhamentoModal({
+                                                ninhoId: ninho.id,
+                                                eggIdx
+                                              });
+                                              setAnilhaEditando(false);
+                                              setAnilhaData({
+                                                numero: '',
+                                                ano: new Date().getFullYear()
+                                              });
+                                            }}
+                                            className="flex-1 text-[8px] font-bold px-1.5 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 transition-all whitespace-nowrap"
+                                            title="Colocar anilha agora, mesmo após marcar sem anilha"
+                                          >
+                                            <i className="fas fa-ring mr-1"></i>
+                                            Anilhar agora
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (
+                                                confirm(
+                                                  'Reativar o anilhamento deste filhote? Ele voltará a aparecer como pendente de anilha no Dashboard.'
+                                                )
+                                              ) {
+                                                onUpdateEgg(
+                                                  ninho.id,
+                                                  eggIdx,
+                                                  'naoAnilhar' as keyof Egg,
+                                                  false
+                                                );
+                                              }
+                                            }}
+                                            className="text-[8px] font-bold px-1.5 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap"
+                                            title="Voltar a exigir anilha"
+                                          >
+                                            <i className="fas fa-undo mr-1"></i>
+                                            Reativar
+                                          </button>
+                                        </div>
+                                        {!((egg as any).dataSaidaNinho) && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setSaidaNinhoModal({
+                                                ninhoId: ninho.id,
+                                                eggIdx
+                                              });
+                                              setDataSaidaNinho(
+                                                new Date().toISOString().split('T')[0]
                                               );
-                                            }
-                                          }}
-                                          className="text-[8px] font-bold px-1.5 py-1 rounded bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap"
-                                          title="Voltar a exigir anilha"
-                                        >
-                                          <i className="fas fa-undo mr-1"></i>
-                                          Reativar anilha
-                                        </button>
+                                            }}
+                                            disabled={!onRegistrarSaidaDoNinho}
+                                            className="text-[8px] font-bold px-2 py-1 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-all whitespace-nowrap disabled:opacity-50"
+                                            title="Registrar a saída do ninho deste filhote"
+                                          >
+                                            <i className="fas fa-sign-out-alt mr-1"></i>
+                                            Sair do ninho
+                                          </button>
+                                        )}
                                       </div>
                                     ) : egg.filhoteAnilhado ? (
                                       <>
@@ -2824,7 +2865,7 @@ export function NinhosSection({
                                           onClick={() => {
                                             if (
                                               confirm(
-                                                'Marcar este filhote como "não terá anilha"?\n\nEle deixará de aparecer como anilha pendente no Dashboard.'
+                                                'Marcar este filhote como "não terá anilha"?\n\nA próxima etapa será registrar a saída do ninho. A opção "Anilhar agora" continuará disponível a qualquer momento.'
                                               )
                                             ) {
                                               onUpdateEgg(
