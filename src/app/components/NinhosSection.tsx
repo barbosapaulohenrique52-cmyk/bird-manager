@@ -1013,12 +1013,40 @@ export function NinhosSection({
     );
   };
 
-  const compararOvosPorData = (a: { egg: Egg; eggIdx: number }, b: { egg: Egg; eggIdx: number }) => {
-    const dataA = a.egg.postura || a.egg.inicioChoca || '9999-12-31';
-    const dataB = b.egg.postura || b.egg.inicioChoca || '9999-12-31';
+  // Ordenação cronológica: ovos pela data de postura e, quando não houver,
+  // pela data de início da choca. Para o filtro de filhotes, usamos primeiro
+  // a data real de eclosão, pois é ela que representa o nascimento do filhote.
+  // Em todos os casos mantemos o índice original como critério de desempate,
+  // para que as ações continuem apontando para o ovo correto.
+  const obterDataOrdenacaoOvo = (egg: Egg): string =>
+    egg.postura || egg.inicioChoca || '9999-12-31';
+
+  const obterDataOrdenacaoFilhote = (egg: Egg): string =>
+    egg.dataEclosao || egg.postura || egg.inicioChoca || '9999-12-31';
+
+  const compararOvosPorData = (
+    a: { egg: Egg; eggIdx: number },
+    b: { egg: Egg; eggIdx: number }
+  ) => {
+    const dataA = obterDataOrdenacaoOvo(a.egg);
+    const dataB = obterDataOrdenacaoOvo(b.egg);
     const comparacao = dataA.localeCompare(dataB);
     return comparacao !== 0 ? comparacao : a.eggIdx - b.eggIdx;
   };
+
+  const compararFilhotesPorData = (
+    a: { egg: Egg; eggIdx: number },
+    b: { egg: Egg; eggIdx: number }
+  ) => {
+    const dataA = obterDataOrdenacaoFilhote(a.egg);
+    const dataB = obterDataOrdenacaoFilhote(b.egg);
+    const comparacao = dataA.localeCompare(dataB);
+    return comparacao !== 0 ? comparacao : a.eggIdx - b.eggIdx;
+  };
+
+  const compararRegistrosVisiveis = filtroAtual === 'filhotes'
+    ? compararFilhotesPorData
+    : compararOvosPorData;
 
   // Agrupar todos os ovos pelo local onde estão atualmente.
   // Mantemos ninhoId + eggIdx para que todas as ações continuem
@@ -1043,7 +1071,7 @@ export function NinhosSection({
     });
   });
 
-  ovosPorLocal.forEach((lista) => lista.sort(compararOvosPorData));
+  ovosPorLocal.forEach((lista) => lista.sort(compararRegistrosVisiveis));
 
   // Exibe somente locais que possuem pelo menos um ovo visível.
   // Locais cadastrados na configuração, mas vazios, não geram cards.
@@ -1350,7 +1378,7 @@ export function NinhosSection({
                         {ninho.eggs
                           .map((egg, eggIdx) => ({ egg, eggIdx }))
                           .filter(({ egg }) => ovoPassaNoFiltro(egg))
-                          .sort(compararOvosPorData)
+                          .sort(compararRegistrosVisiveis)
                           .map(({ egg, eggIdx }) => {
 
                           const dataFertilidade = calcularDataFertilidade(egg);
@@ -2158,7 +2186,7 @@ export function NinhosSection({
                       </thead>
 
                       <tbody>
-                        {ovos.map(({ egg, ninho, eggIdx }) => {
+                        {[...ovos].sort(compararRegistrosVisiveis).map(({ egg, ninho, eggIdx }) => {
                           const dataFertilidade = calcularDataFertilidade(egg);
                           const dataEclosao = calcularDataEclosao(egg);
                           const dataAnilhamento = calcularDataAnilhamento(egg);
