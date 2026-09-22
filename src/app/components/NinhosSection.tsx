@@ -1218,7 +1218,7 @@ export function NinhosSection({
 
   return (
     <section className="space-y-6">
-      <div className="sticky top-0 z-40 -mx-2 sm:-mx-4 lg:-mx-6 px-2 sm:px-4 lg:px-6 py-2 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200/70">
+      <div className="sticky top-[68px] lg:top-16 z-20 -mx-2 sm:-mx-4 lg:-mx-6 px-2 sm:px-4 lg:px-6 py-2 bg-slate-50/95 backdrop-blur-sm border-b border-slate-200/70">
       <div className="flex flex-wrap justify-between items-center gap-3">
         <h2 className="text-xl font-bold text-slate-800 tracking-tight uppercase italic">
           Ninhos Ativos
