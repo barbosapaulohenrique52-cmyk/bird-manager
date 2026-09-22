@@ -150,34 +150,45 @@ function StatusIcon({ status }: { status: Egg['status'] }) {
       aria-label={status}
       role="img"
     >
-      {/* Ovo */}
-      <path
-        d="M14 2.5C9.1 2.5 4.5 11.5 4.5 19.3C4.5 25.5 8.5 29.5 14 29.5C19.5 29.5 23.5 25.5 23.5 19.3C23.5 11.5 18.9 2.5 14 2.5Z"
-        fill={status === 'Fértil' ? '#FFF7ED' : 'white'}
-        stroke={status === 'Chocando' ? '#C2410C' : status === 'Fértil' ? '#F59E0B' : '#64748B'}
-        strokeWidth="1.7"
-      />
-
-      {/* Gema do ovo fértil */}
-      {status === 'Fértil' && (
-        <circle
-          cx="14"
-          cy="19"
-          r="5"
-          fill="#F59E0B"
-          stroke="#D97706"
-          strokeWidth="1"
-        />
-      )}
-
-      {/* Ave sobre o ovo quando está chocando */}
-      {status === 'Chocando' && (
+      {/* Ícone de ovo */}
+      {status !== 'Chocando' ? (
         <>
-          <circle cx="14" cy="5.5" r="3.2" fill="#FBBF24" />
-          <ellipse cx="14" cy="9.2" rx="5.2" ry="3.1" fill="#FBBF24" />
-          <circle cx="15.1" cy="5" r="0.65" fill="#1E293B" />
-          <path d="M17.2 6L20 7.2L17.2 8Z" fill="#F97316" />
-          <path d="M10.5 8.2L7.5 6.7L8.4 9.6Z" fill="#F59E0B" />
+          <path
+            d="M14 2.5C9.1 2.5 4.5 11.5 4.5 19.3C4.5 25.5 8.5 29.5 14 29.5C19.5 29.5 23.5 25.5 23.5 19.3C23.5 11.5 18.9 2.5 14 2.5Z"
+            fill={status === 'Fértil' ? '#FFF7ED' : 'white'}
+            stroke={status === 'Fértil' ? '#F59E0B' : '#64748B'}
+            strokeWidth="1.7"
+          />
+
+          {/* Gema do ovo fértil */}
+          {status === 'Fértil' && (
+            <circle
+              cx="14"
+              cy="19"
+              r="5"
+              fill="#F59E0B"
+              stroke="#D97706"
+              strokeWidth="1"
+            />
+          )}
+        </>
+      ) : (
+        <>
+          {/* Ave */}
+          <circle cx="14" cy="7" r="3.4" fill="#FBBF24" />
+          <ellipse cx="14" cy="11" rx="6.2" ry="4.2" fill="#FBBF24" />
+          <path d="M9.5 10.5C7.5 9.5 6.5 8 6.2 6.5C8.2 7 10 8 11.2 9.4Z" fill="#F59E0B" />
+          <circle cx="15.2" cy="6.5" r="0.7" fill="#1E293B" />
+          <path d="M17 7L20 8.2L17 9.2Z" fill="#F97316" />
+
+          {/* Ovos dentro do ninho */}
+          <ellipse cx="9" cy="20.5" rx="3.2" ry="4.2" fill="#FFFDF7" stroke="#D6D3D1" strokeWidth="1" />
+          <ellipse cx="18.5" cy="20.5" rx="3.2" ry="4.2" fill="#FFFDF7" stroke="#D6D3D1" strokeWidth="1" />
+
+          {/* Ninho */}
+          <path d="M4 19C5.5 25.5 9 29 14 29C19 29 22.5 25.5 24 19C21.5 21.2 18 22.5 14 22.5C10 22.5 6.5 21.2 4 19Z" fill="#B7793E" stroke="#8B5E34" strokeWidth="1.4" />
+          <path d="M4.5 20.2C7 22.2 10 23.2 14 23.2C18 23.2 21 22.2 23.5 20.2" fill="none" stroke="#D6A15D" strokeWidth="1.2" strokeLinecap="round" />
+          <path d="M6 24.2C8.5 26 11 26.8 14 26.8C17 26.8 19.5 26 22 24.2" fill="none" stroke="#8B5E34" strokeWidth="1.1" strokeLinecap="round" />
         </>
       )}
     </svg>
