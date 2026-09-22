@@ -3060,6 +3060,22 @@ export function NinhosSection({
                                           <SemAnilhaIcon className="w-4 h-4" />
                                           <span className="sr-only">Não anilhar</span>
                                         </button>
+
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (!confirmarAcaoFilhote('Deseja registrar o óbito deste filhote?')) return;
+                                            setObitoModal({ ninhoId: ninho.id, eggIdx });
+                                            setDataObito(new Date().toISOString().split('T')[0]);
+                                            setMotivoObito('');
+                                          }}
+                                          disabled={!onRegistrarObitoDoNinho}
+                                          className="inline-flex flex-none items-center justify-center w-6 h-6 p-0 rounded bg-white border border-slate-300 text-black hover:bg-slate-100 transition-all disabled:opacity-50"
+                                          title="Registrar óbito antes do anilhamento"
+                                        >
+                                          <ObitoIcon className="w-4 h-4" />
+                                          <span className="sr-only">Óbito</span>
+                                        </button>
                                       </div>
                                     )}
                                   </div>
