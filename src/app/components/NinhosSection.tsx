@@ -1319,6 +1319,8 @@ export function NinhosSection({
         </div>
       )}
 
+      </div>
+
       {visualizacaoOvos === 'casal' && (
         <>
           {/* Ninhos continuam sendo usados para definir a origem dos ovos. */}
