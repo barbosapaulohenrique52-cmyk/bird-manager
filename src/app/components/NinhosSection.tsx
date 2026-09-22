@@ -1252,87 +1252,72 @@ export function NinhosSection({
             </button>
           </div>
 
-          <button
-            onClick={() => onOpenModal('ninho')}
-            className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold text-[10px] shadow-lg"
-          >
-            <i className="fas fa-plus mr-1"></i>
-            NOVO NINHO
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setFiltrosAbertos((aberto) => !aberto)}
+              className={`relative w-10 h-10 rounded-xl border flex items-center justify-center transition-colors ${
+                filtrosAbertos || filtroAtual !== "todos"
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+              }`}
+              title={filtrosAbertos ? 'Ocultar filtros' : 'Mostrar filtros'}
+              aria-expanded={filtrosAbertos}
+              aria-controls="ninhos-filtros"
+            >
+              <i className="fas fa-filter text-[11px]"></i>
+              {filtroAtual !== "todos" && (
+                <span className="absolute -mt-7 ml-7 w-2 h-2 rounded-full bg-amber-400 border border-white"></span>
+              )}
+            </button>
+
+            <button
+              onClick={() => onOpenModal('ninho')}
+              className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold text-[10px] shadow-lg"
+            >
+              <i className="fas fa-plus mr-1"></i>
+              NOVO NINHO
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="bg-white border-2 border-slate-200 rounded-2xl shadow-sm mt-2 overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setFiltrosAbertos((aberto) => !aberto)}
-          className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-slate-50 transition-colors"
-          aria-expanded={filtrosAbertos}
-          aria-controls="ninhos-filtros"
-        >
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="w-7 h-7 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
-              <i className="fas fa-filter text-[10px]"></i>
-            </span>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-slate-700 uppercase">Filtros</span>
-                {filtroAtual !== "todos" && (
-                  <span className="px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 text-[8px] font-black uppercase truncate">
-                    {filtroAtual}
-                  </span>
-                )}
-              </div>
-              {filtroAtual === "todos" ? (
-                <span className="text-[8px] text-slate-400 font-bold uppercase">Nenhum filtro aplicado</span>
-              ) : (
-                <span className="text-[8px] text-emerald-600 font-bold uppercase">
-                  {ninhosVisiveis.reduce((total, ninho) => total + quantidadeOvosVisiveis(ninho), 0)} ovos encontrados
-                </span>
-              )}
-            </div>
+      {filtrosAbertos && (
+        <div id="ninhos-filtros" className="bg-white border-2 border-slate-200 rounded-2xl p-2.5 shadow-sm mt-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-[9px] font-black text-slate-500 uppercase mr-1">Filtrar:</span>
+            {[
+              ["todos", "Todos"],
+              ["ovos", "Ovos"],
+              ["filhotes", "Filhotes"],
+              ["Em Espera", "Em espera"],
+              ["Chocando", "Chocando"],
+              ["Fértil", "Férteis"],
+              ["Infértil", "Inférteis"],
+              ["Eclodido", "Eclodidos"],
+              ["Perdido", "Perdidos"]
+            ].map(([valor, label]) => (
+              <button
+                key={valor}
+                type="button"
+                onClick={() => alterarFiltro(valor as NinhosFiltro)}
+                className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${
+                  filtroAtual === valor
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+            {filtroAtual !== "todos" && (
+              <span className="ml-auto text-[9px] font-black text-emerald-700 uppercase">
+                {ninhosVisiveis.reduce((total, ninho) => total + quantidadeOvosVisiveis(ninho), 0)} ovos encontrados
+              </span>
+            )}
           </div>
-          <i className={`fas ${filtrosAbertos ? 'fa-chevron-up' : 'fa-chevron-down'} text-[10px] text-slate-400 shrink-0`}></i>
-        </button>
-
-        {filtrosAbertos && (
-          <div id="ninhos-filtros" className="border-t border-slate-100 p-2.5">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[9px] font-black text-slate-500 uppercase mr-1">Filtrar:</span>
-              {[
-                ["todos", "Todos"],
-                ["ovos", "Ovos"],
-                ["filhotes", "Filhotes"],
-                ["Em Espera", "Em espera"],
-                ["Chocando", "Chocando"],
-                ["Fértil", "Férteis"],
-                ["Infértil", "Inférteis"],
-                ["Eclodido", "Eclodidos"],
-                ["Perdido", "Perdidos"]
-              ].map(([valor, label]) => (
-                <button
-                  key={valor}
-                  type="button"
-                  onClick={() => alterarFiltro(valor as NinhosFiltro)}
-                  className={`px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${
-                    filtroAtual === valor
-                      ? 'bg-emerald-600 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-              {filtroAtual !== "todos" && (
-                <span className="ml-auto text-[9px] font-black text-emerald-700 uppercase">
-                  {ninhosVisiveis.reduce((total, ninho) => total + quantidadeOvosVisiveis(ninho), 0)} ovos encontrados
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-      </div>
+        </div>
+      )}
 
       {visualizacaoOvos === 'casal' && (
         <>
