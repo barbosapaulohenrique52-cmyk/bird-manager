@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Header } from "./components/Header";
 import { Navigation } from "./components/Navigation";
-import { DashboardSection } from "./components/DashboardSection";
 import { NinhosSection } from "./components/NinhosSection";
 import { AvesSection } from "./components/AvesSection";
 import { CasaisSection } from "./components/CasaisSection";
@@ -13,19 +12,7 @@ import { PhotoZoom } from "./components/PhotoZoom";
 import { AveDetalhesModal } from "./components/AveDetalhesModal";
 import { useDatabase } from "./hooks/useDatabase";
 
-export type NinhosFiltro =
-  | "todos"
-  | "ovos"
-  | "filhotes"
-  | "Em Espera"
-  | "Chocando"
-  | "Fértil"
-  | "Infértil"
-  | "Eclodido"
-  | "Perdido";
-
 export type TabType =
-  | "dashboard"
   | "ninhos"
   | "aves"
   | "casais"
@@ -61,7 +48,6 @@ export interface Ave {
   corPeito?: string;
   corDorso?: string;
   nota?: string;
-  local?: string;
   porta?: string;
 }
 
@@ -103,7 +89,6 @@ export interface Egg {
   dataEclosao?: string;
   filhoteId?: string;
   filhoteAnilhado?: boolean;
-  naoAnilhar?: boolean;
   anilha?: string;
   anoAnilha?: number;
   dataSaidaNinho?: string;
@@ -143,7 +128,6 @@ export interface Config {
   coresPeito?: CorAve[];
   coresDorso?: CorAve[];
   coresAves?: CorAve[];
-  locaisOvos?: string[];
 }
 
 export interface Lancamento {
@@ -158,19 +142,26 @@ export interface Lancamento {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabType>("dashboard");
-  const [modalType, setModalType] = useState<ModalType>(null);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
-  const [aveDetalheId, setAveDetalheId] = useState<string | null>(null);
-  const [ninhosFiltro, setNinhosFiltro] = useState<NinhosFiltro>("todos");
+  const [activeTab, setActiveTab] =
+    useState<TabType>("ninhos");
+
+  const [modalType, setModalType] =
+    useState<ModalType>(null);
+
+  const [editId, setEditId] =
+    useState<string | null>(null);
+
+  const [zoomPhoto, setZoomPhoto] =
+    useState<string | null>(null);
+
+  const [aveDetalheId, setAveDetalheId] =
+    useState<string | null>(null);
 
   const {
     db,
     colorLists,
     saveAve,
     importAves,
-    updateAvesBatch,
     saveCasal,
     saveNinho,
     updateNinhoCasal,
@@ -185,7 +176,6 @@ export default function App() {
     eclodirOvo,
     anilharFilhote,
     registrarSaidaDoNinho,
-    registrarObitoDoNinho,
     desfazerSaidaDoNinho,
     reverterEclosao,
     saveConfig,
@@ -203,7 +193,10 @@ export default function App() {
     deleteFilhoteHistorico,
   } = useDatabase();
 
-  const openModal = (type: ModalType, id: string | null = null) => {
+  const openModal = (
+    type: ModalType,
+    id: string | null = null,
+  ) => {
     setModalType(type);
     setEditId(id);
   };
@@ -213,56 +206,18 @@ export default function App() {
     setEditId(null);
   };
 
-  const saveAvesLote = (avesLote: Partial<Ave>[]) => {
+  const saveAvesLote = (
+    avesLote: Partial<Ave>[],
+  ) => {
     avesLote.forEach((aveData) => {
       saveAve(aveData, null);
     });
   };
 
   useEffect(() => {
-    const handleDashboardOvo = (event: Event) => {
-      const customEvent = event as CustomEvent<{
-        ninhoId?: string;
-        eggId?: string;
-      }>;
-
-      const ninhoId = customEvent.detail?.ninhoId;
-      const eggId = customEvent.detail?.eggId;
-
-      if (!ninhoId || !eggId) return;
-
-      // A abertura de um ovo específico não deve esconder outros ovos por filtro.
-      setNinhosFiltro("todos");
-      (window as any).__gouldproNinhosFiltro = "todos";
-      (window as any).__gouldproOvoAlvo = { ninhoId, eggId };
-      setActiveTab("ninhos");
-    };
-
-    const handleDashboardFiltroNinhos = (event: Event) => {
-      const customEvent = event as CustomEvent<{ filtro?: NinhosFiltro }>;
-      const filtro = customEvent.detail?.filtro;
-      if (!filtro) return;
-      setNinhosFiltro(filtro);
-      (window as any).__gouldproNinhosFiltro = filtro;
-      setActiveTab("ninhos");
-    };
-
-    window.addEventListener("gouldpro-open-ovo", handleDashboardOvo);
-    window.addEventListener("gouldpro-ninhos-filtro", handleDashboardFiltroNinhos);
-
-    return () => {
-      window.removeEventListener("gouldpro-open-ovo", handleDashboardOvo);
-      window.removeEventListener("gouldpro-ninhos-filtro", handleDashboardFiltroNinhos);
-    };
-  }, []);
-
-  const navegarParaNinhos = (filtro: NinhosFiltro = "todos") => {
-    setNinhosFiltro(filtro);
-    setActiveTab("ninhos");
-  };
-
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    const handleBeforeUnload = (
+      e: BeforeUnloadEvent,
+    ) => {
       if (
         db.aves.length > 0 ||
         db.casais.length > 0 ||
@@ -270,47 +225,41 @@ export default function App() {
         db.lancamentos.length > 0
       ) {
         e.preventDefault();
+
         e.returnValue =
           "Você tem dados não salvos. Não se esqueça de fazer backup dos seus dados antes de sair!";
+
         return e.returnValue;
       }
     };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener(
+      "beforeunload",
+      handleBeforeUnload,
+    );
 
     return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener(
+        "beforeunload",
+        handleBeforeUnload,
+      );
     };
   }, [db]);
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      <Header />
+      <Header
+        onConfigClick={() =>
+          setActiveTab("config")
+        }
+      />
 
-      <Navigation activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Navigation
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+      />
 
-      <main className="flex-1 w-full px-2 sm:px-4 lg:ml-16 lg:px-6 pb-32 lg:pb-8">
-        {activeTab === "dashboard" && (
-          <DashboardSection
-            aves={db.aves}
-            casais={db.casais}
-            ninhos={db.ninhos}
-            config={db.config}
-            onNavigate={(tab) => {
-              // O Dashboard dispara o filtro específico imediatamente antes/depois da navegação.
-              // Não sobrescrever esse filtro aqui com "todos", pois isso fazia o KPI
-              // (especialmente Eclodidos) voltar para a visualização sem filtro.
-              setActiveTab(tab);
-            }}
-            onOpenOvo={(ninhoId, eggId) => {
-              setNinhosFiltro("todos");
-              (window as any).__gouldproNinhosFiltro = "todos";
-              (window as any).__gouldproOvoAlvo = { ninhoId, eggId };
-              setActiveTab("ninhos");
-            }}
-          />
-        )}
-
+      <main className="flex-1 w-full pb-32">
         {activeTab === "ninhos" && (
           <NinhosSection
             ninhos={db.ninhos}
@@ -323,29 +272,33 @@ export default function App() {
             onUpdateEgg={updateEgg}
             onEclodirOvo={eclodirOvo}
             onAnilharFilhote={anilharFilhote}
-            onRegistrarSaidaDoNinho={registrarSaidaDoNinho}
-            onRegistrarObitoDoNinho={registrarObitoDoNinho}
-            onDesfazerSaidaDoNinho={desfazerSaidaDoNinho}
-            onReverterEclosao={reverterEclosao}
-            onUpdateNinhoCasal={updateNinhoCasal}
+            onRegistrarSaidaDoNinho={
+              registrarSaidaDoNinho
+            }
+            onDesfazerSaidaDoNinho={
+              desfazerSaidaDoNinho
+            }
+            onReverterEclosao={
+              reverterEclosao
+            }
+            onUpdateNinhoCasal={
+              updateNinhoCasal
+            }
             onSaveCasal={saveCasal}
             onDeleteNinho={deleteNinho}
             onUpdateNinho={updateNinho}
             onSaveConfig={saveConfig}
             onViewDetails={setAveDetalheId}
-            filtro={ninhosFiltro}
           />
         )}
 
         {activeTab === "aves" && (
           <AvesSection
             aves={db.aves}
-            ninhos={db.ninhos}
             config={db.config}
             onOpenModal={openModal}
             onDeleteAve={deleteAve}
             onImportAves={importAves}
-            onUpdateAvesBatch={updateAvesBatch}
             onPhotoClick={setZoomPhoto}
             onViewDetails={setAveDetalheId}
           />
@@ -355,15 +308,19 @@ export default function App() {
           <CasaisSection
             casais={db.casais}
             aves={db.aves}
-            ninhos={db.ninhos}
             onOpenModal={openModal}
             onDeleteCasal={deleteCasal}
             onUpdateCasal={updateCasal}
-            onAddFilhote={addFilhoteToHistorico}
-            onUpdateFilhote={updateFilhoteHistorico}
-            onDeleteFilhote={deleteFilhoteHistorico}
+            onAddFilhote={
+              addFilhoteToHistorico
+            }
+            onUpdateFilhote={
+              updateFilhoteHistorico
+            }
+            onDeleteFilhote={
+              deleteFilhoteHistorico
+            }
             onViewDetails={setAveDetalheId}
-            onDesfazerSaidaDoNinho={desfazerSaidaDoNinho}
           />
         )}
 
@@ -373,16 +330,24 @@ export default function App() {
             casais={db.casais}
             ninhos={db.ninhos}
             config={db.config}
-            onNavigate={(tab) => setActiveTab(tab as TabType)}
+            onNavigate={(tab) =>
+              setActiveTab(tab as TabType)
+            }
           />
         )}
 
         {activeTab === "financeiro" && (
           <FinanceiroSection
             lancamentos={db.lancamentos}
-            onSaveLancamento={saveLancamento}
-            onDeleteLancamento={deleteLancamento}
-            onDeleteMultiple={deleteMultipleLancamentos}
+            onSaveLancamento={
+              saveLancamento
+            }
+            onDeleteLancamento={
+              deleteLancamento
+            }
+            onDeleteMultiple={
+              deleteMultipleLancamentos
+            }
           />
         )}
 
@@ -393,14 +358,24 @@ export default function App() {
             onExport={exportBackup}
             onImport={importBackup}
             onClear={clearEverything}
-            onSaveToGoogleDrive={saveBackupToGoogleDrive}
-            onImportFromGoogleDrive={importBackupFromGoogleDrive}
-            lastGoogleDriveBackup={lastGoogleDriveBackup}
+            onSaveToGoogleDrive={
+              saveBackupToGoogleDrive
+            }
+            onImportFromGoogleDrive={
+              importBackupFromGoogleDrive
+            }
+            lastGoogleDriveBackup={
+              lastGoogleDriveBackup
+            }
             onRestoreBackup={(data) => {
               importBackup(
-                new File([JSON.stringify(data)], "restore.json", {
-                  type: "application/json",
-                }),
+                new File(
+                  [JSON.stringify(data)],
+                  "restore.json",
+                  {
+                    type: "application/json",
+                  },
+                ),
               );
             }}
           />
@@ -420,23 +395,38 @@ export default function App() {
           onSaveAvesLote={saveAvesLote}
           onSaveCasal={saveCasal}
           onSaveNinho={saveNinho}
-          onUpdateNinhoCasal={updateNinhoCasal}
+          onUpdateNinhoCasal={
+            updateNinhoCasal
+          }
           onSaveConfig={saveConfig}
         />
       )}
 
       {zoomPhoto && (
-        <PhotoZoom src={zoomPhoto} onClose={() => setZoomPhoto(null)} />
+        <PhotoZoom
+          src={zoomPhoto}
+          onClose={() =>
+            setZoomPhoto(null)
+          }
+        />
       )}
 
       {aveDetalheId && (
         <AveDetalhesModal
-          ave={db.aves.find((a) => a.id === aveDetalheId)!}
+          ave={
+            db.aves.find(
+              (a) => a.id === aveDetalheId,
+            )!
+          }
           aves={db.aves}
           casais={db.casais}
           ninhos={db.ninhos}
-          onClose={() => setAveDetalheId(null)}
-          onNavigate={(id) => setAveDetalheId(id)}
+          onClose={() =>
+            setAveDetalheId(null)
+          }
+          onNavigate={(id) =>
+            setAveDetalheId(id)
+          }
           onPhotoClick={setZoomPhoto}
         />
       )}
